@@ -57,13 +57,25 @@
   - [ ] Implement retry logic with exponential backoff
   - [ ] Add better error logging/tracking
   - Estimated time: 1 week
-  - Impact: Automated daily updates instead of manual data entry
+### Scraper Improvements
+- [ ] **Fix broken scrapers** - Currently only 7/31 working ⚠️ LOW PRIORITY
+  - Note: With 153 plans manually entered, scraper fixes are less urgent
+  - Current issue: Cron handler timing out
+  - [ ] Investigate timeout issues
+  - [ ] Test each provider's scraper manually
+  - [ ] Update selectors for changed website structures
+  - [ ] Implement retry logic with exponential backoff
+  - [ ] Add better error logging/tracking
+  - Estimated time: 1-2 weeks
+  - Impact: Automated daily updates (currently using manual entry)
 
 - [ ] **Run manual scrape** via `/internal/cron/run` endpoint
+  - Status: Tested, currently times out
+  - [ ] Debug timeout issue (needs investigation)
   - [ ] Verify scraper execution
   - [ ] Check error logs
   - [ ] Update broken provider URLs
-  - Estimated time: 30 mins
+  - Estimated time: 2-3 hours debugging
   - Impact: Validate current scraping status
 
 ---
@@ -71,12 +83,21 @@
 ## ⚡ PRIORITY 2: UX Enhancements (High Impact)
 
 ### Visual Improvements
-- [ ] **Add provider comparison table** (side-by-side)
-  - [ ] "Compare Selected" button (max 3 plans)
-  - [ ] Modal or dedicated page for comparison
-  - [ ] Highlight differences (price, speed, features)
-  - Estimated time: 3-4 hours
+- [x] **Add provider comparison table** (side-by-side) ✅ COMPLETED
+  - [x] "Compare" button on each plan (max 3 plans) ✅
+  - [x] Floating badge shows selected count ✅
+  - [x] Modal with side-by-side comparison ✅
+  - [x] Highlight key details (price, speed, features) ✅
+  - [x] Dark mode support ✅
+  - [x] Mobile responsive (single column) ✅
   - Impact: Easier decision-making for users
+
+- [x] **Improve mobile table responsiveness** ✅ COMPLETED
+  - [x] Better spacing for small screens (768px) ✅
+  - [x] Extra small device optimization (480px) ✅
+  - [x] Action buttons stack vertically ✅
+  - [x] Reduced badge sizes ✅
+  - [x] Improved horizontal scroll ✅
 
 - [ ] **Improve mobile table UX**
   - [ ] Card-based layout for mobile (instead of horizontal scroll)
