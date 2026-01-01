@@ -15,24 +15,26 @@
 ## 🔥 PRIORITY 1: Critical Features (Complete First)
 
 ### Data Coverage
-- [ ] **Add Fixed Wireless plans** (25/5, 50/20, 100/20 tiers)
-  - [ ] Telstra Fixed Wireless plans (3-4 plans)
-  - [ ] Optus Fixed Wireless plans (3-4 plans)
-  - [ ] TPG Fixed Wireless plans (3 plans)
-  - [ ] Aussie Broadband Fixed Wireless (3 plans)
-  - [ ] Budget providers: Mate, Exetel, Tangerine (2-3 plans each)
-  - Estimated time: 1-2 hours
+- [x] **Add Fixed Wireless plans** (25/5, 50/20, 100/20 tiers) ✅ COMPLETED
+  - [x] Telstra Fixed Wireless plans (3 plans) ✅
+  - [x] Optus Fixed Wireless plans (3 plans) ✅
+  - [x] TPG Fixed Wireless plans (2 plans) ✅
+  - [x] Aussie Broadband Fixed Wireless (3 plans) ✅
+  - [x] Budget providers: Mate, Exetel, Tangerine (7 plans total) ✅
+  - Completed: 18 Fixed Wireless plans added
   - Impact: Serves ~600k rural/regional Australians
 
-- [ ] **Complete provider coverage** - Add plans for remaining 17 providers
-  - [ ] Leaptel (4 plans)
-  - [ ] Skymesh (4 plans)
-  - [ ] Origin Broadband (3 plans)
+- [ ] **Complete provider coverage** - Add plans for remaining providers
+  - [x] Leaptel (4 plans) ✅
+  - [x] Skymesh (4 plans) ✅
+  - [x] Origin Broadband (2 plans) ✅
+  - [x] MyNetFone (2 plans) ✅
+  - [x] On the Net (1 plan) ✅
   - [ ] Future Broadband (3 plans)
-  - [ ] Spintel (improve from 1 → 4 plans)
-  - [ ] Dodo (improve from 1 → 4 plans)
-  - Estimated time: 2-3 hours
-  - Impact: 100% provider coverage
+  - [x] Improve Spintel coverage
+  - [x] Improve Dodo coverage
+  - **Progress: 24/36 providers now have plans (67% coverage, up from 53%)**
+  - **Total: 113 plans (up from 82)**
 
 ### Scraper Improvements
 - [ ] **Fix broken scrapers** - Currently only 7/31 working
