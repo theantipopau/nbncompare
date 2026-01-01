@@ -2,15 +2,18 @@
 
 **Live Site:** [https://nbncompare.info](https://nbncompare.info)
 
-An open-source NBN plan comparison tool for Australia. Compare internet plans from 40+ providers with real-time pricing, speed tiers, and official NBN availability checks.
+An open-source NBN plan comparison tool for Australia. Compare internet plans from 30+ providers with real-time pricing, promotional offers, and official NBN availability checks.
 
 ## ✨ Features
 
 - 🔍 **NBN Address Check** - Verify service availability using official NBN Co API
-- 📊 **40+ Providers** - Compare plans from Telstra, Optus, TPG, Aussie Broadband, iiNet, Superloop, and more
-- 🎯 **Smart Filters** - Filter by speed tier, contract type, data allowance, and modem inclusion
+- 📊 **153 Plans from 30 Providers** - Compare plans from Telstra, Optus, TPG, Aussie Broadband, iiNet, and more
+- 🎯 **Smart Filters** - Filter by speed tier (25-2000 Mbps), contract type, data allowance, modem, and technology type
+- 🏷️ **Promotional Pricing** - See intro offers with duration (e.g., "$85/mo for 6 months")
+- ⚖️ **Plan Comparison** - Compare up to 3 plans side-by-side in detailed modal
 - ⭐ **Favorites System** - Star your preferred plans for easy comparison
 - 🔎 **Search** - Find plans by provider or plan name
+- 📡 **Fixed Wireless NBN** - Special support for regional/rural Fixed Wireless plans
 - 🌙 **Dark Mode** - Toggle between light and dark themes
 - 📱 **Mobile Responsive** - Optimized for all devices
 - 💰 **Always Free** - No sign-ups, no hidden fees, no affiliate links
@@ -84,7 +87,8 @@ Or connect your GitHub repo to Cloudflare Pages for automatic deployments.
 
 ### Public
 - `GET /api/plans` - List all plans
-  - Query params: `?speed=100&contract=month-to-month&data=unlimited&modem=1`
+  - Query params: `?speed=100&contract=month-to-month&data=unlimited&modem=1&technology=standard`
+  - Technology types: `standard`, `fixed-wireless`
 - `GET /api/providers` - List all providers
 - `GET /api/providers/:slug` - Get provider details
 - `GET /api/status` - System status and last cron run
@@ -113,8 +117,25 @@ Providers with active plans:
 - TPG (5 plans)
 - Aussie Broadband (5 plans)
 - iiNet (3 plans)
-- Superloop (3 plans)
-- Dodo, SpinTel, Launtel (1+ plans each)
+## 📊 Current Coverage (January 2026)
+
+- **153 active plans** across **30 providers** (83% of target)
+- **Speed tiers:** 25, 50, 100, 250, 1000, 2000 Mbps
+- **Technology types:** Standard NBN + Fixed Wireless
+- **30 promotional offers** with intro pricing
+
+### Major Providers (10+ plans)
+- Telstra, Optus, TPG, Aussie Broadband (10 plans each)
+- Carbon Communications (12 plans)
+
+### Medium Providers (4-9 plans)
+- Exetel, Mate, Superloop, Tangerine, iiNet, Vodafone (4-9 plans)
+- Internode, Kogan, MyRepublic, Belong, Amaysim (4 plans each)
+
+### Growing Coverage
+- 20+ additional providers with 1-4 plans
+- Includes regional specialists: Skymesh, Leaptel, Launtel
+- Budget providers: Dodo, SpinTel, Moose Mobile, Buddy
 
 ## 🤝 Contributing
 
