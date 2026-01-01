@@ -1,7 +1,8 @@
 # NBN Compare - Development Roadmap & TODO
 
 ## 🎯 Current Status (January 2026)
-- ✅ 82 active plans across 19 providers (53% coverage)
+- ✅ 153 active plans across 30 providers (83% coverage)
+- ✅ Promotional pricing support (intro_price_cents, intro_duration_days)
 - ✅ Speed tiers: 25, 50, 100, 250, 1000, 2000 Mbps
 - ✅ Contract filtering (month-to-month, 12-month, 24-month)
 - ✅ Dark mode, favorites, search functionality
@@ -24,17 +25,30 @@
   - Completed: 18 Fixed Wireless plans added
   - Impact: Serves ~600k rural/regional Australians
 
-- [ ] **Complete provider coverage** - Add plans for remaining providers
+- [x] **Complete provider coverage** - Add plans for remaining providers ✅ COMPLETED
   - [x] Leaptel (4 plans) ✅
   - [x] Skymesh (4 plans) ✅
   - [x] Origin Broadband (2 plans) ✅
   - [x] MyNetFone (2 plans) ✅
   - [x] On the Net (1 plan) ✅
-  - [ ] Future Broadband (3 plans)
-  - [x] Improve Spintel coverage
-  - [x] Improve Dodo coverage
-  - **Progress: 24/36 providers now have plans (67% coverage, up from 53%)**
-  - **Total: 113 plans (up from 82)**
+  - [x] Future Broadband (3 plans) ✅
+  - [x] Arctel (4 plans) ✅
+  - [x] Buddy (4 plans) ✅
+  - [x] Carbon Communications (4 plans) ✅
+  - [x] Moose Mobile (4 plans) ✅
+  - [x] Southern Phone (4 plans) ✅
+  - [x] Improve Spintel coverage (4 plans total) ✅
+  - [x] Improve Dodo coverage (4 plans total) ✅
+  - [x] Improve Launtel coverage (4 plans total) ✅
+  - **Progress: 30/36 providers now have plans (83% coverage, up from 53%)**
+  - **Total: 153 plans (up from 82)**
+
+- [x] **Add promotional pricing support** ✅ COMPLETED
+  - [x] Database fields (intro_price_cents, intro_duration_days)
+  - [x] Frontend display with duration (e.g., "$85/mo for 6 months")
+  - [x] Updated 30+ plans with promo pricing
+  - [x] Sorting logic updated to consider intro pricing
+  - Examples: 1000 Mbps @ $85/mo for 6 months, 100 Mbps @ $59/mo for 6 months
 
 ### Scraper Improvements
 - [ ] **Fix broken scrapers** - Currently only 7/31 working

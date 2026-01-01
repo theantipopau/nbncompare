@@ -4,6 +4,8 @@ interface Plan {
   id: number;
   plan_name: string;
   provider_name: string;
+  intro_price_cents?: number | null;
+  intro_duration_days?: number | null;
   ongoing_price_cents: number | null;
   speed_tier: number | null;
   last_checked_at?: string | null;
@@ -387,12 +389,12 @@ export default function Compare() {
                   })
                   .sort((a, b) => {
                     if (sortBy === 'price') {
-                      const priceA = a.ongoing_price_cents ?? Infinity;
-                      const priceB = b.ongoing_price_cents ?? Infinity;
+                      const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity;
+                      const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity;
                       return priceA - priceB;
                     } else if (sortBy === 'price-desc') {
-                      const priceA = a.ongoing_price_cents ?? -Infinity;
-                      const priceB = b.ongoing_price_cents ?? -Infinity;
+                      const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity;
+                      const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
                       return priceB - priceA;
                     } else if (sortBy === 'provider') {
                       return a.provider_name.localeCompare(b.provider_name);
@@ -453,7 +455,23 @@ export default function Compare() {
                         {p.technology_type === 'fixed-wireless' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#2196F3', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Fixed Wireless</span>}
                       </td>
                       <td className="price">
-                        {p.ongoing_price_cents ? `$${(p.ongoing_price_cents/100).toFixed(2)}/mo` : 'Contact provider'}
+                        {p.intro_price_cents ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontWeight: 'bold', color: '#E91E63' }}>
+                              ${(p.intro_price_cents/100).toFixed(2)}/mo
+                            </span>
+                            <span style={{ fontSize: '0.75em', color: '#666' }}>
+                              {p.intro_duration_days ? `for ${Math.round(p.intro_duration_days/30)} months` : ''}
+                            </span>
+                            <span style={{ fontSize: '0.75em', color: '#999', textDecoration: 'line-through' }}>
+                              ${(p.ongoing_price_cents!/100).toFixed(2)}/mo
+                            </span>
+                          </div>
+                        ) : p.ongoing_price_cents ? (
+                          `$${(p.ongoing_price_cents/100).toFixed(2)}/mo`
+                        ) : (
+                          'Contact provider'
+                        )}
                       </td>
                       <td className="hide-mobile">
                         NBN {p.speed_tier ?? '—'}
