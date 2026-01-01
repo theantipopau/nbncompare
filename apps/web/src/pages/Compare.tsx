@@ -474,14 +474,15 @@ export default function Compare() {
                       </td>
                       <td className="price">
                         {p.intro_price_cents ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                            <span style={{ fontWeight: 'bold', color: '#E91E63' }}>
-                              ${(p.intro_price_cents/100).toFixed(2)}/mo
+                          <div style={{ lineHeight: '1.4' }}>
+                            <span style={{ fontWeight: 'bold', color: '#E91E63', fontSize: '0.95em' }}>
+                              ${(p.intro_price_cents/100).toFixed(2)}
                             </span>
-                            <span style={{ fontSize: '0.75em', color: '#666' }}>
-                              {p.intro_duration_days ? `for ${Math.round(p.intro_duration_days/30)} months` : ''}
+                            <span style={{ fontSize: '0.7em', color: '#666', marginLeft: '4px' }}>
+                              {p.intro_duration_days ? `${Math.round(p.intro_duration_days/30)}mo` : ''}
                             </span>
-                            <span style={{ fontSize: '0.75em', color: '#999', textDecoration: 'line-through' }}>
+                            <br />
+                            <span style={{ fontSize: '0.7em', color: '#999', textDecoration: 'line-through' }}>
                               ${(p.ongoing_price_cents!/100).toFixed(2)}/mo
                             </span>
                           </div>
@@ -594,7 +595,7 @@ export default function Compare() {
           <div style={{
             background: darkMode ? '#1a1a1a' : 'white',
             borderRadius: '12px',
-            padding: '24px',
+            padding: window.innerWidth > 768 ? '24px' : '16px',
             maxWidth: '1200px',
             width: '100%',
             maxHeight: '90vh',
@@ -621,7 +622,11 @@ export default function Compare() {
               </button>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${getComparePlans().length}, 1fr)`, gap: '20px' }}>
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: window.innerWidth > 768 ? `repeat(${getComparePlans().length}, 1fr)` : '1fr',
+              gap: '20px' 
+            }}>
               {getComparePlans().map(plan => (
                 <div key={plan.id} style={{
                   border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,

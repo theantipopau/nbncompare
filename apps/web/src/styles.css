@@ -313,21 +313,37 @@ footer small {
 }
 
 @media (max-width: 768px) {
+  .container {
+    padding: 12px;
+  }
+
+  header {
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
   header h1 {
-    font-size: 2em;
+    font-size: 1.8em;
   }
   
+  .hero {
+    padding: 24px;
+    margin-bottom: 20px;
+  }
+
   .hero h2 {
-    font-size: 1.5em;
+    font-size: 1.4em;
   }
   
   .search {
     flex-direction: column;
+    gap: 12px;
   }
   
   .filters {
     flex-direction: column;
     align-items: stretch;
+    gap: 12px;
   }
   
   .filters label {
@@ -342,6 +358,8 @@ footer small {
   .table-wrapper {
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    margin: 0 -12px;
+    padding: 0 12px;
   }
   
   table {
@@ -350,7 +368,11 @@ footer small {
   }
   
   th, td {
-    padding: 8px;
+    padding: 8px 6px;
+  }
+
+  td.price {
+    font-size: 0.9em;
   }
   
   .hide-mobile {
@@ -361,6 +383,48 @@ footer small {
     width: 32px !important;
     height: 32px !important;
     font-size: 0.75em !important;
+  }
+
+  /* Make action buttons stack on mobile */
+  td > div {
+    flex-direction: column !important;
+    gap: 6px !important;
+  }
+
+  td > div button,
+  td > div a {
+    width: 100%;
+    text-align: center;
+  }
+}
+
+/* Extra small mobile devices */
+@media (max-width: 480px) {
+  header h1 {
+    font-size: 1.5em;
+  }
+
+  .hero h2 {
+    font-size: 1.2em;
+  }
+
+  .hero p {
+    font-size: 0.9em;
+  }
+
+  table {
+    font-size: 0.8em;
+  }
+
+  .provider-logo {
+    width: 28px !important;
+    height: 28px !important;
+  }
+
+  /* Reduce badge sizes on tiny screens */
+  td span[style*="padding"] {
+    font-size: 0.7em !important;
+    padding: 2px 6px !important;
   }
 }
 
