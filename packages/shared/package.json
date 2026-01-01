@@ -1,0 +1,20 @@
+{
+  "name": "@clearnbn/shared",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p ../../tsconfig.json --outDir dist",
+    "test:parsers": "node -r ts-node/register ./scripts/test-parsers.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.0.3",
+    "jsdom": "^27.4.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "linkedom": "^0.18.12"
+  }
+}

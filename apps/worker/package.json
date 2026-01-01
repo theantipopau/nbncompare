@@ -1,0 +1,13 @@
+{
+  "name": "@clearnbn/worker",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler publish --dry-run"
+  },
+  "dependencies": {
+    "@clearnbn/shared": "workspace:*",
+    "itty-router": "^5.0.22"
+  }
+}

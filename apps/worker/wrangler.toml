@@ -1,0 +1,19 @@
+name = "nbncompare-worker"
+compatibility_date = "2025-12-28"
+main = "src/index.ts"
+account_id = "c54f3f1bd51c54c0b1040f11c0b5c869"
+workers_dev = true
+
+[vars]
+ADMIN_TOKEN = "changeme"
+
+[triggers]
+crons = [ "0 3 * * *" ]
+
+[browser]
+binding = "BROWSER"
+
+[[d1_databases]]
+binding = "D1"
+database_name = "nbncompare"
+database_id = "0bc16814-a9a6-4bde-be9c-311c90724eec"

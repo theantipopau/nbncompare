@@ -1,0 +1,23 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["DOM", "ES2022"],
+    "baseUrl": ".",
+    "paths": {
+      "@clearnbn/shared": ["packages/shared/src"],
+      "@clearnbn/shared/*": ["packages/shared/src/*"]
+    },
+    "jsx": "react-jsx",
+    "types": [],
+    "strict": true,
+    "esModuleInterop": false,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "noImplicitAny": true,
+    "resolveJsonModule": true,
+    "outDir": "dist"
+  },
+  "references": []
+}

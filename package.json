@@ -1,0 +1,20 @@
+{
+  "name": "clearnbn",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"pnpm --filter @clearnbn/web dev\" \"pnpm --filter @clearnbn/worker dev\"",
+    "bootstrap": "pnpm install",
+    "lint": "eslint . --ext .ts,.tsx",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "concurrently": "^8.0.0",
+    "typescript": "^5.5.0",
+    "pnpm": "^8.0.0"
+  }
+}
