@@ -54,6 +54,8 @@ export default function Compare() {
   const [dataFilter, setDataFilter] = useState('');
   const [technologyFilter, setTechnologyFilter] = useState('');
   const [modemFilter, setModemFilter] = useState('');
+  const [compareList, setCompareList] = useState<number[]>([]);
+  const [showCompareModal, setShowCompareModal] = useState(false);
 
   async function fetchPlans(s: string) {
     setLoading(true);
@@ -110,6 +112,22 @@ export default function Compare() {
 
   function getProviderInitials(providerName: string): string {
     return providerName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+  }
+
+  function toggleCompare(planId: number) {
+    if (compareList.includes(planId)) {
+      setCompareList(compareList.filter(id => id !== planId));
+    } else {
+      if (compareList.length >= 3) {
+        alert('You can only compare up to 3 plans at once');
+        return;
+      }
+      setCompareList([...compareList, planId]);
+    }
+  }
+
+  function getComparePlans(): Plan[] {
+    return plans.filter(p => compareList.includes(p.id));
   }
 
   useEffect(() => {
@@ -494,6 +512,21 @@ export default function Compare() {
                           >
                             {favorites.includes(p.id) ? '⭐' : '☆'}
                           </button>
+                          <button
+                            onClick={() => toggleCompare(p.id)}
+                            style={{
+                              background: compareList.includes(p.id) ? '#667eea' : '#f0f0f0',
+                              color: compareList.includes(p.id) ? 'white' : '#666',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.85em',
+                              fontWeight: '600'
+                            }}
+                          >
+                            {compareList.includes(p.id) ? '✓ Compare' : 'Compare'}
+                          </button>
                           {p.source_url ? (
                             <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none', fontWeight: 600, fontSize: '0.9em'}}>
                               Details →
@@ -510,6 +543,205 @@ export default function Compare() {
           </div>
         )}
       </section>
+
+      {/* Floating Compare Button */}
+      {compareList.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          zIndex: 1000
+        }}>
+          <button
+            onClick={() => setShowCompareModal(true)}
+            style={{
+              background: '#667eea',
+              color: 'white',
+              border: 'none',
+              padding: '16px 24px',
+              borderRadius: '50px',
+              cursor: 'pointer',
+              fontSize: '1em',
+              fontWeight: '700',
+              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px'
+            }}
+          >
+            Compare ({compareList.length})
+          </button>
+        </div>
+      )}
+
+      {/* Comparison Modal */}
+      {showCompareModal && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.7)',
+          zIndex: 2000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '20px'
+        }}
+        onClick={() => setShowCompareModal(false)}
+        >
+          <div style={{
+            background: darkMode ? '#1a1a1a' : 'white',
+            borderRadius: '12px',
+            padding: '24px',
+            maxWidth: '1200px',
+            width: '100%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            position: 'relative'
+          }}
+          onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ margin: 0, color: darkMode ? 'white' : '#333' }}>Compare Plans</h2>
+              <button
+                onClick={() => setShowCompareModal(false)}
+                style={{
+                  background: '#ff4444',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontWeight: '600'
+                }}
+              >
+                Close
+              </button>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${getComparePlans().length}, 1fr)`, gap: '20px' }}>
+              {getComparePlans().map(plan => (
+                <div key={plan.id} style={{
+                  border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
+                  borderRadius: '12px',
+                  padding: '20px',
+                  background: darkMode ? '#2a2a2a' : '#f9f9f9'
+                }}>
+                  <h3 style={{ margin: '0 0 10px 0', color: '#667eea', fontSize: '1.1em' }}>{plan.provider_name}</h3>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '0.95em', color: darkMode ? '#ccc' : '#666' }}>{plan.plan_name}</p>
+
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666', marginBottom: '4px' }}>Price</div>
+                    {plan.intro_price_cents ? (
+                      <div>
+                        <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#E91E63' }}>
+                          ${(plan.intro_price_cents/100).toFixed(2)}/mo
+                        </div>
+                        <div style={{ fontSize: '0.8em', color: darkMode ? '#999' : '#666' }}>
+                          for {Math.round(plan.intro_duration_days!/30)} months
+                        </div>
+                        <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666', textDecoration: 'line-through' }}>
+                          then ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: darkMode ? 'white' : '#333' }}>
+                        ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ borderTop: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`, paddingTop: '16px' }}>
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Speed</div>
+                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
+                        NBN {plan.speed_tier} Mbps
+                        {plan.upload_speed_mbps && ` / ${plan.upload_speed_mbps}↑`}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Contract</div>
+                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
+                        {plan.contract_type || 'Month-to-month'}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Data</div>
+                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
+                        {plan.data_allowance || 'Unlimited'}
+                      </div>
+                    </div>
+
+                    <div style={{ marginBottom: '12px' }}>
+                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Modem</div>
+                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
+                        {plan.modem_included === 1 ? 'Included' : 'BYO'}
+                      </div>
+                    </div>
+
+                    {plan.technology_type === 'fixed-wireless' && (
+                      <div style={{ marginBottom: '12px' }}>
+                        <div style={{
+                          background: '#2196F3',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '0.8em',
+                          display: 'inline-block'
+                        }}>
+                          📡 Fixed Wireless
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ marginTop: '20px' }}>
+                    {plan.source_url && (
+                      <a
+                        href={plan.source_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          background: '#667eea',
+                          color: 'white',
+                          textAlign: 'center',
+                          padding: '12px',
+                          borderRadius: '8px',
+                          textDecoration: 'none',
+                          fontWeight: '600',
+                          marginBottom: '8px'
+                        }}
+                      >
+                        View Plan Details →
+                      </a>
+                    )}
+                    <button
+                      onClick={() => toggleCompare(plan.id)}
+                      style={{
+                        width: '100%',
+                        background: darkMode ? '#333' : '#f0f0f0',
+                        color: darkMode ? 'white' : '#666',
+                        border: 'none',
+                        padding: '10px',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Remove from comparison
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
