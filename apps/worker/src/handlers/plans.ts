@@ -15,6 +15,7 @@ export async function getPlans(req: Request) {
     const contractType = url.searchParams.get("contract");
     const dataAllowance = url.searchParams.get("data");
     const modemIncluded = url.searchParams.get("modem");
+    const technologyType = url.searchParams.get("technology");
     const limitParam = url.searchParams.get("limit") ?? "100";
 
     let speed: number | null = null;
@@ -40,6 +41,7 @@ export async function getPlans(req: Request) {
     if (contractType) { q += ` AND p.contract_type = ?`; params.push(contractType); }
     if (dataAllowance) { q += ` AND p.data_allowance = ?`; params.push(dataAllowance); }
     if (modemIncluded === "1") { q += ` AND p.modem_included = 1`; }
+    if (technologyType) { q += ` AND p.technology_type = ?`; params.push(technologyType); }
 
     // SQLite-friendly NULLS LAST emulation: order by (ongoing_price_cents IS NULL), then value asc
     q += ` ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC LIMIT ?`;

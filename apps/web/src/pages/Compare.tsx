@@ -12,6 +12,8 @@ interface Plan {
   data_allowance?: string;
   modem_included?: number;
   favicon_url?: string | null;
+  technology_type?: string;
+  upload_speed_mbps?: number | null;
 }
 
 interface AddressResult {
@@ -48,6 +50,7 @@ export default function Compare() {
   });
   const [contractFilter, setContractFilter] = useState('');
   const [dataFilter, setDataFilter] = useState('');
+  const [technologyFilter, setTechnologyFilter] = useState('');
   const [modemFilter, setModemFilter] = useState('');
 
   async function fetchPlans(s: string) {
@@ -59,6 +62,7 @@ export default function Compare() {
       if (contractFilter) params.append('contract', contractFilter);
       if (dataFilter) params.append('data', dataFilter);
       if (modemFilter) params.append('modem', modemFilter);
+      if (technologyFilter) params.append('technology', technologyFilter);
       
       const res = await fetch(`${apiUrl}/api/plans?${params}`);
       const json = await res.json();
@@ -112,7 +116,7 @@ export default function Compare() {
 
   useEffect(() => {
     fetchPlans(speed);
-  }, [speed]);
+  }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter]);
 
   // Debounced address search
   useEffect(() => {
@@ -284,6 +288,14 @@ export default function Compare() {
           </select>
         </label>
         <label>
+          <strong>Technology:</strong>
+          <select value={technologyFilter} onChange={(e: any) => { setTechnologyFilter(e.target.value); fetchPlans(speed); }}>
+            <option value="">All</option>
+            <option value="standard">Standard NBN</option>
+            <option value="fixed-wireless">Fixed Wireless</option>
+          </select>
+        </label>
+        <label>
           <strong>Modem:</strong>
           <select value={modemFilter} onChange={(e: any) => { setModemFilter(e.target.value); fetchPlans(speed); }}>
             <option value="">All</option>
@@ -437,12 +449,16 @@ export default function Compare() {
                       <td>
                         {p.plan_name}
                         {p.modem_included === 1 && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Modem</span>}
-                        {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>{p.contract_type}</span>}
+                        {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>🏷️ {p.contract_type}</span>}
+                        {p.technology_type === 'fixed-wireless' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#2196F3', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Fixed Wireless</span>}
                       </td>
                       <td className="price">
                         {p.ongoing_price_cents ? `$${(p.ongoing_price_cents/100).toFixed(2)}/mo` : 'Contact provider'}
                       </td>
-                      <td className="hide-mobile">NBN {p.speed_tier ?? '—'}</td>
+                      <td className="hide-mobile">
+                        NBN {p.speed_tier ?? '—'}
+                        {p.upload_speed_mbps && <span style={{ fontSize: '0.8em', color: '#666' }}> / {p.upload_speed_mbps}↑</span>}
+                      </td>
                       <td>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <button
