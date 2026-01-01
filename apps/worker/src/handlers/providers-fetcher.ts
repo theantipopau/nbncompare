@@ -13,62 +13,76 @@ type SimpleDB = {
   prepare: (q: string) => SimpleStmt;
 };
 
-export async function fetchProvidersToUpdate(env?: { SCRAPER_API_KEY?: string }) {
+export async function fetchProvidersToUpdate(env?: { SCRAPER_API_KEY?: string }, maxProviders: number = 5) {
   const db = (await getDb()) as SimpleDB;
-  console.log('fetchProvidersToUpdate: starting (using free User-Agent rotation)');
-  const stmt = db.prepare("SELECT * FROM providers WHERE active = 1");
+  console.log(`fetchProvidersToUpdate: starting (max ${maxProviders} providers, using free User-Agent rotation)`);
+  const stmt = db.prepare("SELECT * FROM providers WHERE active = 1 ORDER BY last_fetch_at ASC NULLS FIRST LIMIT ?").bind(maxProviders);
   const providersRes = typeof (stmt as any).all === 'function' ? await (stmt as any).all() : { results: [] };
   const providers = (providersRes && (providersRes as any).results ? (providersRes as any).results : []) as ProviderRow[];
   const result: { checked: number; changed: number; errors: number } = { checked: 0, changed: 0, errors: 0 };
-  for (const prov of providers) {
-    result.checked++;
-    console.log(`Checking provider ${prov.slug} (${prov.canonical_url})`);
-    try {
-      // Use free User-Agent rotation for fetching
-      const html = await fetchWithFallback(prov.canonical_url);
-      const hash = await computeHash(html);
-      if (hash === prov.last_hash) {
-        // update last_fetch_at
-        await db.prepare("UPDATE providers SET last_fetch_at = ?, last_error = NULL WHERE id = ?").bind(new Date().toISOString(), prov.id).run();
-        continue;
-      }
-      // choose parser
-      const parser = findParserForUrl(prov.canonical_url);
-      let extracts: any[] = [];
-      try {
-        const parsed = await parser.parse(html, prov.canonical_url);
-        if (!Array.isArray(parsed)) throw new Error('Parser did not return an array');
-        extracts = parsed;
-      } catch (err) {
-        console.error(`Parser failed for provider ${prov.slug}:`, err);
-        await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ? WHERE id = ?").bind(String(err), new Date().toISOString(), prov.id).run();
-        // mark needs review and skip this provider
-        await db.prepare("UPDATE providers SET needs_review = 1 WHERE id = ?").bind(prov.id).run();
-        result.errors++;
-        continue;
-      }
-      // validate and upsert plans (simple approach)
-      let providerNeedsReview = false;
-      for (const e of extracts) {
-        try {
-          const normalized = normalizeExtract(e);
-          const v = validatePlan(normalized);
-          if (!v.ok) providerNeedsReview = true;
-          await upsertPlan(db as any, prov.id, normalized);
-        } catch (err) {
-          console.error(`Failed processing plan for provider ${prov.slug}:`, err);
-          providerNeedsReview = true;
-        }
-      }
-      await db.prepare("UPDATE providers SET last_hash = ?, last_fetch_at = ?, last_error = NULL, needs_review = ? WHERE id = ?").bind(hash, new Date().toISOString(), providerNeedsReview ? 1 : 0, prov.id).run();
-      result.changed++;
-    } catch (err: unknown) {
+  
+  // Process providers in parallel with timeout protection
+  const providerPromises = providers.map(prov => processProvider(db, prov, result));
+  const results = await Promise.allSettled(providerPromises);
+  
+  // Count results
+  results.forEach((res, idx) => {
+    if (res.status === 'rejected') {
+      console.error(`Provider ${providers[idx].slug} failed:`, res.reason);
       result.errors++;
-      console.error(`Provider ${prov.slug} failed:`, err);
-      await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ? WHERE id = ?").bind(String(err), new Date().toISOString(), prov.id).run();
     }
-  }
+  });
+  
   return result;
+}
+
+async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checked: number; changed: number; errors: number }) {
+  result.checked++;
+  console.log(`Checking provider ${prov.slug} (${prov.canonical_url})`);
+  try {
+    // Use free User-Agent rotation for fetching
+    const html = await fetchWithFallback(prov.canonical_url);
+    const hash = await computeHash(html);
+    if (hash === prov.last_hash) {
+      // update last_fetch_at
+      await db.prepare("UPDATE providers SET last_fetch_at = ?, last_error = NULL WHERE id = ?").bind(new Date().toISOString(), prov.id).run();
+      return;
+    }
+    // choose parser
+    const parser = findParserForUrl(prov.canonical_url);
+    let extracts: any[] = [];
+    try {
+      const parsed = await parser.parse(html, prov.canonical_url);
+      if (!Array.isArray(parsed)) throw new Error('Parser did not return an array');
+      extracts = parsed;
+    } catch (err) {
+      console.error(`Parser failed for provider ${prov.slug}:`, err);
+      await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ? WHERE id = ?").bind(String(err), new Date().toISOString(), prov.id).run();
+      // mark needs review and skip this provider
+      await db.prepare("UPDATE providers SET needs_review = 1 WHERE id = ?").bind(prov.id).run();
+      result.errors++;
+      return;
+    }
+    // validate and upsert plans (simple approach)
+    let providerNeedsReview = false;
+    for (const e of extracts) {
+      try {
+        const normalized = normalizeExtract(e);
+        const v = validatePlan(normalized);
+        if (!v.ok) providerNeedsReview = true;
+        await upsertPlan(db as any, prov.id, normalized);
+      } catch (err) {
+        console.error(`Failed processing plan for provider ${prov.slug}:`, err);
+        providerNeedsReview = true;
+      }
+    }
+    await db.prepare("UPDATE providers SET last_hash = ?, last_fetch_at = ?, last_error = NULL, needs_review = ? WHERE id = ?").bind(hash, new Date().toISOString(), providerNeedsReview ? 1 : 0, prov.id).run();
+    result.changed++;
+  } catch (err: unknown) {
+    result.errors++;
+    console.error(`Provider ${prov.slug} failed:`, err);
+    await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ? WHERE id = ?").bind(String(err), new Date().toISOString(), prov.id).run();
+  }
 }
 
 async function computeHash(text: string) {

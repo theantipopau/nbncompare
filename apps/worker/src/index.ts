@@ -22,6 +22,11 @@ try {
     return getPlans(req);
   });
 
+  router.get("/api/plans/:id/history", async ({ params }: any) => {
+    const { getPriceHistory } = await import("./handlers/price-history");
+    return getPriceHistory(parseInt(params.id));
+  });
+
   router.get("/api/address/search", async (req: Request) => {
     const { searchAddress } = await import("./handlers/address");
     return searchAddress(req);
