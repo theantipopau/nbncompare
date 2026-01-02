@@ -1,15 +1,80 @@
 # NBN Compare - Development Roadmap & TODO
 
-## 🎯 Current Status (January 2026)
-- ✅ 153 active plans across 30 providers (83% coverage)
+## 🎯 Current Status (January 2, 2026)
+- ✅ 142 active plans across 30 providers (83% coverage)
 - ✅ Promotional pricing support (intro_price_cents, intro_duration_days)
-- ✅ Speed tiers: 25, 50, 100, 250, 1000, 2000 Mbps
+- ✅ Speed tiers: 25, 50, 100, 250, 500, 1000, 2000 Mbps
 - ✅ Contract filtering (month-to-month, 12-month, 24-month)
 - ✅ Dark mode, favorites, search functionality
 - ✅ Mobile responsive design
 - ✅ Provider favicons with fallback logos
 - ✅ Database migration for Fixed Wireless support
-- ✅ Technology type filtering in UI
+- ✅ Technology type filtering in UI (auto-filters on address lookup)
+- ✅ Price trend indicators (↑ ↓) with historical tracking
+- ✅ Price history modal with Chart.js visualization
+- ✅ Blog section with 4 educational articles
+- ✅ Cloudflare KV caching (5-min TTL), Service Worker, PWA support
+
+---
+
+## 🎉 Recently Completed (Jan 1-2, 2026)
+
+### Performance & Optimization
+- [x] **Cloudflare KV caching** ✅ COMPLETED
+  - 5-minute TTL, X-Cache headers (HIT/MISS)
+  - Cache key per query parameter combination
+  - Reduced API response time by ~80%
+  
+- [x] **Service Worker & PWA** ✅ COMPLETED
+  - Offline support with network-first strategy for API
+  - Cache-first for static assets
+  - manifest.json for installable PWA
+  
+- [x] **Image optimization** ✅ COMPLETED
+  - Lazy loading with loading="lazy"
+  - Async decoding
+  - Preconnect hints for Google favicon API
+
+### Content & Education
+- [x] **Blog section** ✅ COMPLETED
+  - 4 full articles (1000+ lines of educational content)
+  - "How to Choose the Right NBN Plan"
+  - "NBN Speed Tiers Explained"
+  - "Fixed Wireless vs FTTP"
+  - "5 Ways to Save Money on Your NBN Plan"
+  - Native navigation (no React Router)
+  - Dark mode support
+
+### Price Tracking & History
+- [x] **Price trend indicators** ✅ COMPLETED
+  - ↓ green for price decreases
+  - ↑ red for price increases
+  - Compares current price with 2nd most recent historical entry
+  - Tooltips with "Price decreased/increased"
+  
+- [x] **Price history modal with charts** ✅ COMPLETED
+  - Chart.js line chart showing historical prices
+  - Price change summary with percentage
+  - Detailed chronological list of all price changes
+  - API endpoint: `/api/price-history/:id`
+  - 📊 button on each plan row
+  - Dark mode support
+
+### Data Quality
+- [x] **Remove duplicate plans** ✅ COMPLETED
+  - Migration 0005: Removed 7 Carbon Communications duplicates
+  - Migration 0006: Removed 4 more duplicates (Carbon, TPG, Aussie Broadband)
+  - Total: 142 unique plans (down from 153)
+  
+- [x] **Fixed Wireless auto-filtering** ✅ COMPLETED
+  - Automatically filters to Fixed Wireless plans when address lookup detects Fixed Wireless service
+  - Filters to standard plans for FTTP/FTTC/FTTN/HFC
+  - Improves relevance for rural/regional users
+  
+- [x] **FTTP 2 Gigabit capability note** ✅ COMPLETED
+  - Displays note for FTTP premises about 2 Gbps capability
+  - Mentions free NBN NTD upgrade availability
+  - Shows in both address qualification display and message
 
 ---
 

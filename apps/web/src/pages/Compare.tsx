@@ -211,7 +211,20 @@ export default function Compare() {
         setQualification(qual);
         
         if (qual.available) {
-          setMessage(`✅ ${qual.techType} available! Max speed: NBN ${qual.maxSpeed}Mbps. ${json.note || ''}`);
+          let techMessage = '';
+          
+          // Auto-set technology filter based on service type
+          if (qual.techType === 'FTTC' || qual.techType === 'FTTN' || qual.techType === 'FTTP' || qual.techType === 'HFC') {
+            setTechnologyFilter('standard');
+            techMessage = qual.techType === 'FTTP' 
+              ? ' 🎉 FTTP premises can support up to 2 Gigabit speeds (may require free NBN NTD upgrade).' 
+              : '';
+          } else if (qual.techType === 'Wireless' || qual.techType === 'Fixed Wireless') {
+            setTechnologyFilter('fixed-wireless');
+            techMessage = ' 📡 Fixed Wireless plans only.';
+          }
+          
+          setMessage(`✅ ${qual.techType} available! Max speed: NBN ${qual.maxSpeed}Mbps.${techMessage} ${json.note || ''}`);
           
           // Auto-adjust speed filter to match available service
           const currentSpeed = parseInt(speed);
@@ -304,6 +317,11 @@ export default function Compare() {
           }}>
             <strong>Your NBN Service:</strong> {qualification.techType} | 
             <strong> Max Speed:</strong> {qualification.maxSpeed}Mbps
+            {qualification.techType === 'FTTP' && (
+              <div style={{ marginTop: '8px', fontSize: '0.9em', color: '#4ade80' }}>
+                💡 FTTP premises can get 2 Gigabit speeds (may need free NBN NTD upgrade)
+              </div>
+            )}
           </div>
         )}
       </section>
