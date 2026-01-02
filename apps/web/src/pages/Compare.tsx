@@ -54,7 +54,7 @@ export default function Compare() {
   const [dataFilter, setDataFilter] = useState('');
   const [technologyFilter, setTechnologyFilter] = useState('');
   const [modemFilter, setModemFilter] = useState('');
-  const [compareList, setCompareList] = useState<number[]>([]);
+  const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
 
   async function fetchPlans(s: string) {
@@ -116,7 +116,7 @@ export default function Compare() {
 
   function toggleCompare(planId: number) {
     if (compareList.includes(planId)) {
-      setCompareList(compareList.filter(id => id !== planId));
+      setCompareList(compareList.filter((id: number) => id !== planId));
     } else {
       if (compareList.length >= 3) {
         alert('You can only compare up to 3 plans at once');
@@ -127,7 +127,7 @@ export default function Compare() {
   }
 
   function getComparePlans(): Plan[] {
-    return plans.filter(p => compareList.includes(p.id));
+    return plans.filter((p: Plan) => compareList.includes(p.id));
   }
 
   useEffect(() => {

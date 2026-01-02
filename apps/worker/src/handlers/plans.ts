@@ -9,7 +9,7 @@ type D1Result = {
 // Cache TTL: 5 minutes (300 seconds)
 const CACHE_TTL = 300;
 
-export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
+export async function getPlans(req: Request, env?: { CACHE?: any }) {
   try {
     const url = new URL(req.url);
     const speedParam = url.searchParams.get("speed");
