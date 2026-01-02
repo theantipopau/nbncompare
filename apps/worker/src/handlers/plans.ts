@@ -49,7 +49,20 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
 
     const db = await getDb() as unknown as { prepare: (q: string) => { all: (...args: unknown[]) => Promise<any> } };
 
-    let q = `SELECT p.*, prov.name as provider_name, prov.favicon_url FROM plans p JOIN providers prov ON p.provider_id = prov.id WHERE is_active = 1`;
+    let q = `SELECT p.*, prov.name as provider_name, prov.favicon_url,
+      CASE 
+        WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents < ph.price_cents THEN 'down'
+        WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents > ph.price_cents THEN 'up'
+        ELSE NULL
+      END as price_trend
+      FROM plans p 
+      JOIN providers prov ON p.provider_id = prov.id
+      LEFT JOIN (
+        SELECT plan_id, price_cents,
+          ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY recorded_at DESC) as rn
+        FROM price_history
+      ) ph ON p.id = ph.plan_id AND ph.rn = 2
+      WHERE is_active = 1`;
     const params: unknown[] = [];
     if (speed !== null) { q += ` AND p.speed_tier = ?`; params.push(speed); }
     if (provider) { q += ` AND prov.slug = ?`; params.push(provider); }

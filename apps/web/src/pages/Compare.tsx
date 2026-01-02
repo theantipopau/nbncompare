@@ -16,6 +16,7 @@ interface Plan {
   favicon_url?: string | null;
   technology_type?: string;
   upload_speed_mbps?: number | null;
+  price_trend?: 'up' | 'down' | null;
 }
 
 interface AddressResult {
@@ -479,6 +480,18 @@ export default function Compare() {
                           <div style={{ lineHeight: '1.4' }}>
                             <span style={{ fontWeight: 'bold', color: '#E91E63', fontSize: '0.95em' }}>
                               ${(p.intro_price_cents/100).toFixed(2)}
+                              {p.price_trend && (
+                                <span 
+                                  style={{ 
+                                    marginLeft: '4px',
+                                    color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
+                                    fontSize: '0.9em'
+                                  }} 
+                                  title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                                >
+                                  {p.price_trend === 'down' ? '↓' : '↑'}
+                                </span>
+                              )}
                             </span>
                             <span style={{ fontSize: '0.7em', color: '#666', marginLeft: '4px' }}>
                               {p.intro_duration_days ? `${Math.round(p.intro_duration_days/30)}mo` : ''}
@@ -489,7 +502,21 @@ export default function Compare() {
                             </span>
                           </div>
                         ) : p.ongoing_price_cents ? (
-                          `$${(p.ongoing_price_cents/100).toFixed(2)}/mo`
+                          <span>
+                            ${(p.ongoing_price_cents/100).toFixed(2)}/mo
+                            {p.price_trend && (
+                              <span 
+                                style={{ 
+                                  marginLeft: '4px',
+                                  color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
+                                  fontSize: '0.9em'
+                                }} 
+                                title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                              >
+                                {p.price_trend === 'down' ? '↓' : '↑'}
+                              </span>
+                            )}
+                          </span>
                         ) : (
                           'Contact provider'
                         )}
@@ -645,6 +672,18 @@ export default function Compare() {
                       <div>
                         <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#E91E63' }}>
                           ${(plan.intro_price_cents/100).toFixed(2)}/mo
+                          {plan.price_trend && (
+                            <span 
+                              style={{ 
+                                marginLeft: '6px',
+                                color: plan.price_trend === 'down' ? '#16a34a' : '#dc2626',
+                                fontSize: '0.8em'
+                              }} 
+                              title={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                            >
+                              {plan.price_trend === 'down' ? '↓' : '↑'}
+                            </span>
+                          )}
                         </div>
                         <div style={{ fontSize: '0.8em', color: darkMode ? '#999' : '#666' }}>
                           for {Math.round(plan.intro_duration_days!/30)} months
@@ -656,6 +695,18 @@ export default function Compare() {
                     ) : (
                       <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: darkMode ? 'white' : '#333' }}>
                         ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
+                        {plan.price_trend && (
+                          <span 
+                            style={{ 
+                              marginLeft: '6px',
+                              color: plan.price_trend === 'down' ? '#16a34a' : '#dc2626',
+                              fontSize: '0.8em'
+                            }} 
+                            title={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                          >
+                            {plan.price_trend === 'down' ? '↓' : '↑'}
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
