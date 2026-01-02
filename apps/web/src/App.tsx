@@ -10,7 +10,13 @@ export default function App() {
     <div className="container">
       <header>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <img src="/nbncomparelogo.PNG" alt="NBN Compare" style={{ height: '60px' }} />
+          <img 
+            src="/nbncomparelogo.PNG" 
+            alt="NBN Compare" 
+            loading="eager"
+            decoding="async"
+            style={{ height: '60px' }} 
+          />
           <div>
             <h1>NBN Compare</h1>
             <p>Compare NBN plans across providers — updated daily.</p>

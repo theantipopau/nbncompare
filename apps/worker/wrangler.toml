@@ -17,3 +17,7 @@ binding = "BROWSER"
 binding = "D1"
 database_name = "nbncompare"
 database_id = "0bc16814-a9a6-4bde-be9c-311c90724eec"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "718bd42c891f4bf4a15e1e6dd0bf4add"

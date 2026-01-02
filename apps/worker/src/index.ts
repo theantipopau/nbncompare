@@ -116,6 +116,7 @@ import { corsHeaders } from "./lib/cors";
 interface Env {
   D1: D1Database;
   ADMIN_TOKEN: string;
+  CACHE?: KVNamespace;
 }
 
 async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -212,7 +213,7 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
   if (pathname === '/api/plans') {
     try {
       const { getPlans } = await import('./handlers/plans');
-      return await getPlans(request);
+      return await getPlans(request, env);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.stack || err.message : String(err);
       console.error('/api/plans direct handler error:', msg);

@@ -1,0 +1,17 @@
+{
+  "name": "NBN Compare",
+  "short_name": "NBN Compare",
+  "description": "Compare NBN plans from 30+ Australian providers. Find the best internet deals, speeds, and pricing.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "any",
+      "type": "image/x-icon"
+    }
+  ]
+}

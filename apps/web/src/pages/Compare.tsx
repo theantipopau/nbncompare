@@ -428,6 +428,8 @@ export default function Compare() {
                           <img
                             src={p.favicon_url}
                             alt={p.provider_name}
+                            loading="lazy"
+                            decoding="async"
                             style={{
                               width: '40px',
                               height: '40px',

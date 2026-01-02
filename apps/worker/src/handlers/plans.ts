@@ -6,7 +6,10 @@ type D1Result = {
   all: () => Promise<{ results: unknown[] }>;
 };
 
-export async function getPlans(req: Request) {
+// Cache TTL: 5 minutes (300 seconds)
+const CACHE_TTL = 300;
+
+export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
   try {
     const url = new URL(req.url);
     const speedParam = url.searchParams.get("speed");
@@ -17,6 +20,19 @@ export async function getPlans(req: Request) {
     const modemIncluded = url.searchParams.get("modem");
     const technologyType = url.searchParams.get("technology");
     const limitParam = url.searchParams.get("limit") ?? "100";
+
+    // Generate cache key from query parameters
+    const cacheKey = `plans:${url.searchParams.toString() || 'all'}`;
+    
+    // Try to get from cache first
+    if (env?.CACHE) {
+      const cached = await env.CACHE.get(cacheKey);
+      if (cached) {
+        const response = jsonResponse(JSON.parse(cached));
+        response.headers.set('X-Cache', 'HIT');
+        return response;
+      }
+    }
 
     let speed: number | null = null;
     if (speedParam) {
@@ -50,7 +66,19 @@ export async function getPlans(req: Request) {
     const rowsRes = await (db.prepare(q) as D1Result).bind(...params).all();
     const rows = rowsRes && (rowsRes as any).results ? (rowsRes as any).results : rowsRes;
 
-    return jsonResponse({ ok: true, rows });
+    const responseData = { ok: true, rows };
+    
+    // Store in cache
+    if (env?.CACHE) {
+      await env.CACHE.put(cacheKey, JSON.stringify(responseData), {
+        expirationTtl: CACHE_TTL
+      });
+    }
+
+    const response = jsonResponse(responseData);
+    response.headers.set('X-Cache', 'MISS');
+    response.headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
+    return response;
   } catch (err: unknown) {
     console.error('getPlans error:', err);
     return jsonResponse({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }, 500);
