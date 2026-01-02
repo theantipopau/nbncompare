@@ -24,7 +24,12 @@ try {
 
   router.get("/api/plans/:id/history", async ({ params }: any) => {
     const { getPriceHistory } = await import("./handlers/price-history");
-    return getPriceHistory(parseInt(params.id));
+    return getPriceHistory(params.id);
+  });
+
+  router.get("/api/price-history/:id", async ({ params }: any) => {
+    const { getPriceHistory } = await import("./handlers/price-history");
+    return getPriceHistory(params.id);
   });
 
   router.get("/api/address/search", async (req: Request) => {
@@ -239,6 +244,19 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.stack || err.message : String(err);
       console.error('/api/address/qualify direct handler error:', msg);
+      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  // Price history endpoint
+  const priceHistoryMatch = pathname.match(/^\/api\/price-history\/(\d+)$/);
+  if (priceHistoryMatch) {
+    try {
+      const { getPriceHistory } = await import('./handlers/price-history');
+      return await getPriceHistory(priceHistoryMatch[1]);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.stack || err.message : String(err);
+      console.error('/api/price-history direct handler error:', msg);
       return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }

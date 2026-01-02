@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import PriceHistoryModal from "../components/PriceHistoryModal";
 
 interface Plan {
   id: number;
@@ -17,6 +18,13 @@ interface Plan {
   technology_type?: string;
   upload_speed_mbps?: number | null;
   price_trend?: 'up' | 'down' | null;
+}
+
+interface PriceHistory {
+  id: number;
+  plan_id: number;
+  price_cents: number;
+  recorded_at: string;
 }
 
 interface AddressResult {
@@ -57,6 +65,10 @@ export default function Compare() {
   const [modemFilter, setModemFilter] = useState('');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
+  const [showPriceHistory, setShowPriceHistory] = useState(false);
+  const [selectedPlanForHistory, setSelectedPlanForHistory] = useState(null as Plan | null);
+  const [priceHistoryData, setPriceHistoryData] = useState([] as PriceHistory[]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
   async function fetchPlans(s: string) {
     setLoading(true);
@@ -129,6 +141,25 @@ export default function Compare() {
 
   function getComparePlans(): Plan[] {
     return plans.filter((p: Plan) => compareList.includes(p.id));
+  }
+
+  async function fetchPriceHistory(plan: Plan) {
+    setSelectedPlanForHistory(plan);
+    setShowPriceHistory(true);
+    setLoadingHistory(true);
+    setPriceHistoryData([]);
+    
+    try {
+      const res = await fetch(`https://nbncompare-worker.matt-hurley91.workers.dev/api/price-history/${plan.id}`);
+      const data = await res.json();
+      if (data.ok && data.history) {
+        setPriceHistoryData(data.history);
+      }
+    } catch (err) {
+      console.error('Failed to fetch price history:', err);
+    } finally {
+      setLoadingHistory(false);
+    }
   }
 
   useEffect(() => {
@@ -543,6 +574,22 @@ export default function Compare() {
                             {favorites.includes(p.id) ? '⭐' : '☆'}
                           </button>
                           <button
+                            onClick={() => fetchPriceHistory(p)}
+                            style={{
+                              background: '#10b981',
+                              color: 'white',
+                              border: 'none',
+                              padding: '6px 12px',
+                              borderRadius: '6px',
+                              cursor: 'pointer',
+                              fontSize: '0.85em',
+                              fontWeight: '600'
+                            }}
+                            title="View price history"
+                          >
+                            📊
+                          </button>
+                          <button
                             onClick={() => toggleCompare(p.id)}
                             style={{
                               background: compareList.includes(p.id) ? '#667eea' : '#f0f0f0',
@@ -799,6 +846,16 @@ export default function Compare() {
             </div>
           </div>
         </div>
+      )}
+
+      {showPriceHistory && selectedPlanForHistory && (
+        <PriceHistoryModal
+          plan={selectedPlanForHistory}
+          history={priceHistoryData}
+          loading={loadingHistory}
+          onClose={() => setShowPriceHistory(false)}
+          darkMode={darkMode}
+        />
       )}
     </div>
   );
