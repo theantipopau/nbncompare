@@ -601,15 +601,16 @@ body.dark-mode footer {
   }
   
   .filters {
-    position: sticky;
-    top: 0;
-    z-index: 100;
+    position: relative; /* Changed from sticky to relative */
+    top: auto; /* Remove top positioning */
+    z-index: 10; /* Reduced z-index */
     flex-direction: column;
     align-items: stretch;
     gap: 12px;
     padding: 20px;
     margin-top: 0;
-    border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+    margin-bottom: 20px; /* Add bottom margin for spacing */
+    border-radius: var(--radius-xl);
   }
   
   .filters label {
@@ -619,6 +620,12 @@ body.dark-mode footer {
   .filters select,
   .filters input {
     width: 100%;
+  }
+  
+  /* Add padding to plan-list section on mobile to prevent overlap */
+  .plan-list {
+    margin-top: 20px;
+    padding-top: 20px;
   }
   
   /* Hide table, show cards on mobile */
