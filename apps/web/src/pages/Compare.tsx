@@ -81,6 +81,7 @@ export default function Compare() {
   const [noCgnatFilter, setNoCgnatFilter] = useState(false);
   const [auSupportFilter, setAuSupportFilter] = useState(false);
   const [staticIpFilter, setStaticIpFilter] = useState(false);
+  const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
   const [providerFilter, setProviderFilter] = useState('');
   const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless'>('standard');
   const [compareList, setCompareList] = useState([] as number[]);
@@ -661,6 +662,15 @@ export default function Compare() {
           />
           <span>Static IP Available</span>
         </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={exclude6MonthFilter}
+            onChange={(e) => setExclude6MonthFilter(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span>Exclude 6-Month Deals</span>
+        </label>
         <label>
           <strong>Sort by:</strong>
           <select value={sortBy} onChange={(e: any) => setSortBy(e.target.value)}>
@@ -773,6 +783,11 @@ export default function Compare() {
                       return false;
                     }
                     if (staticIpFilter && p.provider_static_ip_available !== 'yes') {
+                      return false;
+                    }
+                    
+                    // Exclude 6-month deals filter
+                    if (exclude6MonthFilter && p.contract_type === '6-month') {
                       return false;
                     }
                     
