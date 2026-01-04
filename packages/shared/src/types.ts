@@ -19,6 +19,7 @@ export interface PlanExtract {
   conditionsText: string | null;
   typicalEveningSpeedMbps: number | null;
   sourceUrl: string;
+  technologyType?: 'standard' | 'fixed-wireless';
 }
 
 export interface ProviderRow {

@@ -13,9 +13,12 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
     const priceMatch = line.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
     const speedMatch = line.match(/NBN\s*(\d{1,4})/i);
     if (priceMatch && speedMatch) {
+      const planName = (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim();
+      const isFixedWireless = /fixed.?wireless|wireless.?broadband/i.test(line) || /fixed.?wireless/i.test(url);
+      
       results.push({
         providerSlug: urlToSlug(url),
-        planName: (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim(),
+        planName,
         speedTier: (() => {
           const n = parseInt(speedMatch[1]);
           const allowed: SpeedTier[] = [12, 25, 50, 100, 200, 250, 400, 500, 1000, 2000];
@@ -30,6 +33,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
         conditionsText: null,
         typicalEveningSpeedMbps: null,
         sourceUrl: url,
+        technologyType: isFixedWireless ? 'fixed-wireless' : 'standard',
       });
     }
   }

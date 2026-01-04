@@ -14,6 +14,8 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
     const priceText = (el.querySelector(".price")?.textContent || el.querySelector(".cost")?.textContent || "").trim();
     const speedMatch = (el.textContent || "").match(/NBN\s*(\d{1,4})/i) || (el.textContent || "").match(/(\d{1,4})\s*Mbps/i);
     const parsedSpeed = speedMatch ? parseInt(speedMatch[1]) : null;
+    const isFixedWireless = /fixed.?wireless|wireless.?broadband/i.test(el.textContent || "") || /fixed.?wireless/i.test(planName);
+    
     return {
       providerSlug: "telstra",
       planName: planName || "Not stated",
@@ -27,6 +29,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       conditionsText: el.querySelector(".terms")?.textContent?.trim() ?? null,
       typicalEveningSpeedMbps: null,
       sourceUrl: url,
+      technologyType: isFixedWireless ? 'fixed-wireless' : 'standard',
     };
   });
   return results;

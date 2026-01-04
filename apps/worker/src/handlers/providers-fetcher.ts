@@ -108,9 +108,11 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
   // naive upsert based on provider_id + plan_name
   const existing = (await db.prepare("SELECT id FROM plans WHERE provider_id = ? AND plan_name = ?").bind(providerId, ext.planName).first()) as { id?: number } | undefined;
   const now = new Date().toISOString();
+  const technologyType = ext.technologyType || 'standard';
+  
   if (existing && typeof existing.id === 'number') {
-    await db.prepare(`UPDATE plans SET speed_tier = ?, intro_price_cents = ?, ongoing_price_cents = ?, updated_at = ?, is_active = 1 WHERE id = ?`).bind(ext.speedTier ?? null, ext.introPriceCents ?? null, ext.ongoingPriceCents ?? null, now, existing.id).run();
+    await db.prepare(`UPDATE plans SET speed_tier = ?, intro_price_cents = ?, ongoing_price_cents = ?, technology_type = ?, updated_at = ?, is_active = 1 WHERE id = ?`).bind(ext.speedTier ?? null, ext.introPriceCents ?? null, ext.ongoingPriceCents ?? null, technologyType, now, existing.id).run();
   } else {
-    await db.prepare(`INSERT INTO plans (provider_id, plan_name, speed_tier, intro_price_cents, ongoing_price_cents, source_url, last_checked_at, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?)`).bind(providerId, ext.planName, ext.speedTier ?? null, ext.introPriceCents ?? null, ext.ongoingPriceCents ?? null, ext.sourceUrl, now, 1, now, now).run();
+    await db.prepare(`INSERT INTO plans (provider_id, plan_name, speed_tier, intro_price_cents, ongoing_price_cents, source_url, technology_type, last_checked_at, is_active, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)`).bind(providerId, ext.planName, ext.speedTier ?? null, ext.introPriceCents ?? null, ext.ongoingPriceCents ?? null, ext.sourceUrl, technologyType, now, 1, now, now).run();
   }
 }
