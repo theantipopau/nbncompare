@@ -82,6 +82,7 @@ export default function App() {
             <div className="footer-social">
               <a href="https://github.com/theantipopau/nbncompare" target="_blank" rel="noopener noreferrer" title="GitHub">💻 GitHub</a>
               <a href="mailto:contact@nbncompare.com.au" title="Email">📧 Email</a>
+              <a href="https://www.paypal.com/donate/?business=XH8CKYF8T7EBU&no_recurring=0&item_name=Thank+you+for+your+generous+donation%2C+this+will+allow+me+to+continue+developing+my+programs.&currency_code=AUD" target="_blank" rel="noopener noreferrer" title="Support via PayPal">💙 Donate</a>
             </div>
           </div>
         </div>

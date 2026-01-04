@@ -95,6 +95,32 @@ export default function About() {
         <img src="/logosmall.PNG" alt="" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
         matthurley.dev
       </a>
+
+      <h2 style={{ fontSize: '1.4em', fontWeight: '600', marginBottom: '16px', marginTop: '40px', color: '#111' }}>
+        ☕ Support the Project
+      </h2>
+      
+      <p style={{ marginBottom: '16px', color: '#444' }}>NBN Compare runs entirely on donations. If you find this tool useful and want to help keep it running, consider buying me a coffee!</p>
+      
+      <a 
+        href="https://www.paypal.com/donate/?business=XH8CKYF8T7EBU&no_recurring=0&item_name=Thank+you+for+your+generous+donation%2C+this+will+allow+me+to+continue+developing+my+programs.&currency_code=AUD" 
+        target="_blank" 
+        rel="noopener noreferrer"
+        style={{ 
+          display: 'inline-flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '12px 20px', 
+          background: '#0070ba', 
+          color: 'white', 
+          borderRadius: '8px', 
+          textDecoration: 'none', 
+          fontWeight: '600',
+          fontSize: '0.95em'
+        }}
+      >
+        💙 Donate via PayPal
+      </a>
     </div>
   );
 }

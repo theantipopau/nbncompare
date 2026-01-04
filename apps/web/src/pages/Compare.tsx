@@ -716,7 +716,25 @@ export default function Compare() {
       </section>
 
       <section className="plan-list">
-        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => viewMode === 'fixed-wireless' ? p.technology_type === 'fixed-wireless' : p.technology_type !== 'fixed-wireless').length})</h3>
+        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
+          // Technology type filter
+          if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+          if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') return false;
+          // Search term
+          if (searchTerm) {
+            const term = searchTerm.toLowerCase();
+            if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) return false;
+          }
+          // Provider filter
+          if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+          // Metadata filters
+          if (ipv6Filter && p.provider_ipv6_support !== 'yes') return false;
+          if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') return false;
+          if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
+          if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
+          if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+          return true;
+        }).length})</h3>
         {loading ? (
           <div className="skeleton-container">
             {[1, 2, 3, 4, 5].map(i => (
@@ -1030,12 +1048,23 @@ export default function Compare() {
             <div className="plans-card-view">
               {[...plans]
                 .filter(p => {
-                  if (!searchTerm) return true;
-                  const term = searchTerm.toLowerCase();
-                  return (
-                    p.provider_name.toLowerCase().includes(term) ||
-                    p.plan_name.toLowerCase().includes(term)
-                  );
+                  // Technology type filter
+                  if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+                  if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') return false;
+                  // Search term
+                  if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) return false;
+                  }
+                  // Provider filter
+                  if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                  // Metadata filters
+                  if (ipv6Filter && p.provider_ipv6_support !== 'yes') return false;
+                  if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') return false;
+                  if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
+                  if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
+                  if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+                  return true;
                 })
                 .sort((a, b) => {
                   if (sortBy === 'price') {
