@@ -11,19 +11,34 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   const results: PlanExtract[] = [];
   for (const line of lines) {
     const priceMatch = line.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)/);
-    const speedMatch = line.match(/NBN\s*(\d{1,4})/i);
+    // Updated regex to catch 500, 1000, 2000, 1Gbps, 2Gbps, 1 Gbps, 2 Gbps patterns
+    const speedMatch = line.match(/NBN\s*(\d{1,4})/i) || 
+                       line.match(/(\d{1,4})\s*Mbps/i) ||
+                       line.match(/(\d)\s*Gbps/i) ||
+                       line.match(/(\d)Gbps/i);
     if (priceMatch && speedMatch) {
+      let speedValue = parseInt(speedMatch[1]);
+      // Convert Gbps to Mbps (e.g., 1 Gbps = 1000 Mbps, 2 Gbps = 2000 Mbps)
+      if (line.match(/Gbps/i)) {
+        speedValue = speedValue * 1000;
+      }
+      
       const planName = (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim();
       const isFixedWireless = /fixed.?wireless|wireless.?broadband/i.test(line) || /fixed.?wireless/i.test(url);
+      
+      // Try to extract upload speed (e.g., "100/20" or "1000/100 Mbps")
+      const uploadMatch = line.match(/(\d{1,4})\s*\/\s*(\d{1,4})\s*Mbps/i) || 
+                          line.match(/Upload[:\s]+(\d{1,4})\s*Mbps/i);
+      const uploadSpeed = uploadMatch ? parseInt(uploadMatch[uploadMatch.length === 3 ? 2 : 1]) : null;
       
       results.push({
         providerSlug: urlToSlug(url),
         planName,
         speedTier: (() => {
-          const n = parseInt(speedMatch[1]);
           const allowed: SpeedTier[] = [12, 25, 50, 100, 200, 250, 400, 500, 1000, 2000];
-          return allowed.includes(n as SpeedTier) ? (n as SpeedTier) : null;
+          return allowed.includes(speedValue as SpeedTier) ? (speedValue as SpeedTier) : null;
         })(),
+        uploadSpeedMbps: uploadSpeed,
         introPriceCents: Math.round(parseFloat(priceMatch[1]) * 100),
         introDurationDays: null,
         ongoingPriceCents: Math.round(parseFloat(priceMatch[1]) * 100),

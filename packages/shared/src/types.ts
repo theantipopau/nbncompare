@@ -10,6 +10,7 @@ export interface PlanExtract {
   providerSlug: string;
   planName: string;
   speedTier: SpeedTier | null;
+  uploadSpeedMbps?: number | null; // Upload speed for high-tier plans (e.g., 2000/200)
   introPriceCents: number | null;
   introDurationDays: number | null; // normalized to days
   ongoingPriceCents: number | null;
