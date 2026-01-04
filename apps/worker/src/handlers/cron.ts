@@ -4,7 +4,8 @@ import { recordRunStartEnd } from "../lib/db";
 export async function handleCron() {
   const runId = await recordRunStartEnd({ started: true });
   try {
-    const result = await fetchProvidersToUpdate();
+    // Scrape up to 30 providers per run (most active providers)
+    const result = await fetchProvidersToUpdate(undefined, 30);
     // record run results
     await recordRunStartEnd({ started: false, runId, notes: JSON.stringify(result) });
     return { ok: true, result };
