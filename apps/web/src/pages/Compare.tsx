@@ -82,6 +82,7 @@ export default function Compare() {
   const [auSupportFilter, setAuSupportFilter] = useState(false);
   const [staticIpFilter, setStaticIpFilter] = useState(false);
   const [providerFilter, setProviderFilter] = useState('');
+  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless'>('standard');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -426,6 +427,59 @@ export default function Compare() {
         )}
       </section>
 
+      {/* NBN Type Toggle */}
+      <section style={{
+        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+        padding: '20px 30px',
+        borderRadius: 'var(--radius-xl)',
+        marginTop: '20px',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '16px',
+        flexWrap: 'wrap'
+      }}>
+        <strong style={{ color: '#2d3748' }}>Service Type:</strong>
+        <div style={{ display: 'flex', gap: '8px', background: '#f5f5f5', padding: '4px', borderRadius: '10px' }}>
+          <button
+            onClick={() => setViewMode('standard')}
+            style={{
+              padding: '10px 24px',
+              background: viewMode === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              color: viewMode === 'standard' ? 'white' : '#333',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.95em',
+              transition: 'all 0.2s'
+            }}
+          >
+            🏠 Standard NBN
+          </button>
+          <button
+            onClick={() => setViewMode('fixed-wireless')}
+            style={{
+              padding: '10px 24px',
+              background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              color: viewMode === 'fixed-wireless' ? 'white' : '#333',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.95em',
+              transition: 'all 0.2s'
+            }}
+          >
+            📡 Fixed Wireless
+          </button>
+        </div>
+        <span style={{ fontSize: '0.85em', color: '#666', fontStyle: 'italic' }}>
+          {viewMode === 'standard' ? 'FTTP, FTTC, FTTN, HFC' : 'For regional/rural areas'}
+        </span>
+      </section>
+
       {/* Quick provider filter */}
       {plans.length > 0 && (
         <section style={{ 
@@ -635,7 +689,7 @@ export default function Compare() {
       </section>
 
       <section className="plan-list">
-        <h3>📊 Available Plans ({plans.length})</h3>
+        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => viewMode === 'fixed-wireless' ? p.technology_type === 'fixed-wireless' : p.technology_type !== 'fixed-wireless').length})</h3>
         {loading ? (
           <div className="skeleton-container">
             {[1, 2, 3, 4, 5].map(i => (
@@ -648,8 +702,12 @@ export default function Compare() {
               </div>
             ))}
           </div>
-        ) : plans.length === 0 ? (
-          <div className="loading">No plans found for NBN {speed}. Try a different speed tier.</div>
+        ) : plans.filter((p: Plan) => viewMode === 'fixed-wireless' ? p.technology_type === 'fixed-wireless' : p.technology_type !== 'fixed-wireless').length === 0 ? (
+          <div className="loading">
+            {viewMode === 'fixed-wireless' 
+              ? 'No Fixed Wireless plans found for NBN ' + speed + '. Try a different speed tier or switch to Standard NBN.' 
+              : 'No Standard NBN plans found for NBN ' + speed + '. Try a different speed tier or check Fixed Wireless.'}
+          </div>
         ) : (
           <div className="table-wrapper">
             <table>
@@ -666,6 +724,14 @@ export default function Compare() {
               <tbody>
                 {[...plans]
                   .filter(p => {
+                    // Technology type filter (standard vs fixed wireless)
+                    if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
+                      return false;
+                    }
+                    if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') {
+                      return false;
+                    }
+                    
                     // Search term filter
                     if (searchTerm) {
                       const term = searchTerm.toLowerCase();
@@ -815,7 +881,6 @@ export default function Compare() {
                         )}
                         {p.modem_included === 1 && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Modem</span>}
                         {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>🏷️ {p.contract_type}</span>}
-                        {p.technology_type === 'fixed-wireless' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#2196F3', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Fixed Wireless</span>}
                       </td>
                       <td className="price">
                         {p.intro_price_cents ? (
