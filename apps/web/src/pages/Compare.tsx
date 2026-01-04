@@ -192,6 +192,21 @@ export default function Compare() {
     fetchPlans(speed);
   }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter]);
 
+  // Reset speed when switching between Standard and Fixed Wireless
+  useEffect(() => {
+    if (viewMode === 'fixed-wireless') {
+      // If current speed isn't valid for Fixed Wireless (25, 50, 75), reset to 25
+      if (!['25', '50', '75'].includes(speed)) {
+        setSpeed('25');
+      }
+    } else {
+      // If current speed is only valid for Fixed Wireless, reset to 100 for Standard
+      if (speed === '75') {
+        setSpeed('100');
+      }
+    }
+  }, [viewMode]);
+
   // Calculate best value plans - considers price AND quality factors
   const bestValuePlanIds = React.useMemo(() => {
     const bestByTier: Record<number, number> = {};
@@ -550,14 +565,24 @@ export default function Compare() {
         <label>
           <strong>Speed tier:</strong>
           <select value={speed} onChange={(e: any) => setSpeed(e.target.value)}>
-            <option value="12">NBN 12 (Basic)</option>
-            <option value="25">NBN 25 (Standard)</option>
-            <option value="50">NBN 50 (Standard Plus)</option>
-            <option value="100">NBN 100 (Fast)</option>
-            <option value="250">NBN 250 (Superfast)</option>
-            <option value="500">NBN 500 (Ultrafast)</option>
-            <option value="1000">NBN 1000 (Home Ultrafast)</option>
-            <option value="2000">NBN 2000 (2 Gigabit)</option>
+            {viewMode === 'fixed-wireless' ? (
+              <>
+                <option value="25">Fixed Wireless 25Mbps</option>
+                <option value="50">Fixed Wireless 50Mbps</option>
+                <option value="75">Fixed Wireless 75Mbps</option>
+              </>
+            ) : (
+              <>
+                <option value="12">NBN 12 (Basic)</option>
+                <option value="25">NBN 25 (Standard)</option>
+                <option value="50">NBN 50 (Standard Plus)</option>
+                <option value="100">NBN 100 (Fast)</option>
+                <option value="250">NBN 250 (Superfast)</option>
+                <option value="500">NBN 500 (Ultrafast)</option>
+                <option value="1000">NBN 1000 (Home Ultrafast)</option>
+                <option value="2000">NBN 2000 (2 Gigabit)</option>
+              </>
+            )}
           </select>
         </label>
         <label>
@@ -575,14 +600,6 @@ export default function Compare() {
             <option value="">All</option>
             <option value="unlimited">Unlimited</option>
             <option value="limited">Limited</option>
-          </select>
-        </label>
-        <label>
-          <strong>Technology:</strong>
-          <select value={technologyFilter} onChange={(e: any) => { setTechnologyFilter(e.target.value); fetchPlans(speed); }}>
-            <option value="">All</option>
-            <option value="standard">Standard NBN</option>
-            <option value="fixed-wireless">Fixed Wireless</option>
           </select>
         </label>
         <label>
