@@ -195,13 +195,13 @@ export default function Compare() {
   // Reset speed when switching between Standard and Fixed Wireless
   useEffect(() => {
     if (viewMode === 'fixed-wireless') {
-      // If current speed isn't valid for Fixed Wireless (25, 50, 75), reset to 25
-      if (!['25', '50', '75'].includes(speed)) {
-        setSpeed('25');
+      // If current speed isn't valid for Fixed Wireless (100, 200, 400), reset to 100
+      if (!['100', '200', '400'].includes(speed)) {
+        setSpeed('100');
       }
     } else {
-      // If current speed is only valid for Fixed Wireless, reset to 100 for Standard
-      if (speed === '75') {
+      // If current speed is only valid for Fixed Wireless (200, 400), reset to 100 for Standard
+      if (['200', '400'].includes(speed)) {
         setSpeed('100');
       }
     }
@@ -567,9 +567,9 @@ export default function Compare() {
           <select value={speed} onChange={(e: any) => setSpeed(e.target.value)}>
             {viewMode === 'fixed-wireless' ? (
               <>
-                <option value="25">Fixed Wireless 25Mbps</option>
-                <option value="50">Fixed Wireless 50Mbps</option>
-                <option value="75">Fixed Wireless 75Mbps</option>
+                <option value="100">Fixed Wireless Plus 100Mbps</option>
+                <option value="200">Fixed Wireless Max 200Mbps</option>
+                <option value="400">Fixed Wireless Ultra 400Mbps</option>
               </>
             ) : (
               <>
