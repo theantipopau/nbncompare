@@ -1,7 +1,9 @@
 import React from "react";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import Compare from "./pages/Compare";
 import Admin from "./pages/Admin";
 import Provider from "./pages/Provider";
+import ProviderDetails from "./pages/ProviderDetails";
 import About from "./pages/About";
 import Status from "./pages/Status";
 import Blog from "./pages/Blog";
@@ -32,18 +34,62 @@ export default function App() {
           <a href="/admin" style={{ textDecoration: 'none', color: location.pathname === '/admin' ? '#667eea' : '#333', fontWeight: location.pathname === '/admin' ? '700' : '600', transition: 'all 0.2s' }}>⚙️ Admin</a>
         </nav>
       </header>
-      <main>
-        {location.pathname === '/admin' ? <Admin /> : 
+      <ErrorBoundary>
+        <main>
+          {location.pathname === '/admin' ? <Admin /> : 
          location.pathname.startsWith('/blog/') ? <BlogPost /> :
          location.pathname === '/blog' ? <Blog /> :
+         location.pathname.startsWith('/provider/') ? <ProviderDetails /> :
          location.pathname.startsWith('/providers/') ? <Provider slug={location.pathname.replace('/providers/', '')} /> : 
          location.pathname === '/status' ? <Status /> : 
          location.pathname === '/about' ? <About /> : 
          <Compare />}
-      </main>
+        </main>
+      </ErrorBoundary>
       <footer>
-        <small>⚠️ Promotions change frequently — verify on provider sites before ordering.</small>
-        <small style={{ display: 'block', marginTop: '8px', opacity: 0.8 }}>Made with 💜 by Matt Hurley | Brisbane, Australia 🇦🇺</small>
+        <div className="footer-content">
+          <div className="footer-section">
+            <h4>NBN Compare</h4>
+            <p>Compare NBN plans from Australia's leading internet providers. Updated daily with the latest pricing and promotions.</p>
+            <div className="footer-badges">
+              <span className="footer-badge">🇦🇺 Australian Made</span>
+              <span className="footer-badge">🔄 Daily Updates</span>
+            </div>
+          </div>
+          
+          <div className="footer-section">
+            <h4>Quick Links</h4>
+            <ul className="footer-links">
+              <li><a href="/">Compare Plans</a></li>
+              <li><a href="/blog">Blog & Guides</a></li>
+              <li><a href="/about">About</a></li>
+              <li><a href="/status">System Status</a></li>
+            </ul>
+          </div>
+          
+          <div className="footer-section">
+            <h4>Resources</h4>
+            <ul className="footer-links">
+              <li><a href="https://www.nbnco.com.au/" target="_blank" rel="noopener noreferrer">NBN Co Official</a></li>
+              <li><a href="https://www.accc.gov.au/consumers/phone-internet-services" target="_blank" rel="noopener noreferrer">ACCC Consumer Rights</a></li>
+              <li><a href="https://www.tio.com.au/" target="_blank" rel="noopener noreferrer">TIO Complaints</a></li>
+            </ul>
+          </div>
+          
+          <div className="footer-section">
+            <h4>Connect</h4>
+            <p style={{ marginBottom: '12px' }}>Made with 💜 by <a href="https://matthurley.dev" target="_blank" rel="noopener noreferrer">Matt Hurley</a></p>
+            <div className="footer-social">
+              <a href="https://github.com/theantipopau/nbncompare" target="_blank" rel="noopener noreferrer" title="GitHub">💻 GitHub</a>
+              <a href="mailto:contact@nbncompare.com.au" title="Email">📧 Email</a>
+            </div>
+          </div>
+        </div>
+        
+        <div className="footer-bottom">
+          <small>⚠️ Promotions change frequently — always verify pricing and terms on provider websites before ordering.</small>
+          <small>Independent comparison service · Not affiliated with NBN Co or any provider · Brisbane, Australia 🇦🇺</small>
+        </div>
       </footer>
     </div>
   );

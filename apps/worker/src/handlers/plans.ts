@@ -50,6 +50,15 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     const db = await getDb() as unknown as { prepare: (q: string) => { all: (...args: unknown[]) => Promise<any> } };
 
     let q = `SELECT p.*, prov.name as provider_name, prov.favicon_url,
+      prov.ipv6_support as provider_ipv6_support,
+      prov.cgnat as provider_cgnat,
+      prov.cgnat_opt_out as provider_cgnat_opt_out,
+      prov.static_ip_available as provider_static_ip_available,
+      prov.australian_support as provider_australian_support,
+      prov.parent_company as provider_parent_company,
+      prov.routing_info as provider_routing_info,
+      prov.description as provider_description,
+      prov.support_hours as provider_support_hours,
       CASE 
         WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents < ph.price_cents THEN 'down'
         WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents > ph.price_cents THEN 'up'

@@ -3,6 +3,7 @@ compatibility_date = "2025-12-28"
 main = "src/index.ts"
 account_id = "c54f3f1bd51c54c0b1040f11c0b5c869"
 workers_dev = true
+preview_urls = false
 
 [vars]
 ADMIN_TOKEN = "changeme"

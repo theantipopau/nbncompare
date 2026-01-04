@@ -1,15 +1,42 @@
 import React, { useEffect, useState } from "react";
+import { getApiBaseUrl } from "../lib/api";
+import { usePageTitle } from "../lib/usePageTitle";
 
 export default function Provider({ slug }: { slug: string }) {
   const [provider, setProvider] = useState<any | null>(null);
   const [plans, setPlans] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch(`/api/providers/${slug}`).then(r => r.json()).then(setProvider).catch(console.error);
-    fetch(`/api/plans?provider=${encodeURIComponent(slug)}`).then(r => r.json()).then(setPlans).catch(console.error);
+    const apiUrl = getApiBaseUrl();
+    setLoading(true);
+    setError(null);
+    
+    Promise.all([
+      fetch(`${apiUrl}/api/providers/${slug}`).then(r => r.json()),
+      fetch(`${apiUrl}/api/plans?provider=${encodeURIComponent(slug)}`).then(r => r.json())
+    ])
+      .then(([providerData, plansData]) => {
+        setProvider(providerData);
+        setPlans(plansData.rows || plansData || []);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
+        setError('Failed to load provider data');
+        setLoading(false);
+      });
   }, [slug]);
 
-  if (!provider) return <div>Loading...</div>;
+  usePageTitle(
+    provider ? `${provider.name} NBN Plans - NBN Compare` : 'Provider - NBN Compare',
+    provider ? `Compare NBN plans from ${provider.name}. View pricing, speeds, and plan details.` : undefined
+  );
+
+  if (loading) return <div style={{ padding: '40px', textAlign: 'center' }}>Loading provider...</div>;
+  if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>{error}</div>;
+  if (!provider) return <div style={{ padding: '40px', textAlign: 'center' }}>Provider not found</div>;
 
   return (
     <div>

@@ -54,7 +54,7 @@ try {
 
   router.post("/api/admin/review/approve", async (request: Request) => {
     const { adminApprove } = await import("./handlers/admin");
-    return adminApprove(request as Request);
+    return adminApprove(request as Request, { ADMIN_TOKEN: (globalThis as any).ADMIN_TOKEN });
   });
 
   router.post("/internal/update-favicons", async () => {
@@ -122,11 +122,45 @@ interface Env {
   D1: D1Database;
   ADMIN_TOKEN: string;
   CACHE?: KVNamespace;
+  ENVIRONMENT?: string;
+  DEBUG?: string;
+}
+
+function isDebugEnabled(env: Env | undefined) {
+  if (!env) return false;
+  if (env.DEBUG === '1' || env.DEBUG === 'true') return true;
+  if (env.ENVIRONMENT && env.ENVIRONMENT !== 'production') return true;
+  return false;
+}
+
+function errorJson(err: unknown, env: Env | undefined) {
+  const message = err instanceof Error ? err.message : String(err);
+  const debug = isDebugEnabled(env);
+  return {
+    ok: false,
+    error: message,
+    ...(debug
+      ? { stack: err instanceof Error ? err.stack ?? null : null }
+      : {}),
+  };
+}
+
+function requireAdmin(request: Request, env: Env): Response | null {
+  const token = request.headers.get('x-admin-token');
+  if (!token || token !== env.ADMIN_TOKEN) {
+    return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+  return null;
 }
 
 async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
+  // Back-compat for any handlers still reading globalThis
+  (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;
   
   console.log('fetch start', request.method, request.url);
   
@@ -144,6 +178,13 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
 
   const pathname = new URL(request.url).pathname;
 
+  // Protect admin/internal routes.
+  // Note: /api/admin/* is used by the in-app Admin page.
+  if (pathname.startsWith('/internal/') || pathname.startsWith('/api/admin/')) {
+    const unauthorized = requireAdmin(request, env);
+    if (unauthorized) return unauthorized;
+  }
+
   // Short-circuit critical health endpoints to avoid router hangs and get immediate diagnostics
   if (pathname === '/internal/env') {
     try {
@@ -151,10 +192,10 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const keys: string[] = Object.keys(globalThis as any).filter(k => k.length < 60).slice(0, 200);
       return new Response(JSON.stringify({ ok: true, hasD1, keys }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: unknown) {
+      console.error('/internal/env direct handler error:', err);
       const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/internal/env direct handler error:', msg);
       try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-      return new Response(JSON.stringify({ ok: false, error: String(msg) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -165,10 +206,10 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const r = await db.prepare('SELECT 1 as ok').first();
       return new Response(JSON.stringify({ ok: true, db: !!r }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: unknown) {
+      console.error('/internal/ping direct handler error:', err);
       const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/internal/ping direct handler error:', msg);
       try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -179,27 +220,27 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const out = await debugProvider(slug || '');
       return new Response(JSON.stringify({ ok: true, out }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: unknown) {
+      console.error('/internal/debug direct handler error:', err);
       const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/internal/debug direct handler error:', msg);
       try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
   if (pathname === '/internal/cron/run') {
     try {
       const { handleCron } = await import('./handlers/cron');
-      // run with a tight timeout
+      // Allow up to 120 seconds for scraping to complete
       const result = await Promise.race([
         handleCron(),
-        new Promise((_res, rej) => setTimeout(() => rej(new Error('cron handler timeout')), 30000))
+        new Promise((_res, rej) => setTimeout(() => rej(new Error('Scraping timeout - operation took longer than 2 minutes')), 120000))
       ]);
-      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
     } catch (err: unknown) {
+      console.error('/internal/cron/run direct handler error:', err);
       const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/internal/cron/run direct handler error:', msg);
       try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
     }
   }
 
@@ -209,9 +250,8 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const { getProviders } = await import('./handlers/providers');
       return await getProviders(request);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/api/providers direct handler error:', msg);
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('/api/providers direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -220,9 +260,8 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const { getPlans } = await import('./handlers/plans');
       return await getPlans(request, env);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/api/plans direct handler error:', msg);
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('/api/plans direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -231,9 +270,8 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const { searchAddress } = await import('./handlers/address');
       return await searchAddress(request);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/api/address/search direct handler error:', msg);
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('/api/address/search direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -242,9 +280,8 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const { qualifyAddress } = await import('./handlers/address');
       return await qualifyAddress(request);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/api/address/qualify direct handler error:', msg);
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('/api/address/qualify direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -255,9 +292,30 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
       const { getPriceHistory } = await import('./handlers/price-history');
       return await getPriceHistory(priceHistoryMatch[1]);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.stack || err.message : String(err);
-      console.error('/api/price-history direct handler error:', msg);
-      return new Response(JSON.stringify({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+      console.error('/api/price-history direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  // Favicon update endpoint
+  if (pathname === '/internal/update-favicons' && request.method === 'POST') {
+    try {
+      const { updateProviderFavicons } = await import('./lib/favicon');
+      const result = await updateProviderFavicons();
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (err: unknown) {
+      console.error('/internal/update-favicons direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/admin/review/approve' && request.method === 'POST') {
+    try {
+      const { adminApprove } = await import('./handlers/admin');
+      return await adminApprove(request, env);
+    } catch (err: unknown) {
+      console.error('/api/admin/review/approve direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
 
@@ -286,6 +344,7 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
 async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
+  (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;
   
   if (initError) {
     const msg = initError.stack || initError.message || String(initError);

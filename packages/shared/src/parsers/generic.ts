@@ -1,4 +1,4 @@
-import type { PlanExtract } from "../..//types";
+import type { PlanExtract, SpeedTier } from "../types";
 
 export function canHandle(_url: string) {
   return true; // fallback
@@ -18,7 +18,8 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
         planName: (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim(),
         speedTier: (() => {
           const n = parseInt(speedMatch[1]);
-          return [12,25,50,100,250,500,1000].includes(n) ? n : null;
+          const allowed: SpeedTier[] = [12, 25, 50, 100, 250, 500, 1000];
+          return allowed.includes(n as SpeedTier) ? (n as SpeedTier) : null;
         })(),
         introPriceCents: Math.round(parseFloat(priceMatch[1]) * 100),
         introDurationDays: null,

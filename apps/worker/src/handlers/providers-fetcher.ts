@@ -44,8 +44,9 @@ async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checke
     const html = await fetchWithFallback(prov.canonical_url);
     const hash = await computeHash(html);
     if (hash === prov.last_hash) {
-      // update last_fetch_at
-      await db.prepare("UPDATE providers SET last_fetch_at = ?, last_error = NULL WHERE id = ?").bind(new Date().toISOString(), prov.id).run();
+      // update last_fetch_at and clear errors
+      await db.prepare("UPDATE providers SET last_fetch_at = ?, last_error = NULL, needs_review = 0 WHERE id = ?").bind(new Date().toISOString(), prov.id).run();
+      console.log(`Provider ${prov.slug} unchanged (hash match)`);
       return;
     }
     // choose parser
@@ -80,8 +81,16 @@ async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checke
     result.changed++;
   } catch (err: unknown) {
     result.errors++;
-    console.error(`Provider ${prov.slug} failed:`, err);
-    await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ? WHERE id = ?").bind(String(err), new Date().toISOString(), prov.id).run();
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error(`Provider ${prov.slug} failed:`, errorMsg);
+    
+    // Mark as needs_review if it's a 403 or persistent error
+    const needsReview = errorMsg.includes('403') || errorMsg.includes('Forbidden') ? 1 : 0;
+    await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ?, needs_review = ? WHERE id = ?").bind(errorMsg, new Date().toISOString(), needsReview, prov.id).run();
+    
+    if (errorMsg.includes('403')) {
+      console.log(`Provider ${prov.slug} is temporarily blocked (403) - marked for review`);
+    }
   }
 }
 

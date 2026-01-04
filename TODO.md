@@ -76,6 +76,16 @@
   - Mentions free NBN NTD upgrade availability
   - Shows in both address qualification display and message
 
+- [x] **Favicon refresh** ✅ COMPLETED
+  - Updated domainMap with all 30 providers
+  - Direct handler bypasses router timeout
+  - All providers now have Google S2 favicon URLs
+
+- [x] **Cloudflare Web Analytics** ✅ COMPLETED
+  - Privacy-focused, no cookies required
+  - Tracks page views, popular plans, speed preferences
+  - GDPR-friendly, automatic bot filtering
+
 ---
 
 ## 🔥 PRIORITY 1: Critical Features (Complete First)
@@ -242,11 +252,10 @@
 ## 📊 PRIORITY 4: Analytics & SEO (Growth)
 
 ### Analytics
-- [ ] **Add privacy-focused analytics**
-  - [ ] Plausible Analytics or Cloudflare Web Analytics
-  - [ ] Track: page views, popular plans, speed tier preferences
-  - [ ] No cookies, GDPR-friendly
-  - Estimated time: 1 hour
+- [x] **Add privacy-focused analytics** ✅ COMPLETED
+  - Cloudflare Web Analytics integrated
+  - Track: page views, popular plans, speed tier preferences
+  - No cookies, GDPR-friendly, automatic bot filtering
   - Impact: Understand user behavior
 
 ### SEO Optimization

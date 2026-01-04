@@ -31,6 +31,55 @@ interface Props {
 export default function PriceHistoryModal({ plan, history, loading, onClose, darkMode }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const chartRef = useRef<any>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
+    // Prevent background scroll while modal is open.
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    // Focus close button for keyboard users.
+    setTimeout(() => closeButtonRef.current?.focus(), 0);
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+        return;
+      }
+      // Minimal focus trap
+      if (e.key === 'Tab' && dialogRef.current) {
+        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+        );
+        if (focusable.length === 0) return;
+        const first = focusable[0];
+        const last = focusable[focusable.length - 1];
+        const active = document.activeElement as HTMLElement | null;
+        if (e.shiftKey) {
+          if (!active || active === first) {
+            e.preventDefault();
+            last.focus();
+          }
+        } else {
+          if (active === last) {
+            e.preventDefault();
+            first.focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = prevOverflow;
+      previouslyFocusedRef.current?.focus?.();
+    };
+  }, [onClose]);
 
   useEffect(() => {
     if (!canvasRef.current || loading || history.length === 0 || !window.Chart) {
@@ -164,8 +213,10 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
         padding: '20px'
       }}
       onClick={onClose}
+      role="presentation"
     >
       <div 
+        ref={dialogRef}
         style={{
           background: darkMode ? '#1a1a1a' : 'white',
           borderRadius: '12px',
@@ -177,6 +228,9 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
           boxShadow: '0 10px 40px rgba(0,0,0,0.3)'
         }}
         onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Price history for ${plan.provider_name} ${plan.plan_name}`}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '20px' }}>
           <div>
@@ -188,6 +242,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
             </div>
           </div>
           <button
+            ref={closeButtonRef}
             onClick={onClose}
             style={{
               background: '#ff4444',

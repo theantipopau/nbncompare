@@ -46,6 +46,12 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
+  // Skip service worker for admin and internal routes
+  if (url.pathname.startsWith('/api/admin/') || 
+      url.pathname.startsWith('/internal/')) {
+    return; // Let the browser handle it directly
+  }
+
   // API requests - Network first, fallback to cache
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(

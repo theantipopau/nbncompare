@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import PriceHistoryModal from "../components/PriceHistoryModal";
+import { ProviderTooltip } from "../components/ProviderTooltip";
+import { getApiBaseUrl } from "../lib/api";
 
 interface Plan {
   id: number;
@@ -18,6 +20,18 @@ interface Plan {
   technology_type?: string;
   upload_speed_mbps?: number | null;
   price_trend?: 'up' | 'down' | null;
+  promo_code?: string | null;
+  promo_description?: string | null;
+  // Provider metadata
+  provider_ipv6_support?: number;
+  provider_cgnat?: number;
+  provider_cgnat_opt_out?: number;
+  provider_static_ip_available?: number;
+  provider_australian_support?: number;
+  provider_parent_company?: string | null;
+  provider_routing_info?: string | null;
+  provider_description?: string | null;
+  provider_support_hours?: string | null;
 }
 
 interface PriceHistory {
@@ -63,18 +77,24 @@ export default function Compare() {
   const [dataFilter, setDataFilter] = useState('');
   const [technologyFilter, setTechnologyFilter] = useState('');
   const [modemFilter, setModemFilter] = useState('');
+  const [ipv6Filter, setIpv6Filter] = useState(false);
+  const [noCgnatFilter, setNoCgnatFilter] = useState(false);
+  const [auSupportFilter, setAuSupportFilter] = useState(false);
+  const [staticIpFilter, setStaticIpFilter] = useState(false);
+  const [providerFilter, setProviderFilter] = useState('');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [selectedPlanForHistory, setSelectedPlanForHistory] = useState(null as Plan | null);
   const [priceHistoryData, setPriceHistoryData] = useState([] as PriceHistory[]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
 
   async function fetchPlans(s: string) {
     setLoading(true);
     setMessage('Loading plans...');
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const apiUrl = getApiBaseUrl();
       const params = new URLSearchParams({ speed: s });
       if (contractFilter) params.append('contract', contractFilter);
       if (dataFilter) params.append('data', dataFilter);
@@ -150,7 +170,8 @@ export default function Compare() {
     setPriceHistoryData([]);
     
     try {
-      const res = await fetch(`https://nbncompare-worker.matt-hurley91.workers.dev/api/price-history/${plan.id}`);
+      const apiUrl = getApiBaseUrl();
+      const res = await fetch(`${apiUrl}/api/price-history/${plan.id}`);
       const data = await res.json();
       if (data.ok && data.history) {
         setPriceHistoryData(data.history);
@@ -170,22 +191,72 @@ export default function Compare() {
     fetchPlans(speed);
   }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter]);
 
+  // Calculate best value plans - considers price AND quality factors
+  const bestValuePlanIds = React.useMemo(() => {
+    const bestByTier: Record<number, number> = {};
+    
+    plans.forEach((p: any) => {
+      if (!p.speed_tier) return;
+      const price = p.intro_price_cents ?? p.ongoing_price_cents;
+      if (!price) return;
+      
+      // Calculate value score (higher is better)
+      // Price component: inverse of price (cheaper = higher score)
+      const priceScore = 100000 / price; // Normalize so $50/mo ≈ 200 points
+      
+      // Quality bonuses
+      let qualityScore = 0;
+      if (p.provider_australian_support === 'yes') qualityScore += 15; // AU support team
+      if (p.provider_cgnat === 'no' || p.provider_cgnat_opt_out === 'yes') qualityScore += 12; // No CGNAT
+      if (p.provider_ipv6_support === 'yes') qualityScore += 8; // IPv6 support
+      if (p.provider_static_ip_available === 'yes') qualityScore += 6; // Static IP option
+      if (p.provider_routing_info && p.provider_routing_info.includes('direct')) qualityScore += 8; // Good routing
+      if (p.modem_included === 1) qualityScore += 5; // Modem included
+      
+      const totalScore = priceScore + qualityScore;
+      
+      // Compare with existing best for this tier
+      const currentBest = plans.find((x: any) => x.id === bestByTier[p.speed_tier]);
+      if (!currentBest) {
+        bestByTier[p.speed_tier] = p.id;
+      } else {
+        const currentPrice = currentBest.intro_price_cents ?? currentBest.ongoing_price_cents;
+        const currentPriceScore = 100000 / currentPrice;
+        let currentQualityScore = 0;
+        if (currentBest.provider_australian_support === 'yes') currentQualityScore += 15;
+        if (currentBest.provider_cgnat === 'no' || currentBest.provider_cgnat_opt_out === 'yes') currentQualityScore += 12;
+        if (currentBest.provider_ipv6_support === 'yes') currentQualityScore += 8;
+        if (currentBest.provider_static_ip_available === 'yes') currentQualityScore += 6;
+        if (currentBest.provider_routing_info && currentBest.provider_routing_info.includes('direct')) currentQualityScore += 8;
+        if (currentBest.modem_included === 1) currentQualityScore += 5;
+        const currentTotalScore = currentPriceScore + currentQualityScore;
+        
+        if (totalScore > currentTotalScore) {
+          bestByTier[p.speed_tier] = p.id;
+        }
+      }
+    });
+    return new Set(Object.values(bestByTier));
+  }, [plans]);
+
   // Debounced address search
   useEffect(() => {
     if (address.length < 3) {
       setAddressSuggestions([]);
       setShowSuggestions(false);
+      setHighlightedIndex(-1);
       return;
     }
 
     const timer = setTimeout(async () => {
       try {
-        const apiUrl = import.meta.env.VITE_API_URL || '';
+        const apiUrl = getApiBaseUrl();
         const res = await fetch(`${apiUrl}/api/address/search?q=${encodeURIComponent(address)}`);
         const json = await res.json();
         if (json.ok && json.results) {
           setAddressSuggestions(json.results);
           setShowSuggestions(true);
+          setHighlightedIndex(-1);
         }
       } catch (err) {
         console.error('Address search error:', err);
@@ -199,10 +270,11 @@ export default function Compare() {
     setSelectedAddress(addr);
     setAddress(addr.formattedAddress);
     setShowSuggestions(false);
+    setHighlightedIndex(-1);
     setMessage("🔍 Checking NBN availability...");
     
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '';
+      const apiUrl = getApiBaseUrl();
       const res = await fetch(`${apiUrl}/api/address/qualify?id=${encodeURIComponent(addr.id)}`);
       const json = await res.json();
       
@@ -267,37 +339,65 @@ export default function Compare() {
             value={address} 
             onChange={(e: any) => setAddress(e.target.value)}
             onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
+            onKeyDown={(e: any) => {
+              if (!showSuggestions || addressSuggestions.length === 0) return;
+              if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => 
+                  prev < addressSuggestions.length - 1 ? prev + 1 : prev
+                );
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+              } else if (e.key === 'Enter' && highlightedIndex >= 0) {
+                e.preventDefault();
+                onSelectAddress(addressSuggestions[highlightedIndex]);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setShowSuggestions(false);
+                setHighlightedIndex(-1);
+              }
+            }}
             autoComplete="off"
+            aria-autocomplete="list"
+            aria-controls="address-suggestions"
+            aria-expanded={showSuggestions}
+            role="combobox"
           />
           <button type="submit">🔍 Check Address</button>
           
           {showSuggestions && addressSuggestions.length > 0 && (
-            <div style={{
-              position: 'absolute',
-              top: '100%',
-              left: 0,
-              right: 0,
-              backgroundColor: 'white',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              marginTop: '4px',
-              maxHeight: '200px',
-              overflowY: 'auto',
-              boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-              zIndex: 1000
-            }}>
-              {addressSuggestions.map((addr: AddressResult) => (
+            <div 
+              id="address-suggestions"
+              role="listbox"
+              style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                backgroundColor: 'white',
+                border: '1px solid #ddd',
+                borderRadius: '8px',
+                marginTop: '4px',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                zIndex: 1000
+              }}>
+              {addressSuggestions.map((addr: AddressResult, index: number) => (
                 <div
                   key={addr.id}
                   onClick={() => onSelectAddress(addr)}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                  role="option"
+                  aria-selected={highlightedIndex === index}
                   style={{
                     padding: '12px 16px',
                     cursor: 'pointer',
                     borderBottom: '1px solid #eee',
-                    transition: 'background 0.2s'
+                    transition: 'background 0.2s',
+                    backgroundColor: highlightedIndex === index ? '#f5f5f5' : 'white'
                   }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'white'}
                 >
                   📍 {addr.formattedAddress}
                 </div>
@@ -325,6 +425,72 @@ export default function Compare() {
           </div>
         )}
       </section>
+
+      {/* Quick provider filter */}
+      {plans.length > 0 && (
+        <section style={{ 
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+          padding: '20px 30px',
+          borderRadius: 'var(--radius-xl)',
+          marginTop: '20px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            <strong style={{ color: '#2d3748' }}>Quick Filter:</strong>
+            {providerFilter && (
+              <button 
+                onClick={() => setProviderFilter('')}
+                style={{
+                  padding: '6px 14px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9em'
+                }}
+              >
+                ✕ Clear Filter
+              </button>
+            )}
+            {['Telstra', 'Optus', 'TPG', 'Aussie Broadband', 'iiNet', 'Exetel', 'Superloop', 'Tangerine']
+              .filter(name => plans.some((p: Plan) => p.provider_name === name))
+              .map(name => (
+                <button
+                  key={name}
+                  onClick={() => setProviderFilter(providerFilter === name ? '' : name)}
+                  style={{
+                    padding: '6px 14px',
+                    background: providerFilter === name ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
+                    color: providerFilter === name ? 'white' : '#333',
+                    border: providerFilter === name ? 'none' : '2px solid #e0e0e0',
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    fontWeight: providerFilter === name ? 'bold' : '600',
+                    fontSize: '0.9em',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e: any) => {
+                    if (providerFilter !== name) {
+                      e.target.style.borderColor = '#667eea';
+                      e.target.style.color = '#667eea';
+                    }
+                  }}
+                  onMouseLeave={(e: any) => {
+                    if (providerFilter !== name) {
+                      e.target.style.borderColor = '#e0e0e0';
+                      e.target.style.color = '#333';
+                    }
+                  }}
+                >
+                  {name}
+                </button>
+              ))
+            }
+          </div>
+        </section>
+      )}
 
       <section className="filters">
         <label>
@@ -371,6 +537,58 @@ export default function Compare() {
             <option value="">All</option>
             <option value="1">Included</option>
           </select>
+        </label>
+        <label>
+          <strong>Provider:</strong>
+          <input
+            type="text"
+            placeholder="Filter by ISP..."
+            value={providerFilter}
+            onChange={(e) => setProviderFilter(e.target.value)}
+            style={{
+              padding: '14px 18px',
+              border: '2px solid #e0e0e0',
+              borderRadius: '10px',
+              fontSize: '15px',
+              width: '180px'
+            }}
+          />
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={ipv6Filter}
+            onChange={(e) => setIpv6Filter(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span>IPv6 Support</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={noCgnatFilter}
+            onChange={(e) => setNoCgnatFilter(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span>No CGNAT</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={auSupportFilter}
+            onChange={(e) => setAuSupportFilter(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span>AU Support</span>
+        </label>
+        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+          <input
+            type="checkbox"
+            checked={staticIpFilter}
+            onChange={(e) => setStaticIpFilter(e.target.checked)}
+            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+          />
+          <span>Static IP Available</span>
         </label>
         <label>
           <strong>Sort by:</strong>
@@ -448,12 +666,34 @@ export default function Compare() {
               <tbody>
                 {[...plans]
                   .filter(p => {
-                    if (!searchTerm) return true;
-                    const term = searchTerm.toLowerCase();
-                    return (
-                      p.provider_name.toLowerCase().includes(term) ||
-                      p.plan_name.toLowerCase().includes(term)
-                    );
+                    // Search term filter
+                    if (searchTerm) {
+                      const term = searchTerm.toLowerCase();
+                      if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) {
+                        return false;
+                      }
+                    }
+                    
+                    // Provider filter
+                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) {
+                      return false;
+                    }
+                    
+                    // ISP metadata filters
+                    if (ipv6Filter && p.provider_ipv6_support !== 'yes') {
+                      return false;
+                    }
+                    if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') {
+                      return false;
+                    }
+                    if (auSupportFilter && p.provider_australian_support !== 'yes') {
+                      return false;
+                    }
+                    if (staticIpFilter && p.provider_static_ip_available !== 'yes') {
+                      return false;
+                    }
+                    
+                    return true;
                   })
                   .sort((a, b) => {
                     if (sortBy === 'price') {
@@ -517,9 +757,62 @@ export default function Compare() {
                           </div>
                         )}
                       </td>
-                      <td className="provider-name">{p.provider_name}</td>
+                      <td className="provider-name">
+                        <a 
+                          href={`/provider/${p.provider_name.toLowerCase().replace(/\s+/g, '-')}`}
+                          style={{
+                            color: 'inherit',
+                            textDecoration: 'none',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                          onMouseEnter={(e: any) => { e.target.style.color = '#667eea'; }}
+                          onMouseLeave={(e: any) => { e.target.style.color = 'inherit'; }}
+                        >
+                          {p.provider_name}
+                        </a>
+                        <ProviderTooltip 
+                          provider={{
+                            name: p.provider_name,
+                            description: p.provider_description,
+                            ipv6_support: p.provider_ipv6_support,
+                            cgnat: p.provider_cgnat,
+                            cgnat_opt_out: p.provider_cgnat_opt_out,
+                            static_ip_available: p.provider_static_ip_available,
+                            australian_support: p.provider_australian_support,
+                            parent_company: p.provider_parent_company,
+                            routing_info: p.provider_routing_info,
+                            support_hours: p.provider_support_hours
+                          }}
+                          darkMode={darkMode}
+                        />
+                      </td>
                       <td>
                         {p.plan_name}
+                        {bestValuePlanIds.has(p.id) && (
+                          <span 
+                            style={{ 
+                              marginLeft: '8px', 
+                              fontSize: '0.75em', 
+                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+                              color: 'white', 
+                              padding: '3px 10px', 
+                              borderRadius: '6px', 
+                              fontWeight: 'bold', 
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                              cursor: 'help'
+                            }}
+                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support === 'yes' ? '• Australian support team\n' : ''}${p.provider_cgnat === 'no' || p.provider_cgnat_opt_out === 'yes' ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support === 'yes' ? '• IPv6 support\n' : ''}${p.provider_static_ip_available === 'yes' ? '• Static IP available\n' : ''}${p.provider_routing_info && p.provider_routing_info.includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
+                          >
+                            ⭐ Best Value
+                          </span>
+                        )}
+                        {p.promo_code && (
+                          <span style={{ marginLeft: '8px', fontSize: '0.75em', background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'help' }} title={`Use code: ${p.promo_code}${p.promo_description ? ` - ${p.promo_description}` : ''}`}>
+                            🎟️ {p.promo_code}
+                          </span>
+                        )}
                         {p.modem_included === 1 && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Modem</span>}
                         {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>🏷️ {p.contract_type}</span>}
                         {p.technology_type === 'fixed-wireless' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#2196F3', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Fixed Wireless</span>}
@@ -635,6 +928,217 @@ export default function Compare() {
                   ))}
               </tbody>
             </table>
+
+            {/* Mobile Card View */}
+            <div className="plans-card-view">
+              {[...plans]
+                .filter(p => {
+                  if (!searchTerm) return true;
+                  const term = searchTerm.toLowerCase();
+                  return (
+                    p.provider_name.toLowerCase().includes(term) ||
+                    p.plan_name.toLowerCase().includes(term)
+                  );
+                })
+                .sort((a, b) => {
+                  if (sortBy === 'price') {
+                    const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity;
+                    const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity;
+                    return priceA - priceB;
+                  } else if (sortBy === 'price-desc') {
+                    const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity;
+                    const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
+                    return priceB - priceA;
+                  } else if (sortBy === 'provider') {
+                    return a.provider_name.localeCompare(b.provider_name);
+                  } else if (sortBy === 'speed') {
+                    return (b.speed_tier ?? 0) - (a.speed_tier ?? 0);
+                  }
+                  return 0;
+                })
+                .map((p: Plan) => (
+                  <div key={p.id} className={`plan-card ${favorites.includes(p.id) ? 'favorite' : ''}`}>
+                    <div className="plan-card-header">
+                      <div className="plan-card-logo">
+                        {p.favicon_url ? (
+                          <img
+                            src={p.favicon_url}
+                            alt={p.provider_name}
+                            loading="lazy"
+                            style={{
+                              width: '48px',
+                              height: '48px',
+                              borderRadius: '8px',
+                              objectFit: 'contain',
+                              background: 'white',
+                              padding: '4px'
+                            }}
+                          />
+                        ) : (
+                          <div 
+                            style={{
+                              background: getProviderColor(p.provider_name),
+                              color: 'white',
+                              width: '48px',
+                              height: '48px',
+                              borderRadius: '8px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 'bold',
+                              fontSize: '1em'
+                            }}
+                          >
+                            {getProviderInitials(p.provider_name)}
+                          </div>
+                        )}
+                      </div>
+                      <div className="plan-card-title">
+                        <h3>
+                          {p.provider_name}
+                          <ProviderTooltip 
+                            provider={{
+                              name: p.provider_name,
+                              description: p.provider_description,
+                              ipv6_support: p.provider_ipv6_support,
+                              cgnat: p.provider_cgnat,
+                              cgnat_opt_out: p.provider_cgnat_opt_out,
+                              static_ip_available: p.provider_static_ip_available,
+                              australian_support: p.provider_australian_support,
+                              parent_company: p.provider_parent_company,
+                              routing_info: p.provider_routing_info,
+                              support_hours: p.provider_support_hours
+                            }}
+                            darkMode={darkMode}
+                          />
+                        </h3>
+                        <p>{p.plan_name}</p>
+                      </div>
+                    </div>
+
+                    <div className={p.intro_price_cents ? 'plan-card-price plan-card-price-intro' : 'plan-card-price'}>
+                      {p.intro_price_cents ? (
+                        <>
+                          ${(p.intro_price_cents/100).toFixed(2)}/mo
+                          {p.price_trend && <span style={{ fontSize: '0.5em' }}> {p.price_trend === 'down' ? '↓' : '↑'}</span>}
+                          <span className="plan-card-price-original">
+                            then ${(p.ongoing_price_cents!/100).toFixed(2)}/mo
+                          </span>
+                          {p.intro_duration_days && (
+                            <div style={{ fontSize: '0.4em', color: '#E91E63', marginTop: '4px' }}>
+                              for {Math.round(p.intro_duration_days/30)} months
+                            </div>
+                          )}
+                        </>
+                      ) : p.ongoing_price_cents ? (
+                        <>
+                          ${(p.ongoing_price_cents/100).toFixed(2)}/mo
+                          {p.price_trend && <span style={{ fontSize: '0.5em' }}> {p.price_trend === 'down' ? '↓' : '↑'}</span>}
+                        </>
+                      ) : (
+                        <span style={{ fontSize: '0.5em' }}>Contact provider</span>
+                      )}
+                    </div>
+
+                    {p.promo_code && (
+                      <div style={{ 
+                        textAlign: 'center', 
+                        padding: '8px 12px', 
+                        background: 'rgba(16, 185, 129, 0.1)', 
+                        borderRadius: '8px',
+                        marginBottom: '12px',
+                        border: '1px dashed #10b981'
+                      }}>
+                        <div style={{ fontSize: '0.85em', color: '#666', marginBottom: '4px' }}>Use promo code:</div>
+                        <div style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#10b981', fontFamily: 'monospace' }}>
+                          {p.promo_code}
+                        </div>
+                        {p.promo_description && (
+                          <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>{p.promo_description}</div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="plan-card-details">
+                      <div className="plan-card-detail">
+                        <strong>Speed</strong>
+                        NBN {p.speed_tier ?? '—'}
+                        {p.upload_speed_mbps && <span> / {p.upload_speed_mbps}↑</span>}
+                      </div>
+                      <div className="plan-card-detail">
+                        <strong>Data</strong>
+                        {p.data_allowance || 'Not stated'}
+                      </div>
+                      <div className="plan-card-detail">
+                        <strong>Contract</strong>
+                        {p.contract_type || 'Not stated'}
+                      </div>
+                      <div className="plan-card-detail">
+                        <strong>Tech</strong>
+                        {p.technology_type === 'fixed-wireless' ? 'Fixed Wireless' : 'Standard NBN'}
+                      </div>
+                    </div>
+
+                    <div className="plan-card-badges">
+                      {p.modem_included === 1 && (
+                        <span style={{ fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '4px 10px', borderRadius: '6px' }}>
+                          📡 Modem Included
+                        </span>
+                      )}
+                      {favorites.includes(p.id) && (
+                        <span style={{ fontSize: '0.8em', background: '#E91E63', color: 'white', padding: '4px 10px', borderRadius: '6px' }}>
+                          ⭐ Favorite
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="plan-card-actions">
+                      <button
+                        onClick={() => toggleFavorite(p.id)}
+                        style={{
+                          background: favorites.includes(p.id) ? '#E91E63' : '#f0f0f0',
+                          color: favorites.includes(p.id) ? 'white' : '#666'
+                        }}
+                      >
+                        {favorites.includes(p.id) ? '⭐' : '☆'} Favorite
+                      </button>
+                      <button
+                        onClick={() => fetchPriceHistory(p)}
+                        style={{ background: '#10b981', color: 'white' }}
+                      >
+                        📊 History
+                      </button>
+                      <button
+                        onClick={() => toggleCompare(p.id)}
+                        style={{
+                          background: compareList.includes(p.id) ? '#667eea' : '#f0f0f0',
+                          color: compareList.includes(p.id) ? 'white' : '#666'
+                        }}
+                      >
+                        {compareList.includes(p.id) ? '✓' : '+'} Compare
+                      </button>
+                    </div>
+                    {p.source_url && (
+                      <a 
+                        href={p.source_url} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{
+                          display: 'block',
+                          textAlign: 'center',
+                          marginTop: '12px',
+                          color: '#667eea',
+                          textDecoration: 'none',
+                          fontWeight: '600',
+                          fontSize: '0.9em'
+                        }}
+                      >
+                        View Full Details →
+                      </a>
+                    )}
+                  </div>
+                ))}
+            </div>
           </div>
         )}
       </section>

@@ -2,24 +2,25 @@
  * DOM utility that works in both Cloudflare Workers (linkedom) and Node.js tests (jsdom)
  */
 
-let DOMParserImpl: typeof DOMParser | null = null;
+type DomParserCtor = { new (): DOMParser };
+let DOMParserCtorImpl: DomParserCtor | null = null;
 
 export function getDOMParser(): DOMParser {
-  if (DOMParserImpl) {
-    return new DOMParserImpl();
+  if (DOMParserCtorImpl) {
+    return new DOMParserCtorImpl();
   }
 
   // Try globalThis.DOMParser first (jsdom in tests)
   if (typeof globalThis.DOMParser !== 'undefined') {
-    DOMParserImpl = globalThis.DOMParser;
-    return new DOMParserImpl();
+    DOMParserCtorImpl = globalThis.DOMParser as unknown as DomParserCtor;
+    return new DOMParserCtorImpl();
   }
 
   // Fallback to linkedom for Cloudflare Workers
   try {
     const { DOMParser } = require('linkedom');
-    DOMParserImpl = DOMParser;
-    return new DOMParserImpl();
+    DOMParserCtorImpl = DOMParser as DomParserCtor;
+    return new DOMParserCtorImpl();
   } catch {
     throw new Error('DOMParser not available. Install linkedom or jsdom.');
   }

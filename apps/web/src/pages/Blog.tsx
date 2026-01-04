@@ -1,4 +1,5 @@
 import React from "react";
+import { usePageTitle } from "../lib/usePageTitle";
 
 interface BlogPost {
   slug: string;
@@ -10,6 +11,30 @@ interface BlogPost {
 }
 
 const blogPosts: BlogPost[] = [
+  {
+    slug: "what-is-cgnat-carrier-grade-nat",
+    title: "What is CGNAT? Understanding Carrier-Grade NAT and Its Limitations",
+    excerpt: "Learn about CGNAT (Carrier-Grade NAT), why ISPs use it, and how it affects your internet connection. Understand the restrictions on port forwarding, hosting servers, and remote access.",
+    date: "2026-01-04",
+    readTime: "12 min read",
+    category: "Technical"
+  },
+  {
+    slug: "ipv4-vs-ipv6-explained",
+    title: "IPv4 vs IPv6: What's the Difference and Why It Matters",
+    excerpt: "Understand the differences between IPv4 and IPv6 internet protocols, why the transition matters, and how it affects your NBN connection in Australia.",
+    date: "2026-01-04",
+    readTime: "15 min read",
+    category: "Technical"
+  },
+  {
+    slug: "isp-routing-peering-latency-explained",
+    title: "ISP Routing and Regional Peering: Why Your NBN Speed Depends on More Than Just Your Plan",
+    excerpt: "Discover how ISP routing policies, peering agreements, and regional traffic routing affect your internet performance, latency, and gaming experience in Australia.",
+    date: "2026-01-04",
+    readTime: "18 min read",
+    category: "Technical"
+  },
   {
     slug: "how-to-choose-nbn-plan",
     title: "How to Choose the Right NBN Plan for Your Needs",

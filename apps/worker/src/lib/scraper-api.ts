@@ -88,21 +88,41 @@ function fetchWithRotation(url: string, options: FetchOptions = {}): Promise<str
  */
 export async function fetchWithFallback(
   url: string,
-  scraperApiKey?: string
+  scraperApiKey?: string,
+  retryCount = 0
 ): Promise<string> {
+  const maxRetries = 3;
+  const baseDelay = 1000;
+  
   try {
     // First attempt: no delay
-    console.log(`Fetching ${url} with user-agent rotation...`);
-    return await fetchWithRotation(url, { delay: false });
-  } catch (error) {
-    console.log(`First attempt failed for ${url}, retrying with delay...`);
-    try {
-      // Second attempt: with delay
-      return await fetchWithRotation(url, { delay: true });
-    } catch (retryError) {
-      console.error(`All fetch attempts failed for ${url}:`, retryError);
-      throw new Error(`Could not fetch ${url}: ${retryError}`);
+    console.log(`Fetching ${url} with user-agent rotation (attempt ${retryCount + 1})...`);
+    return await fetchWithRotation(url, { delay: retryCount > 0 });
+  } catch (error: any) {
+    const errorMsg = error?.message || String(error);
+    
+    // Check if it's a 403 (rate limited/blocked)
+    if (errorMsg.includes('403') && retryCount < maxRetries) {
+      const delay = baseDelay * Math.pow(2, retryCount); // Exponential backoff
+      console.log(`403 Forbidden for ${url}, waiting ${delay}ms before retry ${retryCount + 1}/${maxRetries}...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      return await fetchWithFallback(url, scraperApiKey, retryCount + 1);
     }
+    
+    // For non-403 errors or max retries reached
+    if (retryCount < 1) {
+      console.log(`First attempt failed for ${url}, retrying with delay...`);
+      try {
+        // Second attempt: with delay
+        return await fetchWithRotation(url, { delay: true });
+      } catch (retryError) {
+        console.error(`All fetch attempts failed for ${url}:`, retryError);
+        throw new Error(`Could not fetch ${url}: ${retryError}`);
+      }
+    }
+    
+    console.error(`All fetch attempts failed for ${url}:`, error);
+    throw new Error(`Could not fetch ${url}: ${errorMsg}`);
   }
 }
 
