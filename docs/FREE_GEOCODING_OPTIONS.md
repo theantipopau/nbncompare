@@ -42,7 +42,7 @@ export async function searchAddress(request: Request): Promise<Response> {
 
     const response = await fetch(nominatimUrl, {
       headers: {
-        'User-Agent': 'NBNCompare/1.0 (nbncompare.com.au; contact@nbncompare.com.au)'
+        'User-Agent': 'NBNCompare/1.0 (nbncompare.com.au; matt@matthurley.dev)'
       }
     });
 
