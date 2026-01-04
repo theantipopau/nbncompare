@@ -19,6 +19,7 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     const dataAllowance = url.searchParams.get("data");
     const modemIncluded = url.searchParams.get("modem");
     const technologyType = url.searchParams.get("technology");
+    const planType = url.searchParams.get("planType");
     const limitParam = url.searchParams.get("limit") ?? "100";
 
     // Generate cache key from query parameters
@@ -80,6 +81,7 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     if (dataAllowance) { q += ` AND p.data_allowance = ?`; params.push(dataAllowance); }
     if (modemIncluded === "1") { q += ` AND p.modem_included = 1`; }
     if (technologyType) { q += ` AND p.technology_type = ?`; params.push(technologyType); }
+    if (planType) { q += ` AND p.plan_type = ?`; params.push(planType); }
 
     // SQLite-friendly NULLS LAST emulation: order by (ongoing_price_cents IS NULL), then value asc
     q += ` ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC LIMIT ?`;

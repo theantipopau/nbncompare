@@ -82,8 +82,10 @@ export default function Compare() {
   const [auSupportFilter, setAuSupportFilter] = useState(false);
   const [staticIpFilter, setStaticIpFilter] = useState(false);
   const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
+  const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
   const [providerFilter, setProviderFilter] = useState('');
-  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless'>('standard');
+  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless' | 'business'>('standard');
+  const [planTypeFilter, setPlanTypeFilter] = useState<'residential' | 'business' | 'all'>('residential');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -459,7 +461,7 @@ export default function Compare() {
         <strong style={{ color: '#2d3748' }}>Service Type:</strong>
         <div style={{ display: 'flex', gap: '8px', background: '#f5f5f5', padding: '4px', borderRadius: '10px' }}>
           <button
-            onClick={() => setViewMode('standard')}
+            onClick={() => { setViewMode('standard'); setPlanTypeFilter('residential'); }}
             style={{
               padding: '10px 24px',
               background: viewMode === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
@@ -475,7 +477,7 @@ export default function Compare() {
             🏠 Standard NBN
           </button>
           <button
-            onClick={() => setViewMode('fixed-wireless')}
+            onClick={() => { setViewMode('fixed-wireless'); setPlanTypeFilter('residential'); }}
             style={{
               padding: '10px 24px',
               background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
@@ -490,9 +492,25 @@ export default function Compare() {
           >
             📡 Fixed Wireless
           </button>
+          <button
+            onClick={() => { setViewMode('business'); setPlanTypeFilter('business'); }}
+            style={{
+              padding: '10px 24px',
+              background: viewMode === 'business' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              color: viewMode === 'business' ? 'white' : '#333',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.95em',
+              transition: 'all 0.2s'
+            }}
+          >
+            🏢 Business NBN
+          </button>
         </div>
         <span style={{ fontSize: '0.85em', color: '#666', fontStyle: 'italic' }}>
-          {viewMode === 'standard' ? 'FTTP, FTTC, FTTN, HFC' : 'For regional/rural areas'}
+          {viewMode === 'standard' ? 'FTTP, FTTC, FTTN, HFC' : viewMode === 'fixed-wireless' ? 'For regional/rural areas' : 'SLAs, static IPs, priority support'}
         </span>
       </section>
 
@@ -611,6 +629,16 @@ export default function Compare() {
           </select>
         </label>
         <label>
+          <strong>Upload Speed:</strong>
+          <select value={uploadSpeedFilter} onChange={(e: any) => setUploadSpeedFilter(e.target.value)}>
+            <option value="">Any</option>
+            <option value="20">20+ Mbps</option>
+            <option value="50">50+ Mbps</option>
+            <option value="100">100+ Mbps</option>
+            <option value="200">200+ Mbps</option>
+          </select>
+        </label>
+        <label>
           <strong>Provider:</strong>
           <input
             type="text"
@@ -716,7 +744,7 @@ export default function Compare() {
       </section>
 
       <section className="plan-list">
-        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
+        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
           // Technology type filter
           if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
           if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') return false;
@@ -733,6 +761,11 @@ export default function Compare() {
           if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
           if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
           if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+          // Upload speed filter
+          if (uploadSpeedFilter) {
+            const minUpload = parseInt(uploadSpeedFilter);
+            if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
+          }
           return true;
         }).length})</h3>
         {loading ? (
@@ -808,6 +841,18 @@ export default function Compare() {
                     if (exclude6MonthFilter && p.contract_type === '6-month') {
                       return false;
                     }
+                    
+                    // Upload speed filter
+                    if (uploadSpeedFilter) {
+                      const minUpload = parseInt(uploadSpeedFilter);
+                      if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) {
+                        return false;
+                      }
+                    }
+                    
+                    // Plan type filter (business vs residential)
+                    // Note: Currently all plans are residential since we don't have business plans yet
+                    // This will be used when we add business plan detection to parsers
                     
                     return true;
                   })
@@ -1064,6 +1109,11 @@ export default function Compare() {
                   if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
                   if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
                   if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+                  // Upload speed filter
+                  if (uploadSpeedFilter) {
+                    const minUpload = parseInt(uploadSpeedFilter);
+                    if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
+                  }
                   return true;
                 })
                 .sort((a, b) => {

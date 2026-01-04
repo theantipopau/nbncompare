@@ -44,7 +44,7 @@ try {
 
   router.get("/api/status", async (req: Request) => {
     const { getStatus } = await import("./handlers/status");
-    return getStatus(req);
+    return getStatus(req, { CACHE: env.CACHE });
   });
 
   router.get("/api/admin/issues", async (req: Request) => {

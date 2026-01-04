@@ -21,6 +21,7 @@ export interface PlanExtract {
   typicalEveningSpeedMbps: number | null;
   sourceUrl: string;
   technologyType?: 'standard' | 'fixed-wireless';
+  planType?: 'residential' | 'business'; // Business plans typically have SLAs, static IPs, priority support
 }
 
 export interface ProviderRow {

@@ -71,7 +71,7 @@ export default function App() {
             <h4>Resources</h4>
             <ul className="footer-links">
               <li><a href="https://www.nbnco.com.au/" target="_blank" rel="noopener noreferrer">NBN Co Official</a></li>
-              <li><a href="https://www.accc.gov.au/consumers/phone-internet-services" target="_blank" rel="noopener noreferrer">ACCC Consumer Rights</a></li>
+              <li><a href="https://www.accc.gov.au/consumers/telecommunications-and-internet" target="_blank" rel="noopener noreferrer">ACCC Consumer Rights</a></li>
               <li><a href="https://www.tio.com.au/" target="_blank" rel="noopener noreferrer">TIO Complaints</a></li>
             </ul>
           </div>

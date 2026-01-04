@@ -1,7 +1,27 @@
 import { getDb } from "../lib/db";
 
-export async function getStatus(_req: Request) {
-  const db = await getDb();
+// Cache TTL for status: 5 minutes (300 seconds)
+const STATUS_CACHE_TTL = 300;
+
+export async function getStatus(_req: Request, env?: { CACHE?: any }) {
+  try {
+    // Try to get from cache first
+    const cacheKey = 'status:system';
+    if (env?.CACHE) {
+      const cached = await env.CACHE.get(cacheKey);
+      if (cached) {
+        const response = new Response(cached, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Access-Control-Allow-Origin': '*',
+            'X-Cache': 'HIT'
+          }
+        });
+        return response;
+      }
+    }
+
+    const db = await getDb();
   
   // Get last run information
   const lastRun = await db.prepare("SELECT * FROM runs ORDER BY started_at DESC LIMIT 1").first();
@@ -27,7 +47,7 @@ export async function getStatus(_req: Request) {
     "SELECT name, slug, last_fetch_at FROM providers WHERE active = 1 ORDER BY last_fetch_at ASC NULLS FIRST LIMIT 5"
   ).all() as any;
   
-  return new Response(JSON.stringify({ 
+  const responseData = JSON.stringify({ 
     lastRun,
     providers: {
       total: totalProviders?.count || 0,
@@ -40,8 +60,35 @@ export async function getStatus(_req: Request) {
       byTier: plansByTier?.results || plansByTier || []
     },
     recentErrors: recentErrors?.results || recentErrors || []
-  }), { 
-    status: 200, 
-    headers: { "Content-Type": "application/json" } 
   });
+
+  // Store in cache
+  if (env?.CACHE) {
+    await env.CACHE.put(cacheKey, responseData, {
+      expirationTtl: STATUS_CACHE_TTL
+    });
+  }
+
+  return new Response(responseData, { 
+    status: 200, 
+    headers: { 
+      "Content-Type": "application/json",
+      "Access-Control-Allow-Origin": "*",
+      "X-Cache": "MISS",
+      "Cache-Control": `public, max-age=${STATUS_CACHE_TTL}`
+    } 
+  });
+  } catch (err: unknown) {
+    console.error('getStatus error:', err);
+    return new Response(JSON.stringify({ 
+      ok: false, 
+      error: String(err) 
+    }), { 
+      status: 500, 
+      headers: { 
+        "Content-Type": "application/json",
+        "Access-Control-Allow-Origin": "*"
+      } 
+    });
+  }
 }

@@ -11,6 +11,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   
   // Superloop has moved to a React-based site with specific known plans
   // These are the current plans as of Jan 2026 with 6-month promotional pricing
+  // Prices verified from https://www.superloop.com/internet/nbn on 2026-01-04
   const planPatterns = [
     { name: "Everyday", speed: 25, upload: 10, ongoing: 72, intro: 45, introDays: 180 },
     { name: "Extra Value", speed: 50, upload: 20, ongoing: 85, intro: 65, introDays: 180 },
