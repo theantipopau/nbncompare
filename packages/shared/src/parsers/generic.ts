@@ -25,6 +25,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       
       const planName = (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim();
       const isFixedWireless = /fixed.?wireless|wireless.?broadband/i.test(line) || /fixed.?wireless/i.test(url);
+      const isBusiness = /business|enterprise|corporate|sme|small.?business/i.test(line) || /business/i.test(url);
       
       // Try to extract upload speed (e.g., "100/20" or "1000/100 Mbps")
       const uploadMatch = line.match(/(\d{1,4})\s*\/\s*(\d{1,4})\s*Mbps/i) || 
@@ -49,6 +50,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
         typicalEveningSpeedMbps: null,
         sourceUrl: url,
         technologyType: isFixedWireless ? 'fixed-wireless' : 'standard',
+        planType: isBusiness ? 'business' : 'residential',
       });
     }
   }

@@ -30,7 +30,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
     if (planNameInContent || (speedInContent && priceInContent)) {
       plans.push({
         providerSlug: "superloop",
-        planName: `Superloop NBN ${pattern.speed} - ${pattern.name}`,
+        planName: `Superloop NBN ${pattern.speed}`, // Match existing DB format
         speedTier: normalizeSpeed(pattern.speed),
         uploadSpeedMbps: pattern.upload,
         introPriceCents: Math.round(pattern.intro * 100),
@@ -39,10 +39,11 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
         minTermDays: null, // Month-to-month
         setupFeeCents: null,
         modemCostCents: null,
-        conditionsText: "6 month promotional pricing for new customers. Free modem available on selected plans when staying connected for 36 months.",
+        conditionsText: `${pattern.name} plan - 6 month promotional pricing for new customers. Free modem available on selected plans when staying connected for 36 months.`,
         typicalEveningSpeedMbps: null,
         sourceUrl: url,
         technologyType: 'standard',
+        planType: 'residential',
       });
     }
   }
