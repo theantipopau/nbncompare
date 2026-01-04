@@ -1,4 +1,4 @@
-export type SpeedTier = 12 | 25 | 50 | 100 | 250 | 500 | 1000;
+export type SpeedTier = 12 | 25 | 50 | 100 | 200 | 250 | 400 | 500 | 1000 | 2000;
 
 export interface ProviderSeed {
   slug: string;

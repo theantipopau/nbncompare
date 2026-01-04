@@ -34,14 +34,14 @@ export function normalizeSpeed(text: string | number | null | undefined): SpeedT
   if (!text) return null;
   if (typeof text === 'number') {
     const n = text as number;
-    if ([12,25,50,100,250,500,1000].includes(n)) return n as SpeedTier;
+    if ([12,25,50,100,200,250,400,500,1000,2000].includes(n)) return n as SpeedTier;
     return null;
   }
   const s = String(text).trim().toLowerCase();
   const exact = s.match(/(\d{1,4})/);
   if (exact) {
     const n = parseInt(exact[1]);
-    if ([12,25,50,100,250,500,1000].includes(n)) return n as SpeedTier;
+    if ([12,25,50,100,200,250,400,500,1000,2000].includes(n)) return n as SpeedTier;
   }
   for (const key of Object.keys(SPEED_MAP)) {
     if (s.includes(key)) return SPEED_MAP[key];

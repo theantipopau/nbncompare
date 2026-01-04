@@ -18,7 +18,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
         planName: (line.replace(/<[^>]+>/g, "").slice(0, 80) || "Plan").trim(),
         speedTier: (() => {
           const n = parseInt(speedMatch[1]);
-          const allowed: SpeedTier[] = [12, 25, 50, 100, 250, 500, 1000];
+          const allowed: SpeedTier[] = [12, 25, 50, 100, 200, 250, 400, 500, 1000, 2000];
           return allowed.includes(n as SpeedTier) ? (n as SpeedTier) : null;
         })(),
         introPriceCents: Math.round(parseFloat(priceMatch[1]) * 100),
