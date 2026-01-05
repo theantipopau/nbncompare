@@ -8,10 +8,11 @@ import * as vodafone from "./providers/vodafone";
 import * as superloop from "./providers/superloop";
 import * as kogan from "./providers/kogan";
 import * as foxtel from "./providers/foxtel";
+import * as exetel from "./providers/exetel";
 import * as generic from "./generic";
 
 // Order matters: prefer specialized providers first
-const PROVIDER_PARSERS = [telstra, optus, tpg, vodafone, superloop, kogan, foxtel, aussie, spintel, dodo];
+const PROVIDER_PARSERS = [telstra, optus, tpg, vodafone, superloop, kogan, foxtel, aussie, spintel, dodo, exetel];
 
 export function findParserForUrl(url: string) {
   for (const p of PROVIDER_PARSERS) {

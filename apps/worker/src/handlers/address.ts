@@ -146,12 +146,13 @@ export async function qualifyAddress(request: Request): Promise<Response> {
     const coExistence = addressDetail['co-existence'] === 'Yes';
     
     // Map tech types to max speeds (based on NBN Co specifications)
+    // Updated 2026: FTTP and HFC now support 2000/100 Mbps
     const maxSpeeds: Record<string, number> = {
-      'FTTP': 1000,
+      'FTTP': 2000,  // Fiber to the Premises supports up to 2000/100 Mbps
       'FTTB': 100,
       'FTTC': 100,
       'FTTN': 100,
-      'HFC': 1000,
+      'HFC': 2000,  // HFC (cable) now supports 2000/100 Mbps plans
       'WIRELESS': 50,
       'SATELLITE': 25
     };

@@ -23,11 +23,11 @@ interface Plan {
   promo_code?: string | null;
   promo_description?: string | null;
   // Provider metadata
-  provider_ipv6_support?: number;
-  provider_cgnat?: number;
-  provider_cgnat_opt_out?: number;
-  provider_static_ip_available?: number;
-  provider_australian_support?: number;
+  provider_ipv6_support?: number;  // 0 = no, 1 = yes
+  provider_cgnat?: number;  // 0 = no CGNAT, 1 = uses CGNAT
+  provider_cgnat_opt_out?: number;  // 0 = no opt-out, 1 = free opt-out, 2 = paid opt-out
+  provider_static_ip_available?: number;  // 0 = no, 1 = free, 2 = paid addon
+  provider_australian_support?: number;  // 0 = offshore, 1 = mixed, 2 = 100% Australian
   provider_parent_company?: string | null;
   provider_routing_info?: string | null;
   provider_description?: string | null;
@@ -84,6 +84,7 @@ export default function Compare() {
   const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
   const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
   const [providerFilter, setProviderFilter] = useState('');
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless' | 'business'>('standard');
   const [planTypeFilter, setPlanTypeFilter] = useState<'residential' | 'business' | 'all'>('residential');
   const [compareList, setCompareList] = useState([] as number[]);
@@ -225,10 +226,10 @@ export default function Compare() {
       
       // Quality bonuses
       let qualityScore = 0;
-      if (p.provider_australian_support === 'yes') qualityScore += 15; // AU support team
-      if (p.provider_cgnat === 'no' || p.provider_cgnat_opt_out === 'yes') qualityScore += 12; // No CGNAT
-      if (p.provider_ipv6_support === 'yes') qualityScore += 8; // IPv6 support
-      if (p.provider_static_ip_available === 'yes') qualityScore += 6; // Static IP option
+      if (p.provider_australian_support && p.provider_australian_support >= 1) qualityScore += 15; // AU support team (1=mixed, 2=100% AU)
+      if (p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1)) qualityScore += 12; // No CGNAT or opt-out available
+      if (p.provider_ipv6_support && p.provider_ipv6_support >= 1) qualityScore += 8; // IPv6 support
+      if (p.provider_static_ip_available && p.provider_static_ip_available >= 1) qualityScore += 6; // Static IP option (1=free, 2=paid)
       if (p.provider_routing_info && p.provider_routing_info.includes('direct')) qualityScore += 8; // Good routing
       if (p.modem_included === 1) qualityScore += 5; // Modem included
       
@@ -242,10 +243,10 @@ export default function Compare() {
         const currentPrice = currentBest.intro_price_cents ?? currentBest.ongoing_price_cents;
         const currentPriceScore = 100000 / currentPrice;
         let currentQualityScore = 0;
-        if (currentBest.provider_australian_support === 'yes') currentQualityScore += 15;
-        if (currentBest.provider_cgnat === 'no' || currentBest.provider_cgnat_opt_out === 'yes') currentQualityScore += 12;
-        if (currentBest.provider_ipv6_support === 'yes') currentQualityScore += 8;
-        if (currentBest.provider_static_ip_available === 'yes') currentQualityScore += 6;
+        if (currentBest.provider_australian_support && currentBest.provider_australian_support >= 1) currentQualityScore += 15;
+        if (currentBest.provider_cgnat === 0 || (currentBest.provider_cgnat_opt_out && currentBest.provider_cgnat_opt_out >= 1)) currentQualityScore += 12;
+        if (currentBest.provider_ipv6_support && currentBest.provider_ipv6_support >= 1) currentQualityScore += 8;
+        if (currentBest.provider_static_ip_available && currentBest.provider_static_ip_available >= 1) currentQualityScore += 6;
         if (currentBest.provider_routing_info && currentBest.provider_routing_info.includes('direct')) currentQualityScore += 8;
         if (currentBest.modem_included === 1) currentQualityScore += 5;
         const currentTotalScore = currentPriceScore + currentQualityScore;
@@ -447,25 +448,27 @@ export default function Compare() {
 
       {/* NBN Type Toggle */}
       <section style={{
-        background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+        background: darkMode 
+          ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
+          : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
         padding: '20px 30px',
         borderRadius: 'var(--radius-xl)',
         marginTop: '20px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+        boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.08)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         gap: '16px',
         flexWrap: 'wrap'
       }}>
-        <strong style={{ color: '#2d3748' }}>Service Type:</strong>
-        <div style={{ display: 'flex', gap: '8px', background: '#f5f5f5', padding: '4px', borderRadius: '10px' }}>
+        <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>Service Type:</strong>
+        <div style={{ display: 'flex', gap: '8px', background: darkMode ? '#1a202c' : '#f5f5f5', padding: '4px', borderRadius: '10px' }}>
           <button
             onClick={() => { setViewMode('standard'); setPlanTypeFilter('residential'); }}
             style={{
               padding: '10px 24px',
               background: viewMode === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-              color: viewMode === 'standard' ? 'white' : '#333',
+              color: viewMode === 'standard' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
@@ -481,7 +484,7 @@ export default function Compare() {
             style={{
               padding: '10px 24px',
               background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-              color: viewMode === 'fixed-wireless' ? 'white' : '#333',
+              color: viewMode === 'fixed-wireless' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
@@ -497,7 +500,7 @@ export default function Compare() {
             style={{
               padding: '10px 24px',
               background: viewMode === 'business' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
-              color: viewMode === 'business' ? 'white' : '#333',
+              color: viewMode === 'business' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
@@ -509,7 +512,7 @@ export default function Compare() {
             🏢 Business NBN
           </button>
         </div>
-        <span style={{ fontSize: '0.85em', color: '#666', fontStyle: 'italic' }}>
+        <span style={{ fontSize: '0.85em', color: darkMode ? '#a0aec0' : '#666', fontStyle: 'italic' }}>
           {viewMode === 'standard' ? 'FTTP, FTTC, FTTN, HFC' : viewMode === 'fixed-wireless' ? 'For regional/rural areas' : 'SLAs, static IPs, priority support'}
         </span>
       </section>
@@ -517,14 +520,16 @@ export default function Compare() {
       {/* Quick provider filter */}
       {plans.length > 0 && (
         <section style={{ 
-          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+          background: darkMode 
+            ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
           padding: '20px 30px',
           borderRadius: 'var(--radius-xl)',
           marginTop: '20px',
-          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+          boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.08)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
-            <strong style={{ color: '#2d3748' }}>Quick Filter:</strong>
+            <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>Quick Filter:</strong>
             {providerFilter && (
               <button 
                 onClick={() => setProviderFilter('')}
@@ -550,9 +555,9 @@ export default function Compare() {
                   onClick={() => setProviderFilter(providerFilter === name ? '' : name)}
                   style={{
                     padding: '6px 14px',
-                    background: providerFilter === name ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'white',
-                    color: providerFilter === name ? 'white' : '#333',
-                    border: providerFilter === name ? 'none' : '2px solid #e0e0e0',
+                    background: providerFilter === name ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (darkMode ? '#1a202c' : 'white'),
+                    color: providerFilter === name ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
+                    border: providerFilter === name ? 'none' : (darkMode ? '2px solid #4a5568' : '2px solid #e0e0e0'),
                     borderRadius: '8px',
                     cursor: 'pointer',
                     fontWeight: providerFilter === name ? 'bold' : '600',
@@ -576,6 +581,83 @@ export default function Compare() {
                 </button>
               ))
             }
+          </div>
+        </section>
+      )}
+
+      {/* Multi-Select Provider Filter */}
+      {plans.length > 0 && (
+        <section style={{ 
+          background: darkMode 
+            ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+          padding: '20px 30px',
+          borderRadius: 'var(--radius-xl)',
+          marginTop: '20px',
+          boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+            <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>
+              Compare Only Selected Providers
+              {selectedProviders.length > 0 && <span style={{ marginLeft: '8px', color: '#667eea', fontSize: '0.9em' }}>({selectedProviders.length} selected)</span>}
+            </strong>
+            {selectedProviders.length > 0 && (
+              <button 
+                onClick={() => setSelectedProviders([])}
+                style={{
+                  padding: '6px 14px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.85em'
+                }}
+              >
+                ✕ Clear Selection
+              </button>
+            )}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+            {Array.from(new Set(plans.map((p: Plan) => p.provider_name))).sort().map(name => (
+              <label 
+                key={name}
+                style={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  gap: '8px', 
+                  padding: '10px 14px',
+                  background: selectedProviders.includes(name) 
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : (darkMode ? '#1a202c' : '#f8f9fa'),
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  border: selectedProviders.includes(name) ? 'none' : (darkMode ? '1px solid #4a5568' : '1px solid #e0e0e0')
+                }}
+              >
+                <input
+                  type="checkbox"
+                  checked={selectedProviders.includes(name)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedProviders([...selectedProviders, name]);
+                    } else {
+                      setSelectedProviders(selectedProviders.filter(p => p !== name));
+                    }
+                  }}
+                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                />
+                <span style={{ 
+                  fontSize: '0.9em', 
+                  fontWeight: selectedProviders.includes(name) ? 'bold' : '500',
+                  color: selectedProviders.includes(name) ? 'white' : (darkMode ? '#e2e8f0' : '#333')
+                }}>
+                  {name}
+                </span>
+              </label>
+            ))}
           </div>
         </section>
       )}
@@ -755,11 +837,13 @@ export default function Compare() {
           }
           // Provider filter
           if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+          // Selected providers filter (multi-select)
+          if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
           // Metadata filters
-          if (ipv6Filter && p.provider_ipv6_support !== 'yes') return false;
-          if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') return false;
-          if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
-          if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
+          if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
+          if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
+          if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
+          if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
           if (exclude6MonthFilter && p.contract_type === '6-month') return false;
           // Upload speed filter
           if (uploadSpeedFilter) {
@@ -788,15 +872,23 @@ export default function Compare() {
           </div>
         ) : (
           <div className="table-wrapper">
-            <table>
+            <table style={{
+              borderCollapse: 'separate',
+              borderSpacing: '0 12px',
+              width: '100%'
+            }}>
               <thead>
-                <tr>
-                  <th></th>
-                  <th>Provider</th>
-                  <th>Plan Name</th>
-                  <th>Monthly Price</th>
-                  <th className="hide-mobile">Speed Tier</th>
-                  <th>Actions</th>
+                <tr style={{
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                }}>
+                  <th style={{ padding: '16px 12px', borderRadius: '12px 0 0 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Logo</th>
+                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Provider</th>
+                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Plan Details</th>
+                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Price</th>
+                  <th className="hide-mobile" style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Speed</th>
+                  <th style={{ padding: '16px 12px', borderRadius: '0 12px 12px 0', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -823,17 +915,22 @@ export default function Compare() {
                       return false;
                     }
                     
+                    // Selected providers filter (multi-select)
+                    if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) {
+                      return false;
+                    }
+                    
                     // ISP metadata filters
-                    if (ipv6Filter && p.provider_ipv6_support !== 'yes') {
+                    if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) {
                       return false;
                     }
-                    if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') {
+                    if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) {
                       return false;
                     }
-                    if (auSupportFilter && p.provider_australian_support !== 'yes') {
+                    if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) {
                       return false;
                     }
-                    if (staticIpFilter && p.provider_static_ip_available !== 'yes') {
+                    if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) {
                       return false;
                     }
                     
@@ -873,8 +970,22 @@ export default function Compare() {
                     return 0;
                   })
                   .map((p: any) => (
-                    <tr key={p.id} className={favorites.includes(p.id) ? 'favorite-row' : ''}>
-                      <td>
+                    <tr key={p.id} className={favorites.includes(p.id) ? 'favorite-row' : ''} style={{
+                      background: darkMode ? '#2d3748' : 'white',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
+                      borderRadius: '12px',
+                      transition: 'all 0.2s ease',
+                      cursor: 'pointer'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+                    }}>
+                      <td style={{ padding: '20px 16px', borderRadius: '12px 0 0 12px' }}>
                         {p.favicon_url ? (
                           <img
                             src={p.favicon_url}
@@ -918,7 +1029,7 @@ export default function Compare() {
                           </div>
                         )}
                       </td>
-                      <td className="provider-name">
+                      <td className="provider-name" style={{ padding: '20px 16px' }}>
                         <a 
                           href={`/provider/${p.provider_name.toLowerCase().replace(/\s+/g, '-')}`}
                           style={{
@@ -949,97 +1060,147 @@ export default function Compare() {
                           darkMode={darkMode}
                         />
                       </td>
-                      <td>
-                        {p.plan_name}
+                      <td style={{ padding: '20px 16px', maxWidth: '280px' }}>
+                        <div style={{ fontWeight: '600', marginBottom: '4px', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
+                          {p.plan_name}
+                        </div>
                         {bestValuePlanIds.has(p.id) && (
                           <span 
                             style={{ 
-                              marginLeft: '8px', 
+                              marginLeft: '0',
+                              marginTop: '6px',
+                              display: 'inline-block',
                               fontSize: '0.75em', 
-                              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
-                              color: 'white', 
-                              padding: '3px 10px', 
-                              borderRadius: '6px', 
-                              fontWeight: 'bold', 
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                              cursor: 'help'
+                              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', 
+                              color: '#000', 
+                              padding: '5px 14px', 
+                              borderRadius: '10px', 
+                              fontWeight: '800', 
+                              boxShadow: '0 3px 10px rgba(255, 215, 0, 0.4)',
+                              cursor: 'help',
+                              letterSpacing: '0.5px',
+                              border: '2px solid #FFD700',
+                              textTransform: 'uppercase'
                             }}
                             title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support === 'yes' ? '• Australian support team\n' : ''}${p.provider_cgnat === 'no' || p.provider_cgnat_opt_out === 'yes' ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support === 'yes' ? '• IPv6 support\n' : ''}${p.provider_static_ip_available === 'yes' ? '• Static IP available\n' : ''}${p.provider_routing_info && p.provider_routing_info.includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
                           >
                             ⭐ Best Value
                           </span>
                         )}
+                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
                         {p.promo_code && (
-                          <span style={{ marginLeft: '8px', fontSize: '0.75em', background: '#10b981', color: 'white', padding: '2px 8px', borderRadius: '4px', cursor: 'help' }} title={`Use code: ${p.promo_code}${p.promo_description ? ` - ${p.promo_description}` : ''}`}>
+                          <span style={{ 
+                            fontSize: '0.75em', 
+                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                            color: 'white', 
+                            padding: '4px 12px', 
+                            borderRadius: '8px', 
+                            cursor: 'help', 
+                            fontWeight: '700',
+                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+                          }} title={`Use code: ${p.promo_code}${p.promo_description ? ` - ${p.promo_description}` : ''}`}>
                             🎟️ {p.promo_code}
                           </span>
                         )}
-                        {p.modem_included === 1 && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>📡 Modem</span>}
-                        {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ marginLeft: '8px', fontSize: '0.8em', background: '#FF9800', color: 'white', padding: '2px 8px', borderRadius: '4px' }}>🏷️ {p.contract_type}</span>}
+                        {p.modem_included === 1 && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(59, 130, 246, 0.3)'
+                        }}>📡 Modem</span>}
+                        {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
+                        }}>🏷️ {p.contract_type}</span>}
+                        </div>
                       </td>
-                      <td className="price">
+                      <td className="price" style={{ padding: '20px 16px' }}>
                         {p.intro_price_cents ? (
-                          <div style={{ lineHeight: '1.4' }}>
-                            <span style={{ fontWeight: 'bold', color: '#E91E63', fontSize: '0.95em' }}>
-                              ${(p.intro_price_cents/100).toFixed(2)}
+                          <div style={{ lineHeight: '1.6' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                              <span style={{ fontWeight: '700', color: '#E91E63', fontSize: '1.3em' }}>
+                                ${(p.intro_price_cents/100).toFixed(0)}
+                              </span>
+                              <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b', fontWeight: '500' }}>
+                                {p.intro_duration_days ? `${Math.round(p.intro_duration_days/30)}mo` : 'intro'}
+                              </span>
                               {p.price_trend && (
                                 <span 
                                   style={{ 
-                                    marginLeft: '4px',
                                     color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                    fontSize: '0.9em'
+                                    fontSize: '1em',
+                                    fontWeight: 'bold'
                                   }} 
                                   title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
                                 >
                                   {p.price_trend === 'down' ? '↓' : '↑'}
                                 </span>
                               )}
-                            </span>
-                            <span style={{ fontSize: '0.7em', color: '#666', marginLeft: '4px' }}>
-                              {p.intro_duration_days ? `${Math.round(p.intro_duration_days/30)}mo` : ''}
-                            </span>
-                            <br />
-                            <span style={{ fontSize: '0.7em', color: '#999', textDecoration: 'line-through' }}>
-                              ${(p.ongoing_price_cents!/100).toFixed(2)}/mo
-                            </span>
+                            </div>
+                            <div style={{ fontSize: '0.8em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '2px' }}>
+                              then ${(p.ongoing_price_cents!/100).toFixed(0)}/mo
+                            </div>
                           </div>
                         ) : p.ongoing_price_cents ? (
-                          <span>
-                            ${(p.ongoing_price_cents/100).toFixed(2)}/mo
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                            <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
+                              ${(p.ongoing_price_cents/100).toFixed(0)}
+                            </span>
+                            <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b' }}>/mo</span>
                             {p.price_trend && (
                               <span 
                                 style={{ 
-                                  marginLeft: '4px',
                                   color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                  fontSize: '0.9em'
+                                  fontSize: '1em',
+                                  fontWeight: 'bold'
                                 }} 
                                 title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
                               >
                                 {p.price_trend === 'down' ? '↓' : '↑'}
                               </span>
                             )}
-                          </span>
+                          </div>
                         ) : (
-                          'Contact provider'
+                          <span style={{ fontSize: '0.85em', color: darkMode ? '#94a3b8' : '#64748b' }}>Contact provider</span>
                         )}
                       </td>
-                      <td className="hide-mobile">
-                        NBN {p.speed_tier ?? '—'}
-                        {p.upload_speed_mbps && <span style={{ fontSize: '0.8em', color: '#666' }}> / {p.upload_speed_mbps}↑</span>}
+                      <td className="hide-mobile" style={{ padding: '20px 16px', minWidth: '140px' }}>
+                        <div style={{ fontWeight: '600', color: darkMode ? '#e2e8f0' : '#1a202c', fontSize: '1.1em' }}>
+                          NBN {p.speed_tier ?? '—'}
+                        </div>
+                        {p.upload_speed_mbps && <div style={{ fontSize: '0.8em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '4px' }}>↑ {p.upload_speed_mbps} Mbps</div>}
                       </td>
-                      <td>
+                      <td style={{ padding: '20px 16px', borderRadius: '0 12px 12px 0' }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                           <button
                             onClick={() => toggleFavorite(p.id)}
                             style={{
-                              background: favorites.includes(p.id) ? '#E91E63' : '#ddd',
-                              color: favorites.includes(p.id) ? 'white' : '#666',
+                              background: favorites.includes(p.id) 
+                                ? 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)' 
+                                : (darkMode ? '#374151' : '#e5e7eb'),
+                              color: favorites.includes(p.id) ? 'white' : (darkMode ? '#9ca3af' : '#6b7280'),
                               border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
                               cursor: 'pointer',
-                              fontSize: '0.85em',
-                              fontWeight: '600'
+                              fontSize: '0.9em',
+                              fontWeight: '600',
+                              boxShadow: favorites.includes(p.id) ? '0 2px 8px rgba(233, 30, 99, 0.3)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
                             {favorites.includes(p.id) ? '⭐' : '☆'}
@@ -1047,36 +1208,78 @@ export default function Compare() {
                           <button
                             onClick={() => fetchPriceHistory(p)}
                             style={{
-                              background: '#10b981',
+                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                               color: 'white',
                               border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
                               cursor: 'pointer',
-                              fontSize: '0.85em',
-                              fontWeight: '600'
+                              fontSize: '0.9em',
+                              fontWeight: '600',
+                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
+                              transition: 'all 0.2s ease'
                             }}
                             title="View price history"
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
+                            }}
                           >
                             📊
                           </button>
                           <button
                             onClick={() => toggleCompare(p.id)}
                             style={{
-                              background: compareList.includes(p.id) ? '#667eea' : '#f0f0f0',
-                              color: compareList.includes(p.id) ? 'white' : '#666',
+                              background: compareList.includes(p.id) 
+                                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                                : (darkMode ? '#374151' : '#f3f4f6'),
+                              color: compareList.includes(p.id) ? 'white' : (darkMode ? '#9ca3af' : '#6b7280'),
                               border: 'none',
-                              padding: '6px 12px',
-                              borderRadius: '6px',
+                              padding: '8px 14px',
+                              borderRadius: '8px',
                               cursor: 'pointer',
-                              fontSize: '0.85em',
-                              fontWeight: '600'
+                              fontSize: '0.9em',
+                              fontWeight: '600',
+                              boxShadow: compareList.includes(p.id) ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none',
+                              transition: 'all 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'scale(1.05)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'scale(1)';
                             }}
                           >
                             {compareList.includes(p.id) ? '✓ Compare' : 'Compare'}
                           </button>
                           {p.source_url ? (
-                            <a href={p.source_url} target="_blank" rel="noopener noreferrer" style={{color: '#667eea', textDecoration: 'none', fontWeight: 600, fontSize: '0.9em'}}>
+                            <a 
+                              href={p.source_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              style={{
+                                color: '#667eea', 
+                                textDecoration: 'none', 
+                                fontWeight: 700, 
+                                fontSize: '0.9em',
+                                padding: '8px 16px',
+                                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
+                                borderRadius: '8px',
+                                border: '2px solid #667eea',
+                                transition: 'all 0.2s ease',
+                                display: 'inline-block'
+                              }}
+                              onMouseEnter={(e) => {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
+                                e.currentTarget.style.color = 'white';
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)';
+                                e.currentTarget.style.color = '#667eea';
+                              }}
+                            >
                               Details →
                             </a>
                           ) : (
