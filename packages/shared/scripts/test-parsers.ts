@@ -1,5 +1,6 @@
 import { readFileSync } from 'fs';
-import { findParserForUrl } from '../src/parsers';
+import { findParserForUrl } from '../src/parsers/index.ts';
+import { normalizeExtract, validatePlan } from '../src/validators.ts';
 import { JSDOM } from 'jsdom';
 
 // polyfill DOMParser for node-based smoke tests
@@ -30,6 +31,21 @@ async function run() {
     if (!Array.isArray(out) || out.length === 0) {
       console.error('Parser returned no extracts for', s.url);
       process.exit(2);
+    }
+
+    const normalized = out.map(o => normalizeExtract(o));
+    const validations = normalized.map(p => ({ p, v: validatePlan(p) }));
+    const rejected = validations.filter(x => x.v.reject);
+    if (rejected.length > 0) {
+      console.error('Parser produced rejected extracts for', s.url);
+      console.error(rejected.map(r => ({ planName: r.p.planName, errors: r.v.errors })).slice(0, 5));
+      process.exit(4);
+    }
+
+    const warnings = validations.filter(x => x.v.warnings && x.v.warnings.length > 0);
+    if (warnings.length > 0) {
+      console.warn('Parser warnings for', s.url);
+      console.warn(warnings.map(w => ({ planName: w.p.planName, warnings: w.v.warnings })).slice(0, 5));
     }
     // check that at least one extract maps to a known speed tier when the sample contains NBN speed markers
     const containsSpeedMarker = /NBN|Mbps/i.test(html);

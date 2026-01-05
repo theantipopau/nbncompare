@@ -51,21 +51,45 @@ export function normalizeSpeed(text: string | number | null | undefined): SpeedT
 
 export function validatePlan(p: PlanExtract) {
   const errors: string[] = [];
-  // price plausibility check
-  if (p.ongoingPriceCents !== null) {
-    if (p.ongoingPriceCents < 3000 || p.ongoingPriceCents > 20000) {
-      // allow as maybe intro price, but flag
-      errors.push(`ongoing_price_cents ${p.ongoingPriceCents} out of plausible range`);
-    }
-  }
-  // speed must map to known tiers
-  if (p.speedTier !== null) {
-    if (![12,25,50,100,250,500,1000].includes(p.speedTier)) errors.push(`unknown speed tier ${p.speedTier}`);
-  }
-  // if intro exists, ongoing should exist too
-  if (p.introPriceCents !== null && p.ongoingPriceCents === null) errors.push("intro price present but ongoing price missing");
+  const warnings: string[] = [];
 
-  return { ok: errors.length === 0, errors };
+  const planName = (p.planName || '').trim();
+  const sourceUrl = (p.sourceUrl || '').trim();
+
+  // Hard rejects: things that are almost certainly garbage and should not be stored.
+  if (!planName) errors.push('missing plan name');
+  if (planName.length > 120) errors.push(`plan name too long (${planName.length})`);
+  if (!p.speedTier) errors.push('missing speed tier');
+  if (!sourceUrl) errors.push('missing source url');
+
+  const price = p.ongoingPriceCents ?? p.introPriceCents;
+  if (price === null) {
+    errors.push('missing price');
+  } else {
+    // $1/day / promo fragments frequently get mis-parsed as plan prices
+    if (price < 2000) errors.push(`price too low (${price})`);
+  }
+
+  // Reject common marketing/FAQ paragraphs accidentally captured as plan names.
+  if (planName.length > 50 && /(what is|about|want to|download|stream|in a world of|plan to rule them all)/i.test(planName)) {
+    errors.push('plan name looks like marketing copy');
+  }
+
+  // Soft plausibility checks (warnings only)
+  if (p.ongoingPriceCents !== null) {
+    if (p.ongoingPriceCents < 3000) warnings.push(`ongoing_price_cents ${p.ongoingPriceCents} unusually low`);
+    if (p.ongoingPriceCents > 30000) warnings.push(`ongoing_price_cents ${p.ongoingPriceCents} unusually high`);
+  }
+
+  if (p.introPriceCents !== null && p.ongoingPriceCents !== null) {
+    if (p.introPriceCents > p.ongoingPriceCents) warnings.push('intro price higher than ongoing price');
+  }
+
+  if (p.uploadSpeedMbps !== undefined && p.uploadSpeedMbps !== null && p.speedTier !== null) {
+    if (p.uploadSpeedMbps > p.speedTier) warnings.push('upload speed greater than download speed');
+  }
+
+  return { ok: errors.length === 0, reject: errors.length > 0, errors, warnings };
 }
 
 export function normalizeExtract(ex: PlanExtract): PlanExtract {

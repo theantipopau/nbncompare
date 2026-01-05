@@ -70,7 +70,15 @@ async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checke
       try {
         const normalized = normalizeExtract(e);
         const v = validatePlan(normalized);
-        if (!v.ok) providerNeedsReview = true;
+        if (!v.ok) {
+          providerNeedsReview = true;
+          console.warn(`Rejecting plan for provider ${prov.slug}: ${normalized.planName}`, v.errors);
+          continue;
+        }
+        if (v.warnings && v.warnings.length > 0) {
+          providerNeedsReview = true;
+          console.warn(`Plan warnings for provider ${prov.slug}: ${normalized.planName}`, v.warnings);
+        }
         await upsertPlan(db as any, prov.id, normalized);
       } catch (err) {
         console.error(`Failed processing plan for provider ${prov.slug}:`, err);

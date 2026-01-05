@@ -6,12 +6,13 @@
   "types": "dist/index.d.ts",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test:parsers": "node -r ts-node/register ./scripts/test-parsers.ts"
+    "test:parsers": "tsx ./scripts/test-parsers.ts"
   },
   "devDependencies": {
     "@types/node": "^25.0.3",
     "jsdom": "^27.4.0",
     "ts-node": "^10.9.2",
+    "tsx": "^4.20.5",
     "typescript": "^5.9.3"
   },
   "dependencies": {

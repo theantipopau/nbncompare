@@ -1,4 +1,4 @@
-import type { PlanExtract, SpeedTier } from "../../types";
+import type { PlanExtract } from "../../types";
 import { normalizeSpeed, parsePriceToCents } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
@@ -14,7 +14,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   // Exetel has a specific structure - try to find plan cards/sections
   const planElements = doc.querySelectorAll('[class*="plan"], [class*="product"], [class*="card"]');
   
-  for (const element of planElements) {
+  for (const element of Array.from(planElements)) {
     try {
       const text = element.textContent || '';
       
@@ -23,7 +23,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       let planName = '';
       
       // Try to extract a clean plan name from headings
-      for (const heading of headings) {
+      for (const heading of Array.from(headings)) {
         const headingText = (heading.textContent || '').trim();
         // Look for patterns like "NBN 100", "The One Plan", "Exetel NBN 1000"
         if (/NBN\s+\d+|The\s+One\s+Plan|Exetel/i.test(headingText) && headingText.length < 50) {
