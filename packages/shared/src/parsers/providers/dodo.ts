@@ -1,4 +1,4 @@
-import type { PlanExtract } from "../..//types";
+import type { PlanExtract } from "../../types";
 import { normalizeSpeed, parsePriceToCents } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
@@ -17,16 +17,18 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       providerSlug: "dodo",
       planName: name,
       speedTier: normalizeSpeed(s ? parseInt(s) : null),
+      uploadSpeedMbps: null,
       introPriceCents: parsePriceToCents(price),
       introDurationDays: null,
       ongoingPriceCents: parsePriceToCents(price),
       minTermDays: null,
-      setup_fee_cents: null,
       setupFeeCents: null,
       modemCostCents: null,
       conditionsText: null,
       typicalEveningSpeedMbps: null,
       sourceUrl: url,
+      technologyType: 'standard',
+      planType: 'residential',
     };
   });
 }

@@ -9,3 +9,9 @@ dist
 .DS_Store
 coverage
 pnpm-lock.yaml
+
+# Build artifacts
+*.png
+*.PNG
+*.jpg
+*.jpeg

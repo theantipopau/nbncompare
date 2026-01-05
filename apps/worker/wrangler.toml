@@ -6,7 +6,9 @@ workers_dev = true
 preview_urls = false
 
 [vars]
-ADMIN_TOKEN = "changeme"
+# SECURITY: Set a real secret via `wrangler secret put ADMIN_TOKEN` for production.
+# This placeholder is overridden by the secret if set.
+ADMIN_TOKEN = "changeme-set-via-wrangler-secret"
 
 [triggers]
 crons = [ "0 3 * * *" ]

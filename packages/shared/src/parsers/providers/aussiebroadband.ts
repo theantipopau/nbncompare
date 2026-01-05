@@ -1,4 +1,4 @@
-import type { PlanExtract } from "../..//types";
+import type { PlanExtract } from "../../types";
 import { normalizeSpeed, parsePriceToCents } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
