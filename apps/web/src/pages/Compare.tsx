@@ -1,7 +1,24 @@
 import React, { useEffect, useState } from "react";
 import PriceHistoryModal from "../components/PriceHistoryModal";
+import SpeedCalculator from "../components/SpeedCalculator";
+import BillComparison from "../components/BillComparison";
 import { ProviderTooltip } from "../components/ProviderTooltip";
 import { getApiBaseUrl } from "../lib/api";
+
+// Helper to strip HTML tags and decode entities from plan names/descriptions
+function stripHtml(str: string | null | undefined): string {
+  if (!str) return '';
+  return str
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
+    .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
+    .replace(/&lt;/g, '<')   // Decode &lt;
+    .replace(/&gt;/g, '>')   // Decode &gt;
+    .replace(/&amp;/g, '&')  // Decode &amp;
+    .replace(/&quot;/g, '"') // Decode &quot;
+    .replace(/&#39;/g, "'")  // Decode &#39;
+    .replace(/<[^>]*>/g, '') // Remove any remaining tags after decode
+    .trim();
+}
 
 interface Plan {
   id: number;
@@ -22,6 +39,7 @@ interface Plan {
   price_trend?: 'up' | 'down' | null;
   promo_code?: string | null;
   promo_description?: string | null;
+  service_type?: string;  // 'nbn', '5g-home', 'satellite', etc.
   // Provider metadata
   provider_ipv6_support?: number;  // 0 = no, 1 = yes
   provider_cgnat?: number;  // 0 = no CGNAT, 1 = uses CGNAT
@@ -55,7 +73,7 @@ interface ServiceQualification {
 
 export default function Compare() {
   const [plans, setPlans] = useState([] as Plan[]);
-  const [speed, setSpeed] = useState("100");
+  const [speed, setSpeed] = useState("all");
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState([] as AddressResult[]);
   const [selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
@@ -85,8 +103,9 @@ export default function Compare() {
   const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
   const [providerFilter, setProviderFilter] = useState('');
   const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless' | 'business'>('standard');
+  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite'>('standard');
   const [planTypeFilter, setPlanTypeFilter] = useState<'residential' | 'business' | 'all'>('residential');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState<'nbn' | '5g-home' | 'satellite'>('nbn');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -94,17 +113,33 @@ export default function Compare() {
   const [priceHistoryData, setPriceHistoryData] = useState([] as PriceHistory[]);
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [showProviderList, setShowProviderList] = useState(false);
 
   async function fetchPlans(s: string) {
     setLoading(true);
     setMessage('Loading plans...');
     try {
       const apiUrl = getApiBaseUrl();
-      const params = new URLSearchParams({ speed: s });
+      const params = new URLSearchParams();
+      // Only add speed param if not "all"
+      if (s !== 'all') params.append('speed', s);
       if (contractFilter) params.append('contract', contractFilter);
       if (dataFilter) params.append('data', dataFilter);
       if (modemFilter) params.append('modem', modemFilter);
       if (technologyFilter) params.append('technology', technologyFilter);
+      
+      // Set serviceType based on viewMode
+      if (viewMode === '5g-home') {
+        params.append('serviceType', '5g-home');
+      } else if (viewMode === 'satellite') {
+        params.append('serviceType', 'satellite');
+      } else if (viewMode === 'business') {
+        params.append('serviceType', 'business');
+      } else {
+        params.append('serviceType', 'nbn');  // standard and fixed-wireless use NBN
+      }
+      
+      if (planTypeFilter !== 'all') params.append('planType', planTypeFilter);
       
       const res = await fetch(`${apiUrl}/api/plans?${params}`);
       const json = await res.json();
@@ -194,22 +229,69 @@ export default function Compare() {
 
   useEffect(() => {
     fetchPlans(speed);
-  }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter]);
+  }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode]);
 
-  // Reset speed when switching between Standard and Fixed Wireless
+  // Reset speed when switching between view modes
   useEffect(() => {
     if (viewMode === 'fixed-wireless') {
       // If current speed isn't valid for Fixed Wireless (100, 200, 400), reset to 100
       if (!['100', '200', '400'].includes(speed)) {
         setSpeed('100');
       }
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('residential');
+    } else if (viewMode === '5g-home') {
+      // 5G Home typically has speeds up to 300
+      setServiceTypeFilter('5g-home');
+      setPlanTypeFilter('residential');
+      if (!['100', '250', '300'].includes(speed)) {
+        setSpeed('100');
+      }
+    } else if (viewMode === 'satellite') {
+      // Satellite has varying speeds
+      setServiceTypeFilter('satellite');
+      setPlanTypeFilter('residential');
+      if (!['25', '50', '100', '150'].includes(speed)) {
+        setSpeed('100');
+      }
+    } else if (viewMode === 'business') {
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('business');
     } else {
+      // Standard mode
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('residential');
       // If current speed is only valid for Fixed Wireless (200, 400), reset to 100 for Standard
       if (['200', '400'].includes(speed)) {
-        setSpeed('100');
+        setSpeed('all');
       }
     }
   }, [viewMode]);
+
+  // Speed tier color function
+  const getSpeedTierColor = (tier: number | null): string => {
+    if (!tier) return '#6b7280';
+    if (tier <= 12) return '#94a3b8'; // Gray for basic
+    if (tier <= 25) return '#22c55e'; // Green for standard
+    if (tier <= 50) return '#3b82f6'; // Blue for standard plus
+    if (tier <= 100) return '#8b5cf6'; // Purple for fast
+    if (tier <= 250) return '#f59e0b'; // Amber for superfast
+    if (tier <= 500) return '#ef4444'; // Red for ultrafast
+    if (tier <= 1000) return '#ec4899'; // Pink for home ultrafast
+    return '#06b6d4'; // Cyan for 2 gigabit
+  };
+
+  const getSpeedTierLabel = (tier: number | null): string => {
+    if (!tier) return '—';
+    if (tier <= 12) return 'Basic';
+    if (tier <= 25) return 'Standard';
+    if (tier <= 50) return 'Standard Plus';
+    if (tier <= 100) return 'Fast';
+    if (tier <= 250) return 'Superfast';
+    if (tier <= 500) return 'Ultrafast';
+    if (tier <= 1000) return 'Home Ultrafast';
+    return '2 Gigabit';
+  };
 
   // Calculate best value plans - considers price AND quality factors
   const bestValuePlanIds = React.useMemo(() => {
@@ -446,6 +528,24 @@ export default function Compare() {
         )}
       </section>
 
+      {/* Tools Row - Speed Calculator and Bill Comparison */}
+      <section style={{
+        display: 'flex',
+        gap: '12px',
+        marginTop: '16px',
+        justifyContent: 'center',
+        flexWrap: 'wrap'
+      }}>
+        <SpeedCalculator 
+          darkMode={darkMode} 
+          onSpeedRecommended={(s) => setSpeed(String(s))} 
+        />
+        <BillComparison 
+          darkMode={darkMode} 
+          currentPlans={plans} 
+        />
+      </section>
+
       {/* NBN Type Toggle */}
       <section style={{
         background: darkMode 
@@ -462,58 +562,94 @@ export default function Compare() {
         flexWrap: 'wrap'
       }}>
         <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>Service Type:</strong>
-        <div style={{ display: 'flex', gap: '8px', background: darkMode ? '#1a202c' : '#f5f5f5', padding: '4px', borderRadius: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px', background: darkMode ? '#1a202c' : '#f5f5f5', padding: '4px', borderRadius: '10px', flexWrap: 'wrap', justifyContent: 'center' }}>
           <button
-            onClick={() => { setViewMode('standard'); setPlanTypeFilter('residential'); }}
+            onClick={() => setViewMode('standard')}
             style={{
-              padding: '10px 24px',
+              padding: '10px 20px',
               background: viewMode === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
               color: viewMode === 'standard' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '0.95em',
+              fontSize: '0.9em',
               transition: 'all 0.2s'
             }}
           >
-            🏠 Standard NBN
+            🏠 NBN
           </button>
           <button
-            onClick={() => { setViewMode('fixed-wireless'); setPlanTypeFilter('residential'); }}
+            onClick={() => setViewMode('fixed-wireless')}
             style={{
-              padding: '10px 24px',
+              padding: '10px 20px',
               background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
               color: viewMode === 'fixed-wireless' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '0.95em',
+              fontSize: '0.9em',
               transition: 'all 0.2s'
             }}
           >
             📡 Fixed Wireless
           </button>
           <button
-            onClick={() => { setViewMode('business'); setPlanTypeFilter('business'); }}
+            onClick={() => setViewMode('5g-home')}
             style={{
-              padding: '10px 24px',
+              padding: '10px 20px',
+              background: viewMode === '5g-home' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              color: viewMode === '5g-home' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.9em',
+              transition: 'all 0.2s'
+            }}
+          >
+            📶 5G Home
+          </button>
+          <button
+            onClick={() => setViewMode('satellite')}
+            style={{
+              padding: '10px 20px',
+              background: viewMode === 'satellite' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              color: viewMode === 'satellite' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              fontSize: '0.9em',
+              transition: 'all 0.2s'
+            }}
+          >
+            🛰️ Satellite
+          </button>
+          <button
+            onClick={() => setViewMode('business')}
+            style={{
+              padding: '10px 20px',
               background: viewMode === 'business' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
               color: viewMode === 'business' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: 'bold',
-              fontSize: '0.95em',
+              fontSize: '0.9em',
               transition: 'all 0.2s'
             }}
           >
-            🏢 Business NBN
+            🏢 Business
           </button>
         </div>
         <span style={{ fontSize: '0.85em', color: darkMode ? '#a0aec0' : '#666', fontStyle: 'italic' }}>
-          {viewMode === 'standard' ? 'FTTP, FTTC, FTTN, HFC' : viewMode === 'fixed-wireless' ? 'For regional/rural areas' : 'SLAs, static IPs, priority support'}
+          {viewMode === 'standard' && 'FTTP, FTTC, FTTN, HFC'}
+          {viewMode === 'fixed-wireless' && 'For regional/rural areas'}
+          {viewMode === '5g-home' && 'No NBN required, uses mobile network'}
+          {viewMode === 'satellite' && 'Starlink, SkyMuster for remote areas'}
+          {viewMode === 'business' && 'SLAs, static IPs, priority support'}
         </span>
       </section>
 
@@ -597,10 +733,27 @@ export default function Compare() {
           boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.08)'
         }}>
           <div style={{ marginBottom: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
-            <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>
-              Compare Only Selected Providers
-              {selectedProviders.length > 0 && <span style={{ marginLeft: '8px', color: '#667eea', fontSize: '0.9em' }}>({selectedProviders.length} selected)</span>}
-            </strong>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>
+                Compare Only Selected Providers
+                {selectedProviders.length > 0 && <span style={{ marginLeft: '8px', color: '#667eea', fontSize: '0.9em' }}>({selectedProviders.length} selected)</span>}
+              </strong>
+              <button
+                onClick={() => setShowProviderList(!showProviderList)}
+                style={{
+                  padding: '4px 10px',
+                  background: darkMode ? '#374151' : '#e5e7eb',
+                  color: darkMode ? '#e5e7eb' : '#374151',
+                  border: 'none',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '0.85em',
+                  fontWeight: '600'
+                }}
+              >
+                {showProviderList ? '▼ Hide' : '▶ Show'}
+              </button>
+            </div>
             {selectedProviders.length > 0 && (
               <button 
                 onClick={() => setSelectedProviders([])}
@@ -619,46 +772,48 @@ export default function Compare() {
               </button>
             )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-            {Array.from(new Set(plans.map((p: Plan) => p.provider_name))).sort().map(name => (
-              <label 
-                key={name}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '8px', 
-                  padding: '10px 14px',
-                  background: selectedProviders.includes(name) 
-                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                    : (darkMode ? '#1a202c' : '#f8f9fa'),
-                  borderRadius: '8px',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  border: selectedProviders.includes(name) ? 'none' : (darkMode ? '1px solid #4a5568' : '1px solid #e0e0e0')
-                }}
-              >
-                <input
-                  type="checkbox"
-                  checked={selectedProviders.includes(name)}
-                  onChange={(e) => {
-                    if (e.target.checked) {
-                      setSelectedProviders([...selectedProviders, name]);
-                    } else {
-                      setSelectedProviders(selectedProviders.filter(p => p !== name));
-                    }
+          {showProviderList && (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
+              {Array.from(new Set(plans.map((p: Plan) => p.provider_name))).sort().map(name => (
+                <label 
+                  key={name}
+                  style={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '8px', 
+                    padding: '10px 14px',
+                    background: selectedProviders.includes(name) 
+                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      : (darkMode ? '#1a202c' : '#f8f9fa'),
+                    borderRadius: '8px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    border: selectedProviders.includes(name) ? 'none' : (darkMode ? '1px solid #4a5568' : '1px solid #e0e0e0')
                   }}
-                  style={{ width: '16px', height: '16px', cursor: 'pointer' }}
-                />
-                <span style={{ 
-                  fontSize: '0.9em', 
-                  fontWeight: selectedProviders.includes(name) ? 'bold' : '500',
-                  color: selectedProviders.includes(name) ? 'white' : (darkMode ? '#e2e8f0' : '#333')
-                }}>
-                  {name}
-                </span>
-              </label>
-            ))}
-          </div>
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedProviders.includes(name)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedProviders([...selectedProviders, name]);
+                      } else {
+                        setSelectedProviders(selectedProviders.filter(p => p !== name));
+                      }
+                    }}
+                    style={{ width: '16px', height: '16px', cursor: 'pointer' }}
+                  />
+                  <span style={{ 
+                    fontSize: '0.9em', 
+                    fontWeight: selectedProviders.includes(name) ? 'bold' : '500',
+                    color: selectedProviders.includes(name) ? 'white' : (darkMode ? '#e2e8f0' : '#333')
+                  }}>
+                    {name}
+                  </span>
+                </label>
+              ))}
+            </div>
+          )}
         </section>
       )}
 
@@ -668,12 +823,14 @@ export default function Compare() {
           <select value={speed} onChange={(e: any) => setSpeed(e.target.value)}>
             {viewMode === 'fixed-wireless' ? (
               <>
+                <option value="all">All Speeds</option>
                 <option value="100">Fixed Wireless Plus 100Mbps</option>
                 <option value="200">Fixed Wireless Max 200Mbps</option>
                 <option value="400">Fixed Wireless Ultra 400Mbps</option>
               </>
             ) : (
               <>
+                <option value="all">All Speeds</option>
                 <option value="12">NBN 12 (Basic)</option>
                 <option value="25">NBN 25 (Standard)</option>
                 <option value="50">NBN 50 (Standard Plus)</option>
@@ -816,7 +973,7 @@ export default function Compare() {
             const favPlans = plans.filter((p: Plan) => favorites.includes(p.id));
             if (favPlans.length > 0) {
               alert(`Favorites (${favPlans.length}):\n\n` + favPlans.map((p: Plan) => 
-                `${p.provider_name} - ${p.plan_name}\n$${(p.ongoing_price_cents! / 100).toFixed(2)}/mo`
+                `${p.provider_name} - ${stripHtml(p.plan_name)}\n$${(p.ongoing_price_cents! / 100).toFixed(2)}/mo`
               ).join('\n\n'));
             }
           }} style={{ background: '#E91E63' }}>
@@ -826,14 +983,17 @@ export default function Compare() {
       </section>
 
       <section className="plan-list">
-        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
-          // Technology type filter
+        <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : viewMode === 'satellite' ? 'Satellite Internet Plans' : viewMode === '5g-home' ? '5G Home Internet Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
+          // Technology type filter based on viewMode (skip for business - handled by API)
+          if (viewMode === 'business') return true;  // Business plans filtered by API via service_type
           if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
-          if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') return false;
+          if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+          if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+          if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
           // Search term
           if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) return false;
+            if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
           }
           // Provider filter
           if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
@@ -894,18 +1054,23 @@ export default function Compare() {
               <tbody>
                 {[...plans]
                   .filter(p => {
-                    // Technology type filter (standard vs fixed wireless)
-                    if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
+                    // Technology type filter based on viewMode (skip for business - handled by API)
+                    if (viewMode === 'business') {
+                      // Business plans filtered by API, no frontend technology_type filter needed
+                    } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
                       return false;
-                    }
-                    if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') {
+                    } else if (viewMode === 'satellite' && p.technology_type !== 'satellite') {
+                      return false;
+                    } else if (viewMode === '5g-home' && p.technology_type !== '5g-home') {
+                      return false;
+                    } else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) {
                       return false;
                     }
                     
                     // Search term filter
                     if (searchTerm) {
                       const term = searchTerm.toLowerCase();
-                      if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) {
+                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
                         return false;
                       }
                     }
@@ -1062,7 +1227,7 @@ export default function Compare() {
                       </td>
                       <td style={{ padding: '20px 16px', maxWidth: '280px' }}>
                         <div style={{ fontWeight: '600', marginBottom: '4px', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
-                          {p.plan_name}
+                          {stripHtml(p.plan_name)}
                         </div>
                         {bestValuePlanIds.has(p.id) && (
                           <span 
@@ -1122,11 +1287,11 @@ export default function Compare() {
                         }}>🏷️ {p.contract_type}</span>}
                         </div>
                       </td>
-                      <td className="price" style={{ padding: '20px 16px' }}>
+                      <td style={{ padding: '20px 16px' }}>
                         {p.intro_price_cents ? (
                           <div style={{ lineHeight: '1.6' }}>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                              <span style={{ fontWeight: '700', color: '#E91E63', fontSize: '1.3em' }}>
+                              <span style={{ fontWeight: '700', color: '#f59e0b', fontSize: '1.3em', WebkitTextFillColor: '#f59e0b', background: 'none' }}>
                                 ${(p.intro_price_cents/100).toFixed(0)}
                               </span>
                               <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b', fontWeight: '500' }}>
@@ -1145,13 +1310,13 @@ export default function Compare() {
                                 </span>
                               )}
                             </div>
-                            <div style={{ fontSize: '0.8em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '2px' }}>
+                            <div style={{ fontSize: '0.8em', color: '#10b981', marginTop: '2px', WebkitTextFillColor: '#10b981', background: 'none' }}>
                               then ${(p.ongoing_price_cents!/100).toFixed(0)}/mo
                             </div>
                           </div>
                         ) : p.ongoing_price_cents ? (
                           <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                            <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
+                            <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c', WebkitTextFillColor: darkMode ? '#e2e8f0' : '#1a202c', background: 'none' }}>
                               ${(p.ongoing_price_cents/100).toFixed(0)}
                             </span>
                             <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b' }}>/mo</span>
@@ -1173,10 +1338,38 @@ export default function Compare() {
                         )}
                       </td>
                       <td className="hide-mobile" style={{ padding: '20px 16px', minWidth: '140px' }}>
-                        <div style={{ fontWeight: '600', color: darkMode ? '#e2e8f0' : '#1a202c', fontSize: '1.1em' }}>
-                          NBN {p.speed_tier ?? '—'}
+                        <div style={{ 
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '8px',
+                          padding: '6px 12px',
+                          borderRadius: '8px',
+                          background: `${getSpeedTierColor(p.speed_tier)}15`,
+                          border: `1px solid ${getSpeedTierColor(p.speed_tier)}40`
+                        }}>
+                          <span style={{ 
+                            fontWeight: '700', 
+                            color: getSpeedTierColor(p.speed_tier), 
+                            fontSize: '1.1em' 
+                          }}>
+                            {p.speed_tier ?? '—'}
+                          </span>
+                          <span style={{ 
+                            fontSize: '0.75em', 
+                            color: darkMode ? '#94a3b8' : '#64748b',
+                            fontWeight: '500'
+                          }}>
+                            Mbps
+                          </span>
                         </div>
-                        {p.upload_speed_mbps && <div style={{ fontSize: '0.8em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '4px' }}>↑ {p.upload_speed_mbps} Mbps</div>}
+                        <div style={{ fontSize: '0.7em', color: getSpeedTierColor(p.speed_tier), marginTop: '4px', fontWeight: '500' }}>
+                          {getSpeedTierLabel(p.speed_tier)}
+                        </div>
+                        {p.upload_speed_mbps && (
+                          <div style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '4px' }}>
+                            ↑ {p.upload_speed_mbps} Mbps upload
+                          </div>
+                        )}
                       </td>
                       <td style={{ padding: '20px 16px', borderRadius: '0 12px 12px 0' }}>
                         <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -1296,13 +1489,17 @@ export default function Compare() {
             <div className="plans-card-view">
               {[...plans]
                 .filter(p => {
-                  // Technology type filter
-                  if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
-                  if (viewMode === 'standard' && p.technology_type === 'fixed-wireless') return false;
+                  // Technology type filter based on viewMode (skip for business - handled by API)
+                  if (viewMode === 'business') {
+                    // Business plans filtered by API, no frontend technology_type filter needed
+                  } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+                  else if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+                  else if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+                  else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
                   // Search term
                   if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    if (!(p.provider_name.toLowerCase().includes(term) || p.plan_name.toLowerCase().includes(term))) return false;
+                    if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
                   }
                   // Provider filter
                   if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
@@ -1391,7 +1588,7 @@ export default function Compare() {
                             darkMode={darkMode}
                           />
                         </h3>
-                        <p>{p.plan_name}</p>
+                        <p>{stripHtml(p.plan_name)}</p>
                       </div>
                     </div>
 
@@ -1612,7 +1809,7 @@ export default function Compare() {
                   background: darkMode ? '#2a2a2a' : '#f9f9f9'
                 }}>
                   <h3 style={{ margin: '0 0 10px 0', color: '#667eea', fontSize: '1.1em' }}>{plan.provider_name}</h3>
-                  <p style={{ margin: '0 0 20px 0', fontSize: '0.95em', color: darkMode ? '#ccc' : '#666' }}>{plan.plan_name}</p>
+                  <p style={{ margin: '0 0 20px 0', fontSize: '0.95em', color: darkMode ? '#ccc' : '#666' }}>{stripHtml(plan.plan_name)}</p>
 
                   <div style={{ marginBottom: '16px' }}>
                     <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666', marginBottom: '4px' }}>Price</div>

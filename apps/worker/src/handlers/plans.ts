@@ -20,6 +20,7 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     const modemIncluded = url.searchParams.get("modem");
     const technologyType = url.searchParams.get("technology");
     const planType = url.searchParams.get("planType");
+    const serviceType = url.searchParams.get("serviceType"); // 'nbn', '5g-home', 'satellite'
     const limitParam = url.searchParams.get("limit") ?? "100";
 
     // Generate cache key from query parameters
@@ -82,6 +83,7 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     if (modemIncluded === "1") { q += ` AND p.modem_included = 1`; }
     if (technologyType) { q += ` AND p.technology_type = ?`; params.push(technologyType); }
     if (planType) { q += ` AND p.plan_type = ?`; params.push(planType); }
+    if (serviceType) { q += ` AND p.service_type = ?`; params.push(serviceType); }
 
     // SQLite-friendly NULLS LAST emulation: order by (ongoing_price_cents IS NULL), then value asc
     q += ` ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC LIMIT ?`;
