@@ -102,10 +102,10 @@ export default function Compare() {
   const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
   const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
   const [providerFilter, setProviderFilter] = useState('');
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite'>('standard');
-  const [planTypeFilter, setPlanTypeFilter] = useState<'residential' | 'business' | 'all'>('residential');
-  const [serviceTypeFilter, setServiceTypeFilter] = useState<'nbn' | '5g-home' | 'satellite'>('nbn');
+  const [selectedProviders, setSelectedProviders] = useState([] as string[]);
+  const [viewMode, setViewMode] = useState('standard' as 'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite');
+  const [planTypeFilter, setPlanTypeFilter] = useState('residential' as 'residential' | 'business' | 'all');
+  const [serviceTypeFilter, setServiceTypeFilter] = useState('nbn' as 'nbn' | '5g-home' | 'satellite');
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -445,12 +445,12 @@ export default function Compare() {
               if (!showSuggestions || addressSuggestions.length === 0) return;
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
-                setHighlightedIndex((prev) => 
+                setHighlightedIndex((prev: number) => 
                   prev < addressSuggestions.length - 1 ? prev + 1 : prev
                 );
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault();
-                setHighlightedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+                setHighlightedIndex((prev: number) => (prev > 0 ? prev - 1 : -1));
               } else if (e.key === 'Enter' && highlightedIndex >= 0) {
                 e.preventDefault();
                 onSelectAddress(addressSuggestions[highlightedIndex]);
@@ -774,7 +774,7 @@ export default function Compare() {
           </div>
           {showProviderList && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '12px' }}>
-              {Array.from(new Set(plans.map((p: Plan) => p.provider_name))).sort().map(name => (
+              {(Array.from(new Set(plans.map((p: Plan) => p.provider_name))) as string[]).sort().map((name: string) => (
                 <label 
                   key={name}
                   style={{ 
@@ -798,7 +798,7 @@ export default function Compare() {
                       if (e.target.checked) {
                         setSelectedProviders([...selectedProviders, name]);
                       } else {
-                        setSelectedProviders(selectedProviders.filter(p => p !== name));
+                        setSelectedProviders(selectedProviders.filter((p: string) => p !== name));
                       }
                     }}
                     style={{ width: '16px', height: '16px', cursor: 'pointer' }}
@@ -1575,15 +1575,15 @@ export default function Compare() {
                           <ProviderTooltip 
                             provider={{
                               name: p.provider_name,
-                              description: p.provider_description,
+                              description: p.provider_description ?? undefined,
                               ipv6_support: p.provider_ipv6_support,
                               cgnat: p.provider_cgnat,
                               cgnat_opt_out: p.provider_cgnat_opt_out,
                               static_ip_available: p.provider_static_ip_available,
                               australian_support: p.provider_australian_support,
-                              parent_company: p.provider_parent_company,
-                              routing_info: p.provider_routing_info,
-                              support_hours: p.provider_support_hours
+                              parent_company: p.provider_parent_company ?? undefined,
+                              routing_info: p.provider_routing_info ?? undefined,
+                              support_hours: p.provider_support_hours ?? undefined
                             }}
                             darkMode={darkMode}
                           />
