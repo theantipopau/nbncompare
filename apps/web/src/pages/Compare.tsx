@@ -128,18 +128,18 @@ export default function Compare() {
       if (modemFilter) params.append('modem', modemFilter);
       if (technologyFilter) params.append('technology', technologyFilter);
       
-      // Set serviceType based on viewMode
+      // Set serviceType and planType based on viewMode
       if (viewMode === '5g-home') {
         params.append('serviceType', '5g-home');
       } else if (viewMode === 'satellite') {
         params.append('serviceType', 'satellite');
       } else if (viewMode === 'business') {
-        params.append('serviceType', 'business');
+        // Business plans: Show all NBN plans for now (until we have proper business plans seeded)
+        // In future, can add: params.append('planType', 'business');
+        params.append('serviceType', 'nbn');
       } else {
         params.append('serviceType', 'nbn');  // standard and fixed-wireless use NBN
       }
-      
-      if (planTypeFilter !== 'all') params.append('planType', planTypeFilter);
       
       const res = await fetch(`${apiUrl}/api/plans?${params}`);
       const json = await res.json();
