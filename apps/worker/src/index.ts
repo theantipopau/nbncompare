@@ -42,7 +42,7 @@ try {
     return qualifyAddress(req);
   });
 
-  router.get("/api/status", async (req: Request) => {
+  router.get("/api/status", async (req: Request, env: Env) => {
     const { getStatus } = await import("./handlers/status");
     return getStatus(req, { CACHE: env.CACHE });
   });
@@ -83,7 +83,7 @@ router.get("/internal/cron/run", async () => {
   }
 });
 
-router.get('/internal/debug/:slug', async ({ params }) => {
+router.get('/internal/debug/:slug', async ({ params }: { params: { slug: string } }) => {
   try {
     const { debugProvider } = await import('./handlers/debug');
     const out = await debugProvider(params.slug);
@@ -119,9 +119,9 @@ import { recordRunError } from "./lib/db";
 import { corsHeaders } from "./lib/cors";
 
 interface Env {
-  D1: D1Database;
+  D1: any;
   ADMIN_TOKEN: string;
-  CACHE?: KVNamespace;
+  CACHE?: any;
   ENVIRONMENT?: string;
   DEBUG?: string;
 }
@@ -156,7 +156,7 @@ function requireAdmin(request: Request, env: Env): Response | null {
   return null;
 }
 
-async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
   // Back-compat for any handlers still reading globalThis
@@ -339,7 +339,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   try {
     // Guard against a hanging router.handle by racing with a timeout
     const res = await Promise.race([
-      (router.handle(request) as Promise<Response>),
+      (router.handle(request, env) as Promise<Response>),
       new Promise<Response>((_, reject) => setTimeout(() => reject(new Error('router.handle timeout')), 15000))
     ]);
     return res;
@@ -351,7 +351,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   }
 }
 
-async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+async function scheduled(event: any, env: Env, _ctx: any): Promise<void> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
   (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;

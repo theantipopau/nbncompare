@@ -56,6 +56,13 @@ export default [
     },
   },
   {
+    files: ['**/*.test.{ts,tsx}', '**/*.spec.{ts,tsx}'],
+    rules: {
+      '@typescript-eslint/ban-ts-comment': 'off',
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
+  {
     files: ['apps/worker/**/*.{ts,tsx}'],
     languageOptions: {
       parser: tsparser,

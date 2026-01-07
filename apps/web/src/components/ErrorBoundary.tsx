@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface Props {
-  children: any;
-  fallback?: any;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 interface State {
@@ -10,7 +10,7 @@ interface State {
   error?: Error;
 }
 
-export class ErrorBoundary extends (React as any).Component<Props, State> {
+export class ErrorBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = { hasError: false };
@@ -20,7 +20,7 @@ export class ErrorBoundary extends (React as any).Component<Props, State> {
     return { hasError: true, error };
   }
 
-  componentDidCatch(error: Error, errorInfo: any) {
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
   }
 
@@ -58,7 +58,7 @@ export class ErrorBoundary extends (React as any).Component<Props, State> {
           >
             Refresh Page
           </button>
-          {process.env.NODE_ENV === 'development' && this.state.error && (
+          {(import.meta as { env?: { DEV?: boolean } }).env?.DEV && this.state.hasError && (
             <details style={{ marginTop: '24px', textAlign: 'left' }}>
               <summary style={{ cursor: 'pointer', color: '#999' }}>Error details</summary>
               <pre style={{ 
@@ -69,7 +69,7 @@ export class ErrorBoundary extends (React as any).Component<Props, State> {
                 overflow: 'auto',
                 fontSize: '0.85em'
               }}>
-                {this.state.error.toString()}\n{this.state.error.stack}
+                {this.state.error?.toString()}\n{this.state.error?.stack}
               </pre>
             </details>
           )}

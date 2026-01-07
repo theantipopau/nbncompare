@@ -12,7 +12,7 @@
     "jsx": "react-jsx",
     "types": [],
     "strict": true,
-    "esModuleInterop": false,
+    "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "noImplicitAny": true,

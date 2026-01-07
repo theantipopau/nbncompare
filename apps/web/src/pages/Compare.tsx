@@ -1,4 +1,9 @@
-import React, { useEffect, useState, ChangeEvent, MouseEvent, KeyboardEvent } from "react";
+import React, { useEffect, useState } from "react";
+// Type aliases for React events
+type ChangeEvent<T> = React.ChangeEvent<T>;
+type MouseEvent<T> = React.MouseEvent<T>;
+type KeyboardEvent<T> = React.KeyboardEvent<T>;
+type FormEvent<T> = React.FormEvent<T>;
 import PriceHistoryModal from "../components/PriceHistoryModal";
 import SpeedCalculator from "../components/SpeedCalculator";
 import BillComparison from "../components/BillComparison";
@@ -298,43 +303,54 @@ export default function Compare() {
     const bestByTier: Record<number, number> = {};
     
     plans.forEach((p: Plan) => {
-      if (!p.speed_tier) return;
+      const tier = p.speed_tier;
+      if (tier === null) return;
+      
       const price = p.intro_price_cents ?? p.ongoing_price_cents;
       if (!price) return;
       
       // Calculate value score (higher is better)
-      // Price component: inverse of price (cheaper = higher score)
-      const priceScore = 100000 / price; // Normalize so $50/mo ≈ 200 points
+      const priceScore = 100000 / price;
       
-      // Quality bonuses
       let qualityScore = 0;
-      if (p.provider_australian_support && p.provider_australian_support >= 1) qualityScore += 15; // AU support team (1=mixed, 2=100% AU)
-      if (p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1)) qualityScore += 12; // No CGNAT or opt-out available
-      if (p.provider_ipv6_support && p.provider_ipv6_support >= 1) qualityScore += 8; // IPv6 support
-      if (p.provider_static_ip_available && p.provider_static_ip_available >= 1) qualityScore += 6; // Static IP option (1=free, 2=paid)
-      if (p.provider_routing_info && p.provider_routing_info.includes('direct')) qualityScore += 8; // Good routing
-      if (p.modem_included === 1) qualityScore += 5; // Modem included
+      if ((p.provider_australian_support ?? 0) >= 1) qualityScore += 15;
+      if (p.provider_cgnat === 0 || (p.provider_cgnat_opt_out ?? 0) >= 1) qualityScore += 12;
+      if ((p.provider_ipv6_support ?? 0) >= 1) qualityScore += 8;
+      if ((p.provider_static_ip_available ?? 0) >= 1) qualityScore += 6;
+      if (p.provider_routing_info?.includes('direct')) qualityScore += 8;
+      if (p.modem_included === 1) qualityScore += 5;
       
       const totalScore = priceScore + qualityScore;
       
-      // Compare with existing best for this tier
-      const currentBest = plans.find((x: Plan) => x.id === bestByTier[p.speed_tier]);
-      if (!currentBest) {
-        bestByTier[p.speed_tier] = p.id;
+      const currentBestId = bestByTier[tier];
+      if (currentBestId === undefined) {
+        bestByTier[tier] = p.id;
       } else {
+        const currentBest = plans.find((x: Plan) => x.id === currentBestId);
+        if (!currentBest) {
+          bestByTier[tier] = p.id;
+          return;
+        }
+        
         const currentPrice = currentBest.intro_price_cents ?? currentBest.ongoing_price_cents;
+        if (!currentPrice) {
+          bestByTier[tier] = p.id;
+          return;
+        }
+        
         const currentPriceScore = 100000 / currentPrice;
         let currentQualityScore = 0;
-        if (currentBest.provider_australian_support && currentBest.provider_australian_support >= 1) currentQualityScore += 15;
-        if (currentBest.provider_cgnat === 0 || (currentBest.provider_cgnat_opt_out && currentBest.provider_cgnat_opt_out >= 1)) currentQualityScore += 12;
-        if (currentBest.provider_ipv6_support && currentBest.provider_ipv6_support >= 1) currentQualityScore += 8;
-        if (currentBest.provider_static_ip_available && currentBest.provider_static_ip_available >= 1) currentQualityScore += 6;
-        if (currentBest.provider_routing_info && currentBest.provider_routing_info.includes('direct')) currentQualityScore += 8;
+        if ((currentBest.provider_australian_support ?? 0) >= 1) currentQualityScore += 15;
+        if (currentBest.provider_cgnat === 0 || (currentBest.provider_cgnat_opt_out ?? 0) >= 1) currentQualityScore += 12;
+        if ((currentBest.provider_ipv6_support ?? 0) >= 1) currentQualityScore += 8;
+        if ((currentBest.provider_static_ip_available ?? 0) >= 1) currentQualityScore += 6;
+        if (currentBest.provider_routing_info?.includes('direct')) currentQualityScore += 8;
         if (currentBest.modem_included === 1) currentQualityScore += 5;
+        
         const currentTotalScore = currentPriceScore + currentQualityScore;
         
         if (totalScore > currentTotalScore) {
-          bestByTier[p.speed_tier] = p.id;
+          bestByTier[tier] = p.id;
         }
       }
     });
@@ -415,7 +431,7 @@ export default function Compare() {
     }
   }
 
-  async function onCheckAddress(e: React.FormEvent<HTMLFormElement>) {
+  async function onCheckAddress(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!address.trim()) {
       setMessage("Please enter an address or suburb");
@@ -702,14 +718,14 @@ export default function Compare() {
                   }}
                   onMouseEnter={(e: MouseEvent<HTMLButtonElement>) => {
                     if (providerFilter !== name) {
-                      e.target.style.borderColor = '#667eea';
-                      e.target.style.color = '#667eea';
+                      (e.target as HTMLButtonElement).style.borderColor = '#667eea';
+                      (e.target as HTMLButtonElement).style.color = '#667eea';
                     }
                   }}
                   onMouseLeave={(e: MouseEvent<HTMLButtonElement>) => {
                     if (providerFilter !== name) {
-                      e.target.style.borderColor = '#e0e0e0';
-                      e.target.style.color = '#333';
+                      (e.target as HTMLButtonElement).style.borderColor = '#e0e0e0';
+                      (e.target as HTMLButtonElement).style.color = '#333';
                     }
                   }}
                 >
@@ -1204,8 +1220,8 @@ export default function Compare() {
                             alignItems: 'center',
                             gap: '4px'
                           }}
-                          onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { e.target.style.color = '#667eea'; }}
-                          onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { e.target.style.color = 'inherit'; }}
+                          onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = '#667eea'; }}
+                          onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = 'inherit'; }}
                         >
                           {p.provider_name}
                         </a>
@@ -1213,11 +1229,11 @@ export default function Compare() {
                           provider={{
                             name: p.provider_name,
                             description: p.provider_description,
-                            ipv6_support: p.provider_ipv6_support,
-                            cgnat: p.provider_cgnat,
-                            cgnat_opt_out: p.provider_cgnat_opt_out,
-                            static_ip_available: p.provider_static_ip_available,
-                            australian_support: p.provider_australian_support,
+                            ipv6_support: p.provider_ipv6_support ?? 0,
+                            cgnat: p.provider_cgnat ?? 0,
+                            cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
+                            static_ip_available: p.provider_static_ip_available ?? 0,
+                            australian_support: p.provider_australian_support ?? 0,
                             parent_company: p.provider_parent_company,
                             routing_info: p.provider_routing_info,
                             support_hours: p.provider_support_hours
@@ -1577,15 +1593,15 @@ export default function Compare() {
                           <ProviderTooltip 
                             provider={{
                               name: p.provider_name,
-                              description: p.provider_description ?? undefined,
-                              ipv6_support: p.provider_ipv6_support,
-                              cgnat: p.provider_cgnat,
-                              cgnat_opt_out: p.provider_cgnat_opt_out,
-                              static_ip_available: p.provider_static_ip_available,
-                              australian_support: p.provider_australian_support,
-                              parent_company: p.provider_parent_company ?? undefined,
-                              routing_info: p.provider_routing_info ?? undefined,
-                              support_hours: p.provider_support_hours ?? undefined
+                              description: p.provider_description,
+                              ipv6_support: p.provider_ipv6_support ?? 0,
+                              cgnat: p.provider_cgnat ?? 0,
+                              cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
+                              static_ip_available: p.provider_static_ip_available ?? 0,
+                              australian_support: p.provider_australian_support ?? 0,
+                              parent_company: p.provider_parent_company,
+                              routing_info: p.provider_routing_info,
+                              support_hours: p.provider_support_hours
                             }}
                             darkMode={darkMode}
                           />

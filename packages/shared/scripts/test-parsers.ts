@@ -1,6 +1,7 @@
 import { readFileSync } from 'fs';
-import { findParserForUrl } from '../src/parsers/index.ts';
-import { normalizeExtract, validatePlan } from '../src/validators.ts';
+import { findParserForUrl } from '../src/parsers/index';
+import { normalizeExtract, validatePlan } from '../src/validators';
+// @ts-ignore
 import { JSDOM } from 'jsdom';
 
 // polyfill DOMParser for node-based smoke tests

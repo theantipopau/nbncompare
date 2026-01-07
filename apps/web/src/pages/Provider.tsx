@@ -32,12 +32,33 @@ function StarRating({ rating, label }: { rating: number | null, label: string })
   );
 }
 
+interface Provider {
+  name: string;
+  description: string | null;
+  canonical_url: string;
+  favicon_url: string | null;
+  support_hours: string | null;
+  routing_info: string | null;
+  ipv6_support: number;
+  cgnat: number;
+}
+
+interface Plan {
+  id: number;
+  plan_name: string;
+  speed_tier: number | null;
+  ongoing_price_cents: number | null;
+  intro_price_cents: number | null;
+  intro_duration_days: number | null;
+  source_url: string | null;
+}
+
 export default function Provider({ slug }: { slug: string }) {
-  const [provider, setProvider] = useState<any | null>(null);
-  const [plans, setPlans] = useState<any[]>([]);
-  const [review, setReview] = useState<ProviderReview | null>(null);
+  const [provider, setProvider] = (useState as any)(null);
+  const [plans, setPlans] = (useState as any)([]);
+  const [review, setReview] = (useState as any)(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = (useState as any)(null);
   const [darkMode, _setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {
@@ -130,10 +151,10 @@ export default function Provider({ slug }: { slug: string }) {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>{error}</div>;
   if (!provider) return <div style={{ padding: '40px', textAlign: 'center' }}>Provider not found</div>;
 
-  const speedTiers = Array.from(new Set(plans.map(p => p.speed_tier).filter(Boolean))).sort((a, b) => a - b);
-  const cheapestPlan = plans.reduce((min, p) => 
-    (!min || (p.ongoing_price_cents && p.ongoing_price_cents < min.ongoing_price_cents)) ? p : min, 
-    null as any
+  const speedTiers = Array.from(new Set(plans.map((p: any) => p.speed_tier).filter((t: any): t is number => t !== null))).sort((a: any, b: any) => a - b);
+  const cheapestPlan = plans.reduce((min: any, p: any) => 
+    (!min || (p.ongoing_price_cents !== null && (min.ongoing_price_cents === null || p.ongoing_price_cents < min.ongoing_price_cents))) ? p : min, 
+    null
   );
 
   return (
@@ -208,7 +229,7 @@ export default function Provider({ slug }: { slug: string }) {
             All {provider.name} NBN Plans
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {plans.map(p => (
+            {plans.map((p: any) => (
               <article 
                 key={p.id}
                 style={{
@@ -332,7 +353,7 @@ export default function Provider({ slug }: { slug: string }) {
                 <div style={{ marginBottom: '16px' }}>
                   <h4 style={{ color: '#10b981', margin: '0 0 8px 0', fontSize: '0.95em' }}>✅ Pros</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: darkMode ? '#e2e8f0' : '#333' }}>
-                    {review.pros.split(', ').map((pro, i) => (
+                    {(review as any).pros.split(', ').map((pro: any, i: any) => (
                       <li key={i} style={{ marginBottom: '4px' }}>{pro}</li>
                     ))}
                   </ul>
@@ -342,7 +363,7 @@ export default function Provider({ slug }: { slug: string }) {
                 <div>
                   <h4 style={{ color: '#ef4444', margin: '0 0 8px 0', fontSize: '0.95em' }}>❌ Cons</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: darkMode ? '#e2e8f0' : '#333' }}>
-                    {review.cons.split(', ').map((con, i) => (
+                    {(review as any).cons.split(', ').map((con: any, i: any) => (
                       <li key={i} style={{ marginBottom: '4px' }}>{con}</li>
                     ))}
                   </ul>

@@ -26,7 +26,7 @@ function toInt(value: unknown): number {
 }
 
 export async function getAudit(_req: Request) {
-  const db = (await getDb()) as D1Database;
+const db = await getDb();
 
   const now = await db.prepare("SELECT datetime('now') as now").first();
 

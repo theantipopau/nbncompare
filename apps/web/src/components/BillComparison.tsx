@@ -36,8 +36,8 @@ export default function BillComparison({ darkMode, currentPlans }: Props) {
   const calculateSavings = () => {
     // Filter plans at same or higher speed tier
     const comparablePlans = currentPlans.filter(p => 
-      p.ongoing_price_cents && 
-      p.speed_tier && 
+      p.ongoing_price_cents !== null && 
+      p.speed_tier !== null && 
       p.speed_tier >= bill.currentSpeed
     );
     
@@ -92,11 +92,11 @@ export default function BillComparison({ darkMode, currentPlans }: Props) {
           gap: '6px',
           transition: 'all 0.2s'
         }}
-        onMouseEnter={(e: any) => {
+        onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.currentTarget.style.background = '#f59e0b';
           e.currentTarget.style.color = 'white';
         }}
-        onMouseLeave={(e: any) => {
+        onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
           e.currentTarget.style.background = darkMode ? 'rgba(245, 158, 11, 0.15)' : 'rgba(245, 158, 11, 0.1)';
           e.currentTarget.style.color = '#f59e0b';
         }}

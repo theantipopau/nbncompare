@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect } from 'react';
 
 declare global {
   interface Window {
@@ -29,11 +29,11 @@ interface Props {
 }
 
 export default function PriceHistoryModal({ plan, history, loading, onClose, darkMode }: Props) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const chartRef = useRef<any>(null);
-  const dialogRef = useRef<HTMLDivElement>(null);
-  const closeButtonRef = useRef<HTMLButtonElement>(null);
-  const previouslyFocusedRef = useRef<HTMLElement | null>(null);
+  const canvasRef = React.useRef(null);
+  const chartRef = React.useRef(null);
+  const dialogRef = React.useRef(null);
+  const closeButtonRef = React.useRef(null);
+  const previouslyFocusedRef = React.useRef(null);
 
   useEffect(() => {
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
@@ -52,9 +52,9 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
       }
       // Minimal focus trap
       if (e.key === 'Tab' && dialogRef.current) {
-        const focusable = dialogRef.current.querySelectorAll<HTMLElement>(
+        const focusable = dialogRef.current.querySelectorAll(
           'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-        );
+        ) as unknown as NodeListOf<HTMLElement>;
         if (focusable.length === 0) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];

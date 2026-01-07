@@ -3,15 +3,15 @@ import ReactDOM from 'react-dom';
 
 interface ProviderInfo {
   name: string;
-  description?: string;
+  description?: string | null;
   ipv6_support?: number;
   cgnat?: number;
   cgnat_opt_out?: number;
   static_ip_available?: number;
   australian_support?: number;
-  parent_company?: string;
-  routing_info?: string;
-  support_hours?: string;
+  parent_company?: string | null;
+  routing_info?: string | null;
+  support_hours?: string | null;
 }
 
 interface Props {

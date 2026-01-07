@@ -51,7 +51,7 @@ export class Logger {
       level: 'error',
       message,
       timestamp: new Date().toISOString(),
-      error: error?.message || error,
+      error: (error as Error)?.message || error,
       ...(data && typeof data === 'object' ? data as Record<string, unknown> : {}),
     };
     console.error(this.formatLog(entry));

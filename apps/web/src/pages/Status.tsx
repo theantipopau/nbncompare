@@ -28,7 +28,7 @@ interface StatusData {
 
 export default function Status() {
   usePageTitle('System Status - NBN Compare');
-  const [status, setStatus] = useState<StatusData | null>(null);
+  const [status, setStatus] = (useState as any)(null);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
@@ -131,7 +131,7 @@ export default function Status() {
       <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '32px' }}>
         <h2 style={{ fontSize: '1.5rem', marginBottom: '24px', color: '#333' }}>📊 Plans by Speed Tier</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
-          {status.plans.byTier.map(tier => (
+          {(status as any).plans.byTier.map((tier: any) => (
             <div key={tier.speed_tier} style={{ padding: '16px', borderRadius: '8px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)', border: '1px solid #667eea30' }}>
               <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#667eea', marginBottom: '4px' }}>
                 {speedTierNames[tier.speed_tier] || `${tier.speed_tier} Mbps`}
@@ -148,7 +148,7 @@ export default function Status() {
         <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', marginBottom: '32px' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '24px', color: '#333' }}>⚠️ Recent Errors</h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {status.recentErrors.map(err => (
+            {(status as any).recentErrors.map((err: any) => (
               <div key={err.slug} style={{ padding: '16px', borderRadius: '8px', background: '#fef2f2', border: '1px solid #fecaca' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
                   <div style={{ fontWeight: '600', color: '#991b1b' }}>{err.name}</div>
@@ -168,7 +168,7 @@ export default function Status() {
         <div style={{ background: 'white', borderRadius: '12px', padding: '32px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <h2 style={{ fontSize: '1.5rem', marginBottom: '24px', color: '#333' }}>⏰ Next to Update</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '12px' }}>
-            {status.providers.stale.map(prov => (
+            {(status as any).providers.stale.map((prov: any) => (
               <div key={prov.slug} style={{ padding: '16px', borderRadius: '8px', background: '#f9fafb', border: '1px solid #e5e7eb' }}>
                 <div style={{ fontWeight: '600', color: '#333', marginBottom: '4px' }}>{prov.name}</div>
                 <div style={{ fontSize: '0.85rem', color: '#666' }}>
