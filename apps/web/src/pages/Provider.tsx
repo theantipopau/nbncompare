@@ -38,7 +38,7 @@ export default function Provider({ slug }: { slug: string }) {
   const [review, setReview] = useState<ProviderReview | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
+  const [darkMode, _setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {
     const apiUrl = getApiBaseUrl();

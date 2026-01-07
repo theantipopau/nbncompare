@@ -149,6 +149,61 @@ Contributions welcome! Areas for improvement:
 
 Open source - feel free to use and modify.
 
+## 🤝 Contributing
+
+We welcome contributions! Here's how to get started:
+
+### Development Setup
+
+1. **Prerequisites**
+   - Node.js 18+
+   - pnpm package manager
+   - Wrangler CLI for Cloudflare Workers
+
+2. **Clone and Install**
+   ```bash
+   git clone https://github.com/theantipopau/nbncompare.git
+   cd nbncompare
+   pnpm install
+   ```
+
+3. **Environment Setup**
+   ```bash
+   cp .env.example .env
+   # Edit .env with your Cloudflare credentials
+   ```
+
+4. **Development**
+   ```bash
+   pnpm dev  # Runs both frontend and worker in development
+   ```
+
+### Code Quality
+
+- **Linting**: `pnpm lint`
+- **Testing**: `pnpm --filter @clearnbn/web test`
+- **Type Checking**: TypeScript is configured with strict mode
+
+### Architecture
+
+- **Frontend**: React + Vite, TypeScript, responsive design
+- **Backend**: Cloudflare Workers + D1 database
+- **Data**: Automated scraping with quality monitoring
+
+### Adding a New Provider
+
+1. Add parser in `packages/shared/src/parsers/providers/`
+2. Update test samples in `packages/shared/test-samples/`
+3. Add provider metadata in worker migrations
+4. Test with `pnpm --filter @clearnbn/shared test:parsers`
+
+### Pull Requests
+
+- Follow conventional commit format
+- Include tests for new features
+- Update documentation as needed
+- Ensure CI passes
+
 ## 🙏 Credits
 
 - NBN Co for their public API

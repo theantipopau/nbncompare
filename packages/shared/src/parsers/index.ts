@@ -18,7 +18,7 @@ export function findParserForUrl(url: string) {
   for (const p of PROVIDER_PARSERS) {
     try {
       if (p.canHandle && p.canHandle(url)) return p;
-    } catch (e) {
+    } catch {
       // ignore
     }
   }

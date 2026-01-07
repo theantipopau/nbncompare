@@ -76,7 +76,7 @@ function urlToSlug(url: string) {
   try {
     const u = new URL(url);
     return u.hostname.replace(/\./g, "-");
-  } catch (e) {
+  } catch {
     return "unknown";
   }
 }

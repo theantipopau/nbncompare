@@ -1,5 +1,4 @@
 import React from "react";
-import { usePageTitle } from "../lib/usePageTitle";
 
 interface BlogPost {
   slug: string;

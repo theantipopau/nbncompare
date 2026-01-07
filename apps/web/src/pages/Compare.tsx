@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, ChangeEvent, MouseEvent, KeyboardEvent } from "react";
 import PriceHistoryModal from "../components/PriceHistoryModal";
 import SpeedCalculator from "../components/SpeedCalculator";
 import BillComparison from "../components/BillComparison";
@@ -76,7 +76,7 @@ export default function Compare() {
   const [speed, setSpeed] = useState("all");
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState([] as AddressResult[]);
-  const [selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
+  const [_selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
   const [qualification, setQualification] = useState(null as ServiceQualification | null);
   const [message, setMessage] = useState(null as string | null);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -297,7 +297,7 @@ export default function Compare() {
   const bestValuePlanIds = React.useMemo(() => {
     const bestByTier: Record<number, number> = {};
     
-    plans.forEach((p: any) => {
+    plans.forEach((p: Plan) => {
       if (!p.speed_tier) return;
       const price = p.intro_price_cents ?? p.ongoing_price_cents;
       if (!price) return;
@@ -318,7 +318,7 @@ export default function Compare() {
       const totalScore = priceScore + qualityScore;
       
       // Compare with existing best for this tier
-      const currentBest = plans.find((x: any) => x.id === bestByTier[p.speed_tier]);
+      const currentBest = plans.find((x: Plan) => x.id === bestByTier[p.speed_tier]);
       if (!currentBest) {
         bestByTier[p.speed_tier] = p.id;
       } else {
@@ -415,7 +415,7 @@ export default function Compare() {
     }
   }
 
-  async function onCheckAddress(e: any) {
+  async function onCheckAddress(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!address.trim()) {
       setMessage("Please enter an address or suburb");
@@ -439,9 +439,9 @@ export default function Compare() {
           <input 
             placeholder="Enter your address or suburb (e.g., '123 Main St, Brisbane QLD')" 
             value={address} 
-            onChange={(e: any) => setAddress(e.target.value)}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setAddress(e.target.value)}
             onFocus={() => addressSuggestions.length > 0 && setShowSuggestions(true)}
-            onKeyDown={(e: any) => {
+            onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
               if (!showSuggestions || addressSuggestions.length === 0) return;
               if (e.key === 'ArrowDown') {
                 e.preventDefault();
@@ -700,13 +700,13 @@ export default function Compare() {
                     fontSize: '0.9em',
                     transition: 'all 0.2s'
                   }}
-                  onMouseEnter={(e: any) => {
+                  onMouseEnter={(e: MouseEvent<HTMLButtonElement>) => {
                     if (providerFilter !== name) {
                       e.target.style.borderColor = '#667eea';
                       e.target.style.color = '#667eea';
                     }
                   }}
-                  onMouseLeave={(e: any) => {
+                  onMouseLeave={(e: MouseEvent<HTMLButtonElement>) => {
                     if (providerFilter !== name) {
                       e.target.style.borderColor = '#e0e0e0';
                       e.target.style.color = '#333';
@@ -820,7 +820,7 @@ export default function Compare() {
       <section className="filters">
         <label>
           <strong>Speed tier:</strong>
-          <select value={speed} onChange={(e: any) => setSpeed(e.target.value)}>
+          <select value={speed} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSpeed(e.target.value)}>
             {viewMode === 'fixed-wireless' ? (
               <>
                 <option value="all">All Speeds</option>
@@ -845,7 +845,7 @@ export default function Compare() {
         </label>
         <label>
           <strong>Contract:</strong>
-          <select value={contractFilter} onChange={(e: any) => { setContractFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={contractFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setContractFilter(e.target.value); fetchPlans(speed); }}>
             <option value="">All</option>
             <option value="month-to-month">Month-to-Month</option>
             <option value="12-month">12 Month</option>
@@ -854,7 +854,7 @@ export default function Compare() {
         </label>
         <label>
           <strong>Data:</strong>
-          <select value={dataFilter} onChange={(e: any) => { setDataFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={dataFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setDataFilter(e.target.value); fetchPlans(speed); }}>
             <option value="">All</option>
             <option value="unlimited">Unlimited</option>
             <option value="limited">Limited</option>
@@ -862,14 +862,14 @@ export default function Compare() {
         </label>
         <label>
           <strong>Modem:</strong>
-          <select value={modemFilter} onChange={(e: any) => { setModemFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={modemFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setModemFilter(e.target.value); fetchPlans(speed); }}>
             <option value="">All</option>
             <option value="1">Included</option>
           </select>
         </label>
         <label>
           <strong>Upload Speed:</strong>
-          <select value={uploadSpeedFilter} onChange={(e: any) => setUploadSpeedFilter(e.target.value)}>
+          <select value={uploadSpeedFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setUploadSpeedFilter(e.target.value)}>
             <option value="">Any</option>
             <option value="20">20+ Mbps</option>
             <option value="50">50+ Mbps</option>
@@ -940,7 +940,7 @@ export default function Compare() {
         </label>
         <label>
           <strong>Sort by:</strong>
-          <select value={sortBy} onChange={(e: any) => setSortBy(e.target.value)}>
+          <select value={sortBy} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSortBy(e.target.value)}>
             <option value="price">💰 Price (Low to High)</option>
             <option value="price-desc">💰 Price (High to Low)</option>
             <option value="provider">🏢 Provider Name</option>
@@ -1134,7 +1134,7 @@ export default function Compare() {
                     }
                     return 0;
                   })
-                  .map((p: any) => (
+                  .map((p: Plan) => (
                     <tr key={p.id} className={favorites.includes(p.id) ? 'favorite-row' : ''} style={{
                       background: darkMode ? '#2d3748' : 'white',
                       boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
@@ -1204,8 +1204,8 @@ export default function Compare() {
                             alignItems: 'center',
                             gap: '4px'
                           }}
-                          onMouseEnter={(e: any) => { e.target.style.color = '#667eea'; }}
-                          onMouseLeave={(e: any) => { e.target.style.color = 'inherit'; }}
+                          onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { e.target.style.color = '#667eea'; }}
+                          onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { e.target.style.color = 'inherit'; }}
                         >
                           {p.provider_name}
                         </a>
@@ -1247,7 +1247,7 @@ export default function Compare() {
                               border: '2px solid #FFD700',
                               textTransform: 'uppercase'
                             }}
-                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support === 'yes' ? '• Australian support team\n' : ''}${p.provider_cgnat === 'no' || p.provider_cgnat_opt_out === 'yes' ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support === 'yes' ? '• IPv6 support\n' : ''}${p.provider_static_ip_available === 'yes' ? '• Static IP available\n' : ''}${p.provider_routing_info && p.provider_routing_info.includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
+                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support && p.provider_australian_support >= 1 ? '• Australian support team\n' : ''}${p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1) ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support && p.provider_ipv6_support >= 1 ? '• IPv6 support\n' : ''}${p.provider_static_ip_available && p.provider_static_ip_available >= 1 ? '• Static IP available\n' : ''}${p.provider_routing_info && p.provider_routing_info.toLowerCase().includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
                           >
                             ⭐ Best Value
                           </span>
@@ -1503,11 +1503,13 @@ export default function Compare() {
                   }
                   // Provider filter
                   if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                  // Selected providers filter (multi-select)
+                  if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
                   // Metadata filters
-                  if (ipv6Filter && p.provider_ipv6_support !== 'yes') return false;
-                  if (noCgnatFilter && p.provider_cgnat !== 'no' && p.provider_cgnat_opt_out !== 'yes') return false;
-                  if (auSupportFilter && p.provider_australian_support !== 'yes') return false;
-                  if (staticIpFilter && p.provider_static_ip_available !== 'yes') return false;
+                  if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
+                  if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
+                  if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
+                  if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
                   if (exclude6MonthFilter && p.contract_type === '6-month') return false;
                   // Upload speed filter
                   if (uploadSpeedFilter) {
@@ -1588,7 +1590,74 @@ export default function Compare() {
                             darkMode={darkMode}
                           />
                         </h3>
-                        <p>{stripHtml(p.plan_name)}</p>
+                        <p style={{ marginBottom: '6px' }}>{stripHtml(p.plan_name)}</p>
+                        {/* Quick feature badges */}
+                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
+                          {p.provider_ipv6_support && p.provider_ipv6_support >= 1 && (
+                            <span style={{ 
+                              fontSize: '0.65em', 
+                              background: 'linear-gradient(135deg, #10b981, #059669)', 
+                              color: 'white', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
+                            }} title="Supports IPv6">
+                              IPv6
+                            </span>
+                          )}
+                          {p.provider_australian_support && p.provider_australian_support >= 2 && (
+                            <span style={{ 
+                              fontSize: '0.65em', 
+                              background: 'linear-gradient(135deg, #3b82f6, #2563eb)', 
+                              color: 'white', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)'
+                            }} title="100% Australian support">
+                              🇦🇺 AU Support
+                            </span>
+                          )}
+                          {p.provider_static_ip_available && p.provider_static_ip_available >= 1 && (
+                            <span style={{ 
+                              fontSize: '0.65em', 
+                              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', 
+                              color: 'white', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              boxShadow: '0 1px 3px rgba(139, 92, 246, 0.3)'
+                            }} title={p.provider_static_ip_available === 1 ? 'Free static IP' : 'Paid static IP'}>
+                              Static IP{p.provider_static_ip_available === 1 && ' ✓'}
+                            </span>
+                          )}
+                          {p.provider_cgnat === 0 && (
+                            <span style={{ 
+                              fontSize: '0.65em', 
+                              background: 'linear-gradient(135deg, #10b981, #059669)', 
+                              color: 'white', 
+                              padding: '2px 6px', 
+                              borderRadius: '4px',
+                              fontWeight: '600',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '2px',
+                              boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
+                            }} title="No CGNAT">
+                              No CGNAT
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
@@ -1656,13 +1725,56 @@ export default function Compare() {
                     </div>
 
                     <div className="plan-card-badges">
+                      {bestValuePlanIds.has(p.id) && (
+                        <span style={{ 
+                          fontSize: '0.85em', 
+                          background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', 
+                          color: '#000', 
+                          padding: '6px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '800',
+                          boxShadow: '0 4px 12px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3)',
+                          cursor: 'help',
+                          letterSpacing: '0.5px',
+                          border: '2px solid #FFD700',
+                          textTransform: 'uppercase',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          animation: 'glow 2s ease-in-out infinite'
+                        }} title="Best overall value for this speed tier">
+                          ⭐ Best Value
+                        </span>
+                      )}
                       {p.modem_included === 1 && (
-                        <span style={{ fontSize: '0.8em', background: '#4CAF50', color: 'white', padding: '4px 10px', borderRadius: '6px' }}>
+                        <span style={{ 
+                          fontSize: '0.8em', 
+                          background: 'linear-gradient(135deg, #4CAF50, #45a049)', 
+                          color: 'white', 
+                          padding: '5px 10px', 
+                          borderRadius: '6px',
+                          fontWeight: '600',
+                          boxShadow: '0 2px 6px rgba(76, 175, 80, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
                           📡 Modem Included
                         </span>
                       )}
                       {favorites.includes(p.id) && (
-                        <span style={{ fontSize: '0.8em', background: '#E91E63', color: 'white', padding: '4px 10px', borderRadius: '6px' }}>
+                        <span style={{ 
+                          fontSize: '0.8em', 
+                          background: 'linear-gradient(135deg, #E91E63, #C2185B)', 
+                          color: 'white', 
+                          padding: '5px 10px', 
+                          borderRadius: '6px',
+                          fontWeight: '600',
+                          boxShadow: '0 2px 6px rgba(233, 30, 99, 0.3)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}>
                           ⭐ Favorite
                         </span>
                       )}

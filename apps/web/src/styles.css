@@ -32,6 +32,16 @@ body {
   100% { background-position: 0% 50%; }
 }
 
+@keyframes glow {
+  0%, 100% { box-shadow: 0 4px 12px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3); }
+  50% { box-shadow: 0 6px 20px rgba(255, 215, 0, 0.7), 0 0 30px rgba(255, 215, 0, 0.5); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -246,6 +256,18 @@ button:active {
   box-shadow: var(--shadow-md);
   border: 1px solid rgba(255, 255, 255, 0.6);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+
+.filters::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: var(--primary-gradient);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
 }
 
 .filters:hover {
@@ -634,7 +656,8 @@ body.dark-mode footer {
   }
   
   .plans-card-view {
-    display: block !important;
+    display: flex !important;
+    flex-direction: column;
   }
   
   .hide-mobile {
@@ -835,6 +858,7 @@ body.dark-mode .favorite-row {
 /* Mobile Card View (hidden by default, shown on mobile) */
 .plans-card-view {
   display: none;
+  flex-direction: column;
   gap: 16px;
   margin-top: 16px;
 }
@@ -842,12 +866,16 @@ body.dark-mode .favorite-row {
 .plan-card {
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95));
   border-radius: var(--radius-lg);
-  padding: 24px;
+  padding: 20px;
   box-shadow: var(--shadow-md);
   border: 2px solid rgba(102, 126, 234, 0.15);
-  transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.4s ease-out;
 }
 
 .plan-card::before {
@@ -863,8 +891,8 @@ body.dark-mode .favorite-row {
 }
 
 .plan-card:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-lg);
+  transform: translateY(-6px) scale(1.01);
+  box-shadow: 0 12px 40px rgba(102, 126, 234, 0.25), 0 0 0 1px #667eea;
   border-color: #667eea;
 }
 
@@ -903,9 +931,8 @@ body.dark-mode .plan-card.favorite {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #eee;
+  padding-bottom: 16px;
+  border-bottom: 2px solid rgba(102, 126, 234, 0.1);
 }
 
 body.dark-mode .plan-card-header {
@@ -1147,4 +1174,85 @@ input[type="range"]::-moz-range-thumb {
 /* Better checkbox styling */
 input[type="checkbox"] {
   accent-color: #667eea;
+}
+
+/* Loading Components */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 40px;
+}
+
+.loading-spinner {
+  border: 3px solid rgba(102, 126, 234, 0.1);
+  border-top: 3px solid #667eea;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.loading-message {
+  color: #667eea;
+  font-weight: 600;
+  font-size: 1.1em;
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.plan-card.skeleton {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95));
+  border: 2px solid rgba(102, 126, 234, 0.15);
+  animation: none;
+}
+
+.skeleton-header {
+  height: 40px;
+  width: 100%;
+  margin-bottom: 16px;
+}
+
+.skeleton-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.skeleton-line {
+  height: 16px;
+  width: 100%;
+}
+
+.skeleton-line.short {
+  width: 60%;
+}
+
+.skeleton-footer {
+  height: 32px;
+  width: 120px;
+  margin-top: 16px;
+}
+
+body.dark-mode .skeleton {
+  background: linear-gradient(90deg, #3a4556 25%, #2d3748 50%, #3a4556 75%);
+  background-size: 200% 100%;
+}
+
+body.dark-mode .plan-card.skeleton {
+  background: linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98));
 }

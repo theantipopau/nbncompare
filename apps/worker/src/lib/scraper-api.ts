@@ -1,5 +1,3 @@
-import { jsonResponse } from "./cors";
-
 /**
  * Free Scraping with User-Agent Rotation
  * 
@@ -129,7 +127,7 @@ export async function fetchWithFallback(
 /**
  * Check ScraperAPI account status
  */
-export async function getScraperAPIStatus(apiKey: string): Promise<any> {
+export async function getScraperAPIStatus(_apiKey: string): Promise<any> {
   return {
     message: 'Now using free User-Agent rotation instead of ScraperAPI',
     cost: '$0/month',

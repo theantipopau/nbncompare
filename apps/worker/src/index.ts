@@ -156,7 +156,7 @@ function requireAdmin(request: Request, env: Env): Response | null {
   return null;
 }
 
-async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
   // Back-compat for any handlers still reading globalThis
@@ -319,6 +319,16 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
     }
   }
 
+  if (pathname === '/api/admin/audit' && request.method === 'GET') {
+    try {
+      const { getAudit } = await import('./handlers/admin-audit');
+      return await getAudit(request);
+    } catch (err: unknown) {
+      console.error('/api/admin/audit direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
   if (!router) {
     const msg = 'Router not initialized';
     console.error(msg);
@@ -341,7 +351,7 @@ async function fetch(request: Request, env: Env, ctx: ExecutionContext): Promise
   }
 }
 
-async function scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
+async function scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
   (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;

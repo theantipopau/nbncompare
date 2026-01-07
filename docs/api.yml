@@ -1,0 +1,291 @@
+openapi: 3.0.3
+info:
+  title: NBN Compare API
+  description: API for comparing NBN plans from Australian providers
+  version: 1.0.0
+  contact:
+    name: NBN Compare
+    url: https://nbncompare.info
+
+servers:
+  - url: https://nbncompare-worker.yourdomain.workers.dev
+    description: Production server
+
+paths:
+  /api/providers:
+    get:
+      summary: Get all providers
+      responses:
+        '200':
+          description: List of providers
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  providers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Provider'
+
+  /api/providers/{slug}:
+    get:
+      summary: Get provider details
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Provider details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Provider'
+
+  /api/plans:
+    get:
+      summary: Get plans with filtering
+      parameters:
+        - name: speed
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+        - name: contract
+          in: query
+          schema:
+            type: integer
+        - name: data
+          in: query
+          schema:
+            type: string
+        - name: modem
+          in: query
+          schema:
+            type: integer
+        - name: technology
+          in: query
+          schema:
+            type: string
+        - name: serviceType
+          in: query
+          schema:
+            type: string
+            enum: [nbn, 5g-home, satellite]
+      responses:
+        '200':
+          description: List of plans
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rows:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Plan'
+
+  /api/plans/{id}/history:
+    get:
+      summary: Get price history for a plan
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Price history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PriceHistory'
+
+  /api/address/search:
+    get:
+      summary: Search addresses
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Address suggestions
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AddressResult'
+
+  /api/address/qualify:
+    get:
+      summary: Qualify address for NBN
+      parameters:
+        - name: address
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Service qualification
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceQualification'
+
+  /api/status:
+    get:
+      summary: Get system status
+      responses:
+        '200':
+          description: System health and statistics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Status'
+
+  /api/admin/audit:
+    get:
+      summary: Get data quality audit
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Data quality metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Audit'
+
+components:
+  schemas:
+    Provider:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        logo_url:
+          type: string
+        website_url:
+          type: string
+        ipv6_support:
+          type: integer
+        cgnat:
+          type: integer
+        static_ip_available:
+          type: integer
+        australian_support:
+          type: integer
+
+    Plan:
+      type: object
+      properties:
+        id:
+          type: integer
+        plan_name:
+          type: string
+        provider_name:
+          type: string
+        intro_price_cents:
+          type: integer
+        intro_duration_days:
+          type: integer
+        ongoing_price_cents:
+          type: integer
+        speed_tier:
+          type: integer
+        source_url:
+          type: string
+        contract_type:
+          type: string
+        data_allowance:
+          type: string
+        modem_included:
+          type: integer
+        technology_type:
+          type: string
+        upload_speed_mbps:
+          type: integer
+        service_type:
+          type: string
+
+    PriceHistory:
+      type: object
+      properties:
+        id:
+          type: integer
+        plan_id:
+          type: integer
+        price_cents:
+          type: integer
+        recorded_at:
+          type: string
+        format: date-time
+
+    AddressResult:
+      type: object
+      properties:
+        id:
+          type: string
+        formattedAddress:
+          type: string
+
+    ServiceQualification:
+      type: object
+      properties:
+        serviceType:
+          type: string
+        techType:
+          type: string
+        maxSpeed:
+          type: integer
+        available:
+          type: boolean
+
+    Status:
+      type: object
+      properties:
+        status:
+          type: string
+        timestamp:
+          type: string
+          format: date-time
+        database:
+          type: object
+        providers:
+          type: object
+        plans:
+          type: object
+        recentErrors:
+          type: array
+        system:
+          type: object
+
+    Audit:
+      type: object
+      properties:
+        missingSourceUrl:
+          type: object
+        missingPrice:
+          type: object
+        missingSpeed:
+          type: object
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
