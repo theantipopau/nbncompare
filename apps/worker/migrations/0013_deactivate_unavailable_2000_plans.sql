@@ -5,8 +5,7 @@
 
 -- Mark all 2000 Mbps plans as inactive EXCEPT Aussie Broadband and Superloop
 UPDATE plans 
-SET is_active = 0,
-    notes = 'Deactivated: Plan not available on provider website as of Jan 2026'
+SET is_active = 0
 WHERE speed_tier = 2000 
   AND is_active = 1
   AND provider_id IN (
