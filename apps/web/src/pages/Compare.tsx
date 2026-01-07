@@ -1020,7 +1020,8 @@ export default function Compare() {
           if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
           if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
           if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
-          if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+          // Exclude 6-month deals: check both contract type AND intro duration (6 months = ~180 days)
+          if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) return false;
           // Upload speed filter
           if (uploadSpeedFilter) {
             const minUpload = parseInt(uploadSpeedFilter);
@@ -1115,8 +1116,8 @@ export default function Compare() {
                       return false;
                     }
                     
-                    // Exclude 6-month deals filter
-                    if (exclude6MonthFilter && p.contract_type === '6-month') {
+                    // Exclude 6-month deals filter: check both contract type AND intro duration
+                    if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) {
                       return false;
                     }
                     
@@ -1526,7 +1527,8 @@ export default function Compare() {
                   if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
                   if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
                   if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
-                  if (exclude6MonthFilter && p.contract_type === '6-month') return false;
+                  // Exclude 6-month deals: check both contract type AND intro duration (6 months = ~180 days)
+                  if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) return false;
                   // Upload speed filter
                   if (uploadSpeedFilter) {
                     const minUpload = parseInt(uploadSpeedFilter);
