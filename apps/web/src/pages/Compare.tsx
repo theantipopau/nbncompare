@@ -275,7 +275,8 @@ export default function Compare() {
     }
   }
 
-  function getProviderColor(providerName: string): string {
+  function getProviderColor(providerName: string | null | undefined): string {
+    if (!providerName) return '#667eea';
     const colors: Record<string, string> = {
       'Telstra': '#0088CC',
       'Optus': '#006D5B',
@@ -290,8 +291,9 @@ export default function Compare() {
     return colors[providerName] || '#667eea';
   }
 
-  function getProviderInitials(providerName: string): string {
-    return providerName.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
+  function getProviderInitials(providerName: string | null | undefined): string {
+    if (!providerName) return 'N/A';
+    return providerName.split(' ').map((word: string) => word[0]).join('').toUpperCase().slice(0, 2) || 'N/A';
   }
 
   function toggleCompare(planId: number) {
