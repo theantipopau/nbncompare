@@ -190,24 +190,15 @@ export default function Compare() {
     if (viewMode === 'fixed-wireless') {
       setServiceTypeFilter('nbn');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds((prev: string[]) => {
-        const filtered = prev.filter((s: string) => fixedWirelessSpeedOptions.includes(s));
-        return filtered.length > 0 ? filtered : ['100'];
-      });
+      setSelectedSpeeds(['all']);
     } else if (viewMode === '5g-home') {
       setServiceTypeFilter('5g-home');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds((prev: string[]) => {
-        const filtered = prev.filter((s: string) => fiveGSpeedOptions.includes(s));
-        return filtered.length > 0 ? filtered : ['100'];
-      });
+      setSelectedSpeeds(['all']);
     } else if (viewMode === 'satellite') {
       setServiceTypeFilter('satellite');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds((prev: string[]) => {
-        const filtered = prev.filter((s: string) => satelliteSpeedOptions.includes(s));
-        return filtered.length > 0 ? filtered : ['100'];
-      });
+      setSelectedSpeeds(['all']);
     } else if (viewMode === 'business') {
       setServiceTypeFilter('nbn');
       setPlanTypeFilter('business');
