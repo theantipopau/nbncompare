@@ -2147,9 +2147,9 @@ export default function Compare() {
                           plan_name: p.plan_name,
                           provider_name: p.provider_name,
                           ongoing_price_cents: p.ongoing_price_cents || 0,
-                          speed_tier: p.speed_tier
+                          speed_tier: p.speed_tier || undefined
                         }}
-                        allPlans={displayedPlans}
+                        allPlans={plans}
                       />
                     </div>
                     {p.source_url && (

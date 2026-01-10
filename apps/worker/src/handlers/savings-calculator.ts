@@ -39,15 +39,32 @@ export interface SavingsResult {
   best_value_id: number;
 }
 
+interface D1Database {
+  prepare: (sql: string) => {
+    bind: (...args: unknown[]) => {
+      run(): Promise<{ success: boolean }>;
+      all(): Promise<D1Result>;
+      first(): Promise<unknown>;
+    };
+    run(): Promise<{ success: boolean }>;
+    all(): Promise<D1Result>;
+    first(): Promise<unknown>;
+  };
+}
+
+interface D1Result {
+  results: Record<string, unknown>[];
+}
+
 interface WorkerEnv {
-  DB: unknown; // D1Database
+  DB: D1Database;
 }
 
 export async function calculateSavings(request: Request, env: WorkerEnv): Promise<Response> {
   try {
     const { current_plan_id, proposed_plans, usage_gb_per_month, months = 12 } = await request.json() as SavingsCalculation;
 
-    const db = env.DB as any;
+    const db = env.DB;
     
     // Get current plan details
     const currentResult = await db.prepare(`
@@ -80,7 +97,7 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
       ORDER BY p.ongoing_price_cents ASC
     `).bind(...proposed_plans).all();
 
-    const alternatives = (proposedResult.results || []).map((plan: Plan) => {
+    const alternatives = ((proposedResult.results as unknown as Plan[]) || []).map((plan: Plan) => {
       const annualCost = (plan.ongoing_price_cents / 100) * months;
       const savings = currentAnnualCost - annualCost;
       const savingsPercent = (savings / currentAnnualCost) * 100;
@@ -99,8 +116,8 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
     });
 
     const bestValue = alternatives.reduce((best: typeof alternatives[0] | null, alt: typeof alternatives[0]) => 
-      alt.savings > best.savings ? alt : best, 
-      alternatives[0] || { savings: 0, id: current_plan_id }
+      best && alt.savings > best.savings ? alt : (best || alt), 
+      alternatives[0] || null
     );
 
     return new Response(
@@ -113,7 +130,7 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
         },
         alternatives,
         total_potential_savings: Math.round(alternatives.reduce((sum: number, a: typeof alternatives[0]) => sum + a.savings, 0) * 100) / 100,
-        best_value_id: bestValue.id,
+        best_value_id: bestValue?.id,
         usage_scenario: {
           gb_per_month: usage_gb_per_month,
           months,

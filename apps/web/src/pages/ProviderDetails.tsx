@@ -63,9 +63,10 @@ export default function ProviderDetails() {
         // Fetch provider metadata
         const providerRes = await fetch(`${apiUrl}/api/providers`);
         const providerData = await providerRes.json();
-        const matchingProvider = providerData.providers?.find((p: Record<string, unknown>) => 
-          (p as any).name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase()
-        );
+        const matchingProvider = providerData.providers?.find((p: Record<string, unknown>) => {
+          const name = (p.name as string | undefined)?.toLowerCase().replace(/\s+/g, '-');
+          return name === slug.toLowerCase();
+        });
         
         if (matchingProvider) {
           setProvider(matchingProvider);

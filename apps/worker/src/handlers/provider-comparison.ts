@@ -18,8 +18,25 @@ export interface ProviderFeatures {
   description?: string;
 }
 
+interface D1Database {
+  prepare: (sql: string) => {
+    bind: (...args: unknown[]) => {
+      run(): Promise<{ success: boolean }>;
+      all(): Promise<D1Result>;
+      first(): Promise<unknown>;
+    };
+    run(): Promise<{ success: boolean }>;
+    all(): Promise<D1Result>;
+    first(): Promise<unknown>;
+  };
+}
+
+interface D1Result {
+  results: Record<string, unknown>[];
+}
+
 interface WorkerEnv {
-  DB: unknown; // D1Database
+  DB: D1Database;
 }
 
 interface _ProviderData {
@@ -39,7 +56,7 @@ interface _ProviderData {
 
 export async function getProviderComparison(request: Request, env: WorkerEnv): Promise<Response> {
   try {
-    const db = env.DB as any;
+    const db = env.DB;
     
     const providers = await db.prepare(`
       SELECT 
@@ -53,7 +70,7 @@ export async function getProviderComparison(request: Request, env: WorkerEnv): P
     `).all();
 
     // Transform for frontend
-    const features = providers.results.map((p: Record<string, unknown>) => ({
+    const features = (providers.results as Record<string, unknown>[]).map((p: Record<string, unknown>) => ({
       id: p.id,
       name: p.name,
       slug: p.slug,

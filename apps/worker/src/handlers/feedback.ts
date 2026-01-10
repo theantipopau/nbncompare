@@ -6,8 +6,22 @@ interface Feedback {
   created_at?: string;
 }
 
+interface D1Database {
+  exec: (sql: string) => Promise<{ results: unknown[] }>;
+  prepare: (sql: string) => {
+    bind: (...args: unknown[]) => { 
+      run(): Promise<{ success: boolean; meta?: { last_row_id?: number } }>;
+      all(): Promise<{ results: unknown[] }>;
+      first(): Promise<unknown>;
+    };
+    run(): Promise<{ success: boolean; meta?: { last_row_id?: number } }>;
+    all(): Promise<{ results: unknown[] }>;
+    first(): Promise<unknown>;
+  };
+}
+
 interface WorkerEnv {
-  DB: unknown; // D1Database
+  DB: D1Database;
   ADMIN_TOKEN?: string;
 }
 
@@ -17,7 +31,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
     feedback.created_at = new Date().toISOString();
 
     try {
-      const db = env.DB as any;
+      const db = env.DB;
       
       // Create feedback table if it doesn't exist
       await db.exec(`
@@ -47,7 +61,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
       ).run();
 
       return new Response(
-        JSON.stringify({ success: true, id: result.meta.last_row_id }),
+        JSON.stringify({ success: true, id: result.meta?.last_row_id }),
         { status: 201, headers: { 'Content-Type': 'application/json' } }
       );
     } catch (err) {
