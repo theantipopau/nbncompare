@@ -13,6 +13,7 @@ import { FreshnessIndicator } from "../components/FreshnessIndicator";
 import { ReportDataIssue } from "../components/ReportDataIssue";
 import { SavingsCalculator } from "../components/SavingsCalculator";
 import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix";
+import type { _PlanCard } from "../components/PlanCard";  // TODO: integrate into mobile card view
 import { getApiBaseUrl } from "../lib/api";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
@@ -329,6 +330,71 @@ export default function Compare() {
     return badges;
   }
 
+  // Calculate best value badges for plans
+  function calculateBestValueBadges(plans: Plan[]) {
+    const badgesByPlan = new Map<number, { isCheapest?: boolean; isBestValue?: boolean; isPopular?: boolean }>();
+    
+    // Group plans by speed tier
+    const plansBySpeed = new Map<number | null | undefined, Plan[]>();
+    plans.forEach(plan => {
+      const speed = plan.speed_tier;
+      if (!plansBySpeed.has(speed)) {
+        plansBySpeed.set(speed, []);
+      }
+      plansBySpeed.get(speed)!.push(plan);
+    });
+
+    // Find cheapest and best value for each speed tier
+    plansBySpeed.forEach((speedPlans) => {
+      if (speedPlans.length === 0) return;
+
+      // Get price for sorting (intro if available, else ongoing)
+      const getPlanPrice = (p: Plan) => {
+        if (p.intro_price_cents) return p.intro_price_cents;
+        return p.ongoing_price_cents ?? Infinity;
+      };
+
+      // Find cheapest
+      const cheapest = speedPlans.reduce((min, p) => {
+        const minPrice = getPlanPrice(min);
+        const pPrice = getPlanPrice(p);
+        return pPrice < minPrice ? p : min;
+      });
+      
+      if (cheapest) {
+        const existing = badgesByPlan.get(cheapest.id) || {};
+        badgesByPlan.set(cheapest.id, { ...existing, isCheapest: true });
+      }
+
+      // Find best value (cheapest with best features)
+      const withFeatures = speedPlans.filter(p => {
+        const featureScore = 
+          (p.provider_ipv6_support ? 1 : 0) +
+          (p.provider_cgnat === 0 ? 1 : 0) +
+          (p.provider_australian_support ? 1 : 0) +
+          (p.provider_static_ip_available ? 1 : 0);
+        return featureScore >= 2;
+      });
+
+      if (withFeatures.length > 0) {
+        const bestValue = withFeatures.reduce((min, p) => {
+          const minPrice = getPlanPrice(min);
+          const pPrice = getPlanPrice(p);
+          return pPrice < minPrice ? p : min;
+        });
+        
+        if (bestValue && bestValue.id !== cheapest?.id) {
+          const existing = badgesByPlan.get(bestValue.id) || {};
+          badgesByPlan.set(bestValue.id, { ...existing, isBestValue: true });
+        }
+      }
+    });
+
+    return badgesByPlan;
+  }
+
+  const _bestValueBadges = useMemo(() => calculateBestValueBadges(plans), [plans]);  // TODO: use in PlanCard integration
+
   async function fetchPriceHistory(plan: Plan) {
     setSelectedPlanForHistory(plan);
     setShowPriceHistory(true);
@@ -612,16 +678,49 @@ export default function Compare() {
         {qualification && (
           <div style={{ 
             marginTop: '1rem', 
-            padding: '1rem', 
+            padding: '1.5rem', 
             backgroundColor: 'rgba(255,255,255,0.1)', 
             borderRadius: '8px',
-            border: '1px solid rgba(255,255,255,0.2)'
+            border: '1px solid rgba(255,255,255,0.2)',
+            backdropFilter: 'blur(10px)'
           }}>
-            <strong>Your NBN Service:</strong> {qualification.techType} | 
-            <strong> Max Speed:</strong> {qualification.maxSpeed}Mbps
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div>
+                <div style={{ fontSize: '0.9em', opacity: '0.8', marginBottom: '4px' }}>Technology Type</div>
+                <div style={{ fontSize: '1.3em', fontWeight: '600' }}>
+                  {qualification.techType === 'FTTP' && '🚀 FTTP'}
+                  {qualification.techType === 'FTTC' && '📶 FTTC'}
+                  {qualification.techType === 'FTTN' && '📡 FTTN'}
+                  {qualification.techType === 'HFC' && '📺 HFC'}
+                  {qualification.techType === 'Fixed Wireless' && '📡 Fixed Wireless'}
+                  {qualification.techType === 'Satellite' && '🛰️ Satellite'}
+                </div>
+              </div>
+              <div>
+                <div style={{ fontSize: '0.9em', opacity: '0.8', marginBottom: '4px' }}>Max Speed Available</div>
+                <div style={{ fontSize: '1.3em', fontWeight: '600' }}>
+                  {qualification.maxSpeed}Mbps
+                </div>
+              </div>
+            </div>
+            
+            {/* Technology-specific recommendations */}
             {qualification.techType === 'FTTP' && (
-              <div style={{ marginTop: '8px', fontSize: '0.9em', color: '#4ade80' }}>
-                💡 FTTP premises can get 2 Gigabit speeds (may need free NBN NTD upgrade)
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(74, 222, 128, 0.1)', borderRadius: '6px', border: '1px solid #4ade80' }}>
+                <div style={{ fontSize: '0.9em', color: '#4ade80', marginBottom: '4px' }}>💡 FTTP (Fiber to the Premises)</div>
+                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Your premises can achieve speeds up to 2 Gigabit. You may need a free NBN NTD upgrade to reach gigabit speeds.</div>
+              </div>
+            )}
+            {qualification.techType === 'Fixed Wireless' && (
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(252, 165, 11, 0.1)', borderRadius: '6px', border: '1px solid #fca50b' }}>
+                <div style={{ fontSize: '0.9em', color: '#fca50b', marginBottom: '4px' }}>📡 Fixed Wireless Service</div>
+                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Plans are optimized for your location. Check Fixed Wireless and satellite filters for all available options.</div>
+              </div>
+            )}
+            {qualification.techType === 'Satellite' && (
+              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: '6px', border: '1px solid #6366f1' }}>
+                <div style={{ fontSize: '0.9em', color: '#6366f1', marginBottom: '4px' }}>🛰️ Satellite Service</div>
+                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Your area is serviced by satellite NBN. Latency is higher but speeds are available to remote areas.</div>
               </div>
             )}
           </div>
