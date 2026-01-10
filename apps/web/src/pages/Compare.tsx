@@ -136,7 +136,7 @@ export default function Compare() {
   const fixedWirelessSpeedOptions = ['100', '200', '400'];
   const fiveGSpeedOptions = ['100', '250', '300'];
   const satelliteSpeedOptions = ['25', '50', '100', '150'];
-  const allowAllSpeedChips = viewMode === 'standard' || viewMode === 'business';
+  const allowAllSpeedChips = viewMode === 'standard' || viewMode === 'business' || viewMode === 'fixed-wireless' || viewMode === '5g-home' || viewMode === 'satellite';
   const currentModeSpeedOptions = viewMode === 'fixed-wireless'
     ? fixedWirelessSpeedOptions
     : viewMode === '5g-home'
