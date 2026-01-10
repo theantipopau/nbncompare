@@ -57,6 +57,27 @@ try {
     return adminApprove(request as Request, { ADMIN_TOKEN: (globalThis as any).ADMIN_TOKEN });
   });
 
+  // New endpoints for consumer features
+  router.get("/api/providers/comparison", async (req: Request, env: Env) => {
+    const { getProviderComparison } = await import("./handlers/provider-comparison");
+    return getProviderComparison(req, env);
+  });
+
+  router.post("/api/savings/calculate", async (request: Request, env: Env) => {
+    const { calculateSavings } = await import("./handlers/savings-calculator");
+    return calculateSavings(request, env);
+  });
+
+  router.post("/api/feedback", async (request: Request, env: Env) => {
+    const { handleFeedback } = await import("./handlers/feedback");
+    return handleFeedback(request, env);
+  });
+
+  router.get("/api/feedback", async (request: Request, env: Env) => {
+    const { handleFeedback } = await import("./handlers/feedback");
+    return handleFeedback(request, env);
+  });
+
   router.post("/internal/update-favicons", async () => {
     try {
       const { updateProviderFavicons } = await import("./lib/favicon");

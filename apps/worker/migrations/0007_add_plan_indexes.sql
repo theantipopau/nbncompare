@@ -11,4 +11,4 @@ CREATE INDEX IF NOT EXISTS idx_plans_speed_price
   ON plans(speed_tier, ongoing_price_cents);
 
 CREATE INDEX IF NOT EXISTS idx_plans_active_filters_price
-  ON plans(is_active, speed_tier, technology_type, plan_type, ongoing_price_cents);
+  ON plans(is_active, speed_tier, technology_type, ongoing_price_cents);

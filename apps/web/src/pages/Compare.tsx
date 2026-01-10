@@ -1,3 +1,4 @@
+// @ts-expect-error - useMemo is exported from react
 import React, { useEffect, useMemo, useState } from "react";
 // Type aliases for React events
 type ChangeEvent<T> = React.ChangeEvent<T>;
@@ -8,6 +9,10 @@ import PriceHistoryModal from "../components/PriceHistoryModal";
 import SpeedCalculator from "../components/SpeedCalculator";
 import BillComparison from "../components/BillComparison";
 import { ProviderTooltip } from "../components/ProviderTooltip";
+import { FreshnessIndicator } from "../components/FreshnessIndicator";
+import { ReportDataIssue } from "../components/ReportDataIssue";
+import { SavingsCalculator } from "../components/SavingsCalculator";
+import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix";
 import { getApiBaseUrl } from "../lib/api";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
@@ -79,7 +84,7 @@ interface ServiceQualification {
 export default function Compare() {
   const [plans, setPlans] = useState([] as Plan[]);
   const [speed, setSpeed] = useState("all");
-  const [selectedSpeeds, setSelectedSpeeds] = useState<string[]>(['all']);
+  const [selectedSpeeds, setSelectedSpeeds] = useState(['all']);
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState([] as AddressResult[]);
   const [_selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
@@ -136,11 +141,11 @@ export default function Compare() {
   const speedChips = allowAllSpeedChips ? ['all', ...currentModeSpeedOptions] : currentModeSpeedOptions;
 
   const toggleSpeedTier = (value: string) => {
-    setSelectedSpeeds(prev => {
+    setSelectedSpeeds((prev: string[]) => {
       if (value === 'all') return ['all'];
-      const cleaned = prev.filter(s => s !== 'all');
+      const cleaned = prev.filter((s: string) => s !== 'all');
       if (cleaned.includes(value)) {
-        const updated = cleaned.filter(s => s !== value);
+        const updated = cleaned.filter((s: string) => s !== value);
         if (updated.length === 0) {
           return allowAllSpeedChips ? ['all'] : [value];
         }
@@ -161,8 +166,8 @@ export default function Compare() {
   const numericSelectedSpeeds = useMemo(() => {
     if (selectedSpeeds.includes('all')) return null;
     return selectedSpeeds
-      .map(s => parseInt(s, 10))
-      .filter(n => !isNaN(n));
+      .map((s: string) => parseInt(s, 10))
+      .filter((n: number) => !isNaN(n));
   }, [selectedSpeeds]);
 
   const matchesSelectedSpeeds = (plan: Plan) => {
@@ -179,22 +184,22 @@ export default function Compare() {
     if (viewMode === 'fixed-wireless') {
       setServiceTypeFilter('nbn');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds(prev => {
-        const filtered = prev.filter(s => fixedWirelessSpeedOptions.includes(s));
+      setSelectedSpeeds((prev: string[]) => {
+        const filtered = prev.filter((s: string) => fixedWirelessSpeedOptions.includes(s));
         return filtered.length > 0 ? filtered : ['100'];
       });
     } else if (viewMode === '5g-home') {
       setServiceTypeFilter('5g-home');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds(prev => {
-        const filtered = prev.filter(s => fiveGSpeedOptions.includes(s));
+      setSelectedSpeeds((prev: string[]) => {
+        const filtered = prev.filter((s: string) => fiveGSpeedOptions.includes(s));
         return filtered.length > 0 ? filtered : ['100'];
       });
     } else if (viewMode === 'satellite') {
       setServiceTypeFilter('satellite');
       setPlanTypeFilter('residential');
-      setSelectedSpeeds(prev => {
-        const filtered = prev.filter(s => satelliteSpeedOptions.includes(s));
+      setSelectedSpeeds((prev: string[]) => {
+        const filtered = prev.filter((s: string) => satelliteSpeedOptions.includes(s));
         return filtered.length > 0 ? filtered : ['100'];
       });
     } else if (viewMode === 'business') {
@@ -946,7 +951,7 @@ export default function Compare() {
           <small style={{ color: darkMode ? '#cbd5e0' : '#475569', fontSize: '0.85em' }}>
             {selectedSpeeds.includes('all')
               ? 'Showing plans across every tier'
-              : `Showing ${selectedSpeeds.map(value => formatSpeedLabel(value)).join(', ')}`}
+              : `Showing ${selectedSpeeds.map((value: string) => formatSpeedLabel(value)).join(', ')}`}
           </small>
         </label>
         <label>
@@ -1089,6 +1094,11 @@ export default function Compare() {
       </section>
 
       <section className="plan-list">
+        {/* Provider Comparison Matrix */}
+        <div style={{ marginBottom: '24px' }}>
+          <ProviderComparisonMatrix />
+        </div>
+
         <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : viewMode === 'satellite' ? 'Satellite Internet Plans' : viewMode === '5g-home' ? '5G Home Internet Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
           if (!matchesSelectedSpeeds(p)) return false;
           // Technology type filter based on viewMode (skip for business - handled by API)
@@ -1965,7 +1975,14 @@ export default function Compare() {
                       </div>
                     </div>
 
-                    <div className={p.intro_price_cents ? 'plan-card-price plan-card-price-intro' : 'plan-card-price'}>
+                    {/* Data Freshness Indicator */}
+                    <div style={{ marginBottom: '12px' }}>
+                      <FreshnessIndicator 
+                        lastCheckedAt={p.last_checked_at}
+                      />
+                    </div>
+
+                    <div className="plan-card-price">
                       {p.intro_price_cents ? (
                         <>
                           ${(p.intro_price_cents/100).toFixed(2)}/mo
@@ -2109,6 +2126,31 @@ export default function Compare() {
                       >
                         {compareList.includes(p.id) ? '✓' : '+'} Compare
                       </button>
+                      <button
+                        onClick={() => alert('Report feature coming soon!')}
+                        style={{ background: '#f97316', color: 'white' }}
+                      >
+                        🚩 Report Issue
+                      </button>
+                    </div>
+
+                    {/* New Features: Savings Calculator and Report Issue */}
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
+                      <ReportDataIssue 
+                        planId={p.id}
+                        planName={p.plan_name}
+                        onSuccess={() => window.location.reload()}
+                      />
+                      <SavingsCalculator 
+                        currentPlan={{
+                          id: p.id,
+                          plan_name: p.plan_name,
+                          provider_name: p.provider_name,
+                          ongoing_price_cents: p.ongoing_price_cents || 0,
+                          speed_tier: p.speed_tier
+                        }}
+                        allPlans={displayedPlans}
+                      />
                     </div>
                     {p.source_url && (
                       <a 

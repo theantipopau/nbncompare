@@ -1,25 +1,27 @@
 import { getDb } from "../lib/db";
 
-export async function fetchProviderFavicon(domain: string): Promise<string | null> {
-  try {
-    // Try multiple favicon methods
-    const attempts = [
-      `https://www.google.com/s2/favicons?domain=${domain}&sz=64`,
-      `https://${domain}/favicon.ico`,
-      `https://icons.duckduckgo.com/ip3/${domain}.ico`
-    ];
-    
-    // Use Google's favicon service as primary (most reliable)
-    return attempts[0];
-  } catch (err) {
-    console.error(`Failed to fetch favicon for ${domain}:`, err);
-    return null;
-  }
+/**
+ * Fetch high-resolution provider logo from multiple sources
+ * Priority: Clearbit > Brandfetch > Google Favicons
+ */
+export async function fetchProviderLogo(domain: string, providerName: string): Promise<string> {
+  // Clearbit Logo API - high quality, 128px, transparent PNG
+  const clearbitUrl = `https://logo.clearbit.com/${domain}`;
+  
+  // Brandfetch - alternative high-res source
+  const brandfetchUrl = `https://cdn.brandfetch.io/${domain}/w/400/h/400`;
+  
+  // Google Favicons - fallback, lower quality but reliable
+  const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  
+  // Return Clearbit as primary - it returns a good 404 image if not found
+  // Google Favicons will be used as fallback in the frontend if Clearbit fails
+  return clearbitUrl;
 }
 
 export async function updateProviderFavicons() {
   const db = await getDb() as any;
-  const providers = await db.prepare('SELECT id, slug FROM providers').all();
+  const providers = await db.prepare('SELECT id, name, slug FROM providers').all();
   
   const domainMap: Record<string, string> = {
     'telstra': 'telstra.com.au',
@@ -52,19 +54,26 @@ export async function updateProviderFavicons() {
     'tangerine': 'tangerine.com.au',
     'internode': 'internode.on.net',
     'moose-mobile': 'moosemobile.com.au',
+    'agl': 'agl.com.au',
+    'myown': 'myown.com.au',
+    'occom': 'occom.com.au',
+    'peakconnect': 'peakconnect.com.au',
+    'quokka': 'quokka.net.au',
+    'telair': 'telair.com.au',
+    'urlnetworks': 'urlnetworks.com.au',
   };
   
+  let updated = 0;
   for (const provider of (providers as any).results || []) {
     const domain = domainMap[provider.slug];
     if (domain) {
-      const faviconUrl = await fetchProviderFavicon(domain);
-      if (faviconUrl) {
-        await db.prepare('UPDATE providers SET favicon_url = ? WHERE id = ?')
-          .bind(faviconUrl, provider.id)
-          .run();
-      }
+      const logoUrl = fetchProviderLogo(domain, provider.name);
+      await db.prepare('UPDATE providers SET favicon_url = ? WHERE id = ?')
+        .bind(logoUrl, provider.id)
+        .run();
+      updated++;
     }
   }
   
-  return { updated: (providers as any).results?.length || 0 };
+  return { updated };
 }

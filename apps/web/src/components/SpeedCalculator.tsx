@@ -116,13 +116,13 @@ export default function SpeedCalculator({ onSpeedRecommended, darkMode }: Props)
           gap: '6px',
           transition: 'all 0.2s'
         }}
-        onMouseEnter={(e: any) => {
-          e.currentTarget.style.background = '#10b981';
-          e.currentTarget.style.color = 'white';
+        onMouseEnter={(e: React.MouseEvent<HTMLButtonElement>) => {
+          (e.currentTarget as HTMLButtonElement).style.background = '#10b981';
+          (e.currentTarget as HTMLButtonElement).style.color = 'white';
         }}
-        onMouseLeave={(e: any) => {
-          e.currentTarget.style.background = darkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)';
-          e.currentTarget.style.color = '#10b981';
+        onMouseLeave={(e: React.MouseEvent<HTMLButtonElement>) => {
+          (e.currentTarget as HTMLButtonElement).style.background = darkMode ? 'rgba(16, 185, 129, 0.15)' : 'rgba(16, 185, 129, 0.1)';
+          (e.currentTarget as HTMLButtonElement).style.color = '#10b981';
         }}
       >
         🧮 What Speed Do I Need?

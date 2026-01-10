@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 interface Plan {
   id: number;
@@ -63,8 +63,8 @@ export default function ProviderDetails() {
         // Fetch provider metadata
         const providerRes = await fetch(`${apiUrl}/api/providers`);
         const providerData = await providerRes.json();
-        const matchingProvider = providerData.providers?.find((p: any) => 
-          p.name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase()
+        const matchingProvider = providerData.providers?.find((p: Record<string, unknown>) => 
+          (p as any).name.toLowerCase().replace(/\s+/g, '-') === slug.toLowerCase()
         );
         
         if (matchingProvider) {
@@ -143,7 +143,7 @@ export default function ProviderDetails() {
               src={provider.logo_url} 
               alt={`${provider.name} logo`}
               style={{ width: '80px', height: '80px', borderRadius: '12px', background: 'white', padding: '10px' }}
-              onError={(e: any) => { e.target.style.display = 'none'; }}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           )}
           <div style={{ flex: 1 }}>
@@ -295,13 +295,13 @@ function PlanCard({ plan }: { plan: Plan }) {
       transition: 'all 0.2s',
       cursor: 'pointer'
     }}
-    onMouseEnter={(e: any) => {
-      e.currentTarget.style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
-      e.currentTarget.style.borderColor = '#667eea';
+    onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
+      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
+      (e.currentTarget as HTMLDivElement).style.borderColor = '#667eea';
     }}
-    onMouseLeave={(e: any) => {
-      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
-      e.currentTarget.style.borderColor = '#e0e0e0';
+    onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
+      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
+      (e.currentTarget as HTMLDivElement).style.borderColor = '#e0e0e0';
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '20px' }}>
         <div style={{ flex: '1 1 300px' }}>

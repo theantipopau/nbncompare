@@ -1,10 +1,8 @@
 -- Migration: Add comprehensive plan metadata for full comparison
 -- Adds: contract terms, fees, bundled services, typical speeds, service type
 
--- Contract and fee information
-ALTER TABLE plans ADD COLUMN min_term_months INTEGER DEFAULT 0;
+-- Contract and fee information (setup_fee_cents and min_term_days already exist)
 ALTER TABLE plans ADD COLUMN exit_fee_cents INTEGER;
-ALTER TABLE plans ADD COLUMN setup_fee_cents INTEGER;
 
 -- ACCC typical evening speed
 ALTER TABLE plans ADD COLUMN typical_evening_speed_mbps INTEGER;
