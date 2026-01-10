@@ -151,11 +151,12 @@ export default function Provider({ slug }: { slug: string }) {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>{error}</div>;
   if (!provider) return <div style={{ padding: '40px', textAlign: 'center' }}>Provider not found</div>;
 
-  const speedTiers = Array.from(new Set(plans.map((p: unknown) => (p as any).speed_tier).filter((t: unknown): t is number => t !== null))).sort((a: unknown, b: unknown) => (a as number) - (b as number));
-  const cheapestPlan = plans.reduce((min: unknown, p: unknown) => 
-    (!min || (p.ongoing_price_cents !== null && (min.ongoing_price_cents === null || p.ongoing_price_cents < min.ongoing_price_cents))) ? p : min, 
-    null
-  );
+  const speedTiers = Array.from(new Set(plans.map((p: unknown) => (p as _Plan).speed_tier).filter((t: unknown): t is number => t !== null))).sort((a: unknown, b: unknown) => (a as number) - (b as number));
+  const cheapestPlan = plans.reduce((min: unknown, p: unknown) => {
+    const pPlan = p as _Plan;
+    const minPlan = min as _Plan | null;
+    return (!minPlan || (pPlan.ongoing_price_cents !== null && (minPlan.ongoing_price_cents === null || pPlan.ongoing_price_cents < minPlan.ongoing_price_cents))) ? p : min;
+  }, null);
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>

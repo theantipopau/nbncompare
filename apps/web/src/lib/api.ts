@@ -1,3 +1,4 @@
 export function getApiBaseUrl(): string {
-  return (import.meta as unknown).env?.VITE_API_URL || "";
+  const meta = import.meta as { env?: { VITE_API_URL?: string } };
+  return meta.env?.VITE_API_URL || "";
 }
