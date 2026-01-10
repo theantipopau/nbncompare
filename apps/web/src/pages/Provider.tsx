@@ -32,7 +32,7 @@ function StarRating({ rating, label }: { rating: number | null, label: string })
   );
 }
 
-interface Provider {
+interface ProviderData {
   name: string;
   description: string | null;
   canonical_url: string;
@@ -43,7 +43,7 @@ interface Provider {
   cgnat: number;
 }
 
-interface Plan {
+interface _Plan {
   id: number;
   plan_name: string;
   speed_tier: number | null;
@@ -54,8 +54,8 @@ interface Plan {
 }
 
 export default function Provider({ slug }: { slug: string }) {
-  const [provider, setProvider] = (useState as any)(null);
-  const [plans, setPlans] = (useState as any)([]);
+  const [provider, setProvider] = (useState as any)<ProviderData | null>(null);
+  const [plans, setPlans] = (useState as any)<_Plan[]>([]);
   const [review, setReview] = (useState as any)(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = (useState as any)(null);

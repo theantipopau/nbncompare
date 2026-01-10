@@ -39,6 +39,7 @@ export default [
         HTMLSelectElement: 'readonly',
         HTMLAnchorElement: 'readonly',
         KeyboardEvent: 'readonly',
+        NodeListOf: 'readonly',
         process: 'readonly',
         reportError: 'readonly',
         __REACT_DEVTOOLS_GLOBAL_HOOK__: 'readonly',

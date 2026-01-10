@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { getApiBaseUrl } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
 
-interface StatusData {
+interface _StatusData {
   lastRun?: {
     started_at: string;
     ended_at?: string;

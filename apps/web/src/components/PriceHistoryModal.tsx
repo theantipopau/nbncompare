@@ -54,7 +54,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
       if (e.key === 'Tab' && dialogRef.current) {
         const focusable = dialogRef.current.querySelectorAll(
           'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
-        ) as unknown as NodeListOf<HTMLElement>;
+        ) as NodeListOf<HTMLElement>;
         if (focusable.length === 0) return;
         const first = focusable[0];
         const last = focusable[focusable.length - 1];

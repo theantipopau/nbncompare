@@ -34,7 +34,7 @@ export default function App() {
           <a href="/admin" style={{ textDecoration: 'none', color: location.pathname === '/admin' ? '#667eea' : '#333', fontWeight: location.pathname === '/admin' ? '700' : '600', transition: 'all 0.2s' }}>⚙️ Admin</a>
         </nav>
       </header>
-      {/* @ts-ignore - ErrorBoundary component type issues in local build */}
+      {/* @ts-expect-error - ErrorBoundary component type issues in local build */}
       <ErrorBoundary>
         <main>
           {location.pathname === '/admin' ? <Admin /> : 

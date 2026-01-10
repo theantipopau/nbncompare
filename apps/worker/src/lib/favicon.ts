@@ -4,15 +4,15 @@ import { getDb } from "../lib/db";
  * Fetch high-resolution provider logo from multiple sources
  * Priority: Clearbit > Brandfetch > Google Favicons
  */
-export async function fetchProviderLogo(domain: string, providerName: string): Promise<string> {
+export async function fetchProviderLogo(domain: string, _providerName: string): Promise<string> {
   // Clearbit Logo API - high quality, 128px, transparent PNG
   const clearbitUrl = `https://logo.clearbit.com/${domain}`;
   
   // Brandfetch - alternative high-res source
-  const brandfetchUrl = `https://cdn.brandfetch.io/${domain}/w/400/h/400`;
+  const _brandfetchUrl = `https://cdn.brandfetch.io/${domain}/w/400/h/400`;
   
   // Google Favicons - fallback, lower quality but reliable
-  const googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
+  const _googleFaviconUrl = `https://www.google.com/s2/favicons?domain=${domain}&sz=128`;
   
   // Return Clearbit as primary - it returns a good 404 image if not found
   // Google Favicons will be used as fallback in the frontend if Clearbit fails

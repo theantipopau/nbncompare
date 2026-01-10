@@ -1,5 +1,5 @@
 import type { PlanExtract } from "../../types";
-import { normalizeSpeed, parsePriceToCents } from "../../validators";
+import { normalizeSpeed } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
 export function canHandle(url: string) {
@@ -126,7 +126,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
                          chunk.match(/(\d{3,4})\s*Mbps/i);
       if (!speedMatch) continue;
 
-      let speedValue = parseInt(speedMatch[1]);
+      const speedValue = parseInt(speedMatch[1]);
       const speedTier = normalizeSpeed(speedValue);
       if (!speedTier) continue;
 
