@@ -292,8 +292,11 @@ export default function Compare() {
   }
 
   function getProviderInitials(providerName: string | null | undefined): string {
-    if (!providerName) return 'N/A';
-    return providerName.split(' ').map((word: string) => word[0]).join('').toUpperCase().slice(0, 2) || 'N/A';
+    if (!providerName || providerName.trim() === '') return 'N/A';
+    const words = providerName.split(' ').filter(word => word.length > 0);
+    if (words.length === 0) return 'N/A';
+    const initials = words.map((word: string) => word[0] || '').join('').toUpperCase().slice(0, 2);
+    return initials || 'N/A';
   }
 
   function toggleCompare(planId: number) {
