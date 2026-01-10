@@ -126,7 +126,7 @@ export default function Compare() {
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [savedPresets, setSavedPresets] = useState(() => {
     try {
-      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<{name: string, filters: Record<string, any>}>;
+      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<{name: string, filters: Record<string, unknown>}>;
     } catch {
       return [];
     }
@@ -603,7 +603,7 @@ export default function Compare() {
 
   // Save current filters as a preset
   function saveFilterPreset() {
-    const name = prompt('Save this filter combination as:', 'My Preset');
+    const name = window.prompt('Save this filter combination as:', 'My Preset');
     if (!name) return;
     const currentFilters = {
       selectedSpeeds,
@@ -629,7 +629,7 @@ export default function Compare() {
   }
 
   // Load a saved preset
-  function loadFilterPreset(preset: {name: string, filters: Record<string, any>}) {
+  function loadFilterPreset(preset: {name: string, filters: Record<string, unknown>}) {
     const f = preset.filters;
     setSelectedSpeeds(f.selectedSpeeds || ['all']);
     setContractFilter(f.contractFilter || '');
@@ -688,7 +688,7 @@ export default function Compare() {
     ]);
 
     const csv = [headers, ...rows].map((row: (string | number)[]) => row.map((cell: string | number) => `"${cell}"`).join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
+    const blob = new window.Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -706,7 +706,7 @@ export default function Compare() {
     }
 
     const json = JSON.stringify(favPlans, null, 2);
-    const blob = new Blob([json], { type: 'application/json' });
+    const blob = new window.Blob([json], { type: 'application/json' });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -1475,7 +1475,7 @@ export default function Compare() {
             <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `2px solid ${darkMode ? '#4a5568' : '#e0e0e0'}` }}>
               <strong style={{ color: darkMode ? '#cbd5e0' : '#666', fontSize: '0.9em' }}>📌 Your Saved Filter Presets:</strong>
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                {savedPresets.map((preset: {name: string, filters: Record<string, any>}) => (
+                {savedPresets.map((preset: {name: string, filters: Record<string, unknown>}) => (
                   <div key={preset.name} style={{ display: 'flex', gap: '4px' }}>
                     <button
                       onClick={() => loadFilterPreset(preset)}
@@ -1495,8 +1495,8 @@ export default function Compare() {
                     </button>
                     <button
                       onClick={() => {
-                        setSavedPresets(savedPresets.filter((p: {name: string, filters: Record<string, any>}) => p.name !== preset.name));
-                        localStorage.setItem('filterPresets', JSON.stringify(savedPresets.filter((p: {name: string, filters: Record<string, any>}) => p.name !== preset.name)));
+                        setSavedPresets(savedPresets.filter((p: {name: string, filters: Record<string, unknown>}) => p.name !== preset.name));
+                        localStorage.setItem('filterPresets', JSON.stringify(savedPresets.filter((p: {name: string, filters: Record<string, unknown>}) => p.name !== preset.name)));
                       }}
                       style={{
                         padding: '6px 10px',
