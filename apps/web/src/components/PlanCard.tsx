@@ -2,8 +2,39 @@ import React, { useState } from 'react';
 import { ProviderTooltip } from './ProviderTooltip';
 import { FreshnessIndicator } from './FreshnessIndicator';
 
+interface Plan {
+  id: number;
+  plan_name: string;
+  provider_name: string;
+  intro_price_cents?: number | null;
+  intro_duration_days?: number | null;
+  ongoing_price_cents: number | null;
+  speed_tier: number | null;
+  last_checked_at?: string | null;
+  source_url?: string | null;
+  contract_type?: string;
+  data_allowance?: string;
+  modem_included?: number;
+  favicon_url?: string | null;
+  technology_type?: string;
+  upload_speed_mbps?: number | null;
+  price_trend?: 'up' | 'down' | null;
+  promo_code?: string | null;
+  promo_description?: string | null;
+  service_type?: string;
+  provider_ipv6_support?: number;
+  provider_cgnat?: number;
+  provider_cgnat_opt_out?: number;
+  provider_static_ip_available?: number;
+  provider_australian_support?: number;
+  provider_parent_company?: string | null;
+  provider_routing_info?: string | null;
+  provider_description?: string | null;
+  provider_support_hours?: string | null;
+}
+
 interface PlanCardProps {
-  plan: any;
+  plan: Plan;
   darkMode: boolean;
   isFavorite: boolean;
   onToggleFavorite: (planId: number) => void;
@@ -309,7 +340,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
         </button>
         {plan.source_url && (
           <button
-            onClick={() => window.open(plan.source_url, '_blank')}
+            onClick={() => plan.source_url && window.open(plan.source_url, '_blank')}
             style={{
               flex: 1,
               padding: '10px 12px',

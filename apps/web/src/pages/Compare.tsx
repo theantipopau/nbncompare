@@ -665,7 +665,10 @@ export default function Compare() {
           isFavorite={favorites.includes(p.id)}
           onToggleFavorite={toggleFavorite}
           onCompare={toggleCompare}
-          onPriceHistory={fetchPriceHistory}
+          onPriceHistory={(planId: number) => {
+            const plan = plans.find((pl: Plan) => pl.id === planId);
+            if (plan) fetchPriceHistory(plan);
+          }}
           getProviderColor={getProviderColor}
           getProviderInitials={getProviderInitials}
           stripHtml={stripHtml}
