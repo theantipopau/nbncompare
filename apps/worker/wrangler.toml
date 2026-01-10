@@ -4,12 +4,7 @@ main = "src/index.ts"
 account_id = "c54f3f1bd51c54c0b1040f11c0b5c869"
 workers_dev = true
 preview_urls = false
-
-[vars]
-# SECURITY: Set a real secret via `wrangler secret put ADMIN_TOKEN` for production.
-# This placeholder is overridden by the secret if set.
-ADMIN_TOKEN = "changeme-set-via-wrangler-secret"
-
+assets = { directory = "../web/dist" }
 [triggers]
 crons = [ "0 3 * * *" ]
 
