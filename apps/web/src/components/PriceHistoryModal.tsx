@@ -2,7 +2,7 @@ import React, { useEffect } from 'react';
 
 declare global {
   interface Window {
-    Chart: any;
+    Chart: unknown;
   }
 }
 
@@ -145,8 +145,8 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
           },
           tooltip: {
             callbacks: {
-              label: function(context: any) {
-                return '$' + context.parsed.y.toFixed(2) + '/mo';
+              label: function(context: unknown) {
+                return '$' + (context as any).parsed.y.toFixed(2) + '/mo';
               }
             }
           }
@@ -155,7 +155,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
           y: {
             beginAtZero: false,
             ticks: {
-              callback: function(value: any) {
+              callback: function(value: unknown) {
                 return '$' + value;
               },
               color: darkMode ? '#ccc' : '#666'

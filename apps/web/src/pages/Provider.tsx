@@ -54,11 +54,11 @@ interface _Plan {
 }
 
 export default function Provider({ slug }: { slug: string }) {
-  const [provider, setProvider] = (useState as any)<ProviderData | null>(null);
-  const [plans, setPlans] = (useState as any)<_Plan[]>([]);
-  const [review, setReview] = (useState as any)(null);
+  const [provider, setProvider] = (useState as unknown)<ProviderData | null>(null);
+  const [plans, setPlans] = (useState as unknown)<_Plan[]>([]);
+  const [review, setReview] = (useState as unknown)(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = (useState as any)(null);
+  const [error, setError] = (useState as unknown)(null);
   const [darkMode, _setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { getApiBaseUrl } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
-const { useEffect, useState } = React as any;
+const { useEffect, useState } = React as unknown;
 
 interface ProviderIssue {
   id: number;
@@ -45,7 +45,7 @@ export default function Admin() {
   const [scraperRuns, setScraperRuns] = useState([] as ScraperRun[]);
   const [token, setToken] = useState("" as string);
   const [scraping, setScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState(null as any);
+  const [scrapeResult, setScrapeResult] = useState(null as unknown);
   const [selectedTab, setSelectedTab] = useState('issues' as string);
 
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function Admin() {
       body: JSON.stringify({ provider_slug: slug }),
     });
     if (res.ok) {
-      setIssues(issues.filter((i: any) => i.slug !== slug));
+      setIssues(issues.filter((i: unknown) => (i as any).slug !== slug));
     } else {
       const body = await res.json();
       alert('Error: ' + JSON.stringify(body));
@@ -152,7 +152,7 @@ export default function Admin() {
           <input 
             type="password"
             value={token} 
-            onChange={(e: any) => setToken(e.target.value)} 
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setToken(e.target.value)} 
             style={{ marginLeft: '8px', padding: '8px 12px', borderRadius: '6px', border: '2px solid #ddd', minWidth: '300px' }}
           />
         </label>
@@ -247,7 +247,7 @@ export default function Admin() {
           <ul>
             {!token && <li>Enter admin token to load issues</li>}
             {token && issues.length === 0 && <li>✅ No provider issues</li>}
-            {issues.map((i: any) => (
+            {issues.map((i: unknown) => (
               <li key={i.id} style={{ marginBottom: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '6px' }}>
                 <strong>{i.name}</strong> ({i.slug}) - {i.last_error ?? (i.needs_review ? 'Needs review' : '✓ OK')}
                 <button 
