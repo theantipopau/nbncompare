@@ -151,8 +151,8 @@ export default function Provider({ slug }: { slug: string }) {
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>{error}</div>;
   if (!provider) return <div style={{ padding: '40px', textAlign: 'center' }}>Provider not found</div>;
 
-  const speedTiers = Array.from(new Set(plans.map((p: any) => p.speed_tier).filter((t: any): t is number => t !== null))).sort((a: any, b: any) => a - b);
-  const cheapestPlan = plans.reduce((min: any, p: any) => 
+  const speedTiers = Array.from(new Set(plans.map((p: unknown) => (p as any).speed_tier).filter((t: unknown): t is number => t !== null))).sort((a: unknown, b: unknown) => (a as number) - (b as number));
+  const cheapestPlan = plans.reduce((min: unknown, p: unknown) => 
     (!min || (p.ongoing_price_cents !== null && (min.ongoing_price_cents === null || p.ongoing_price_cents < min.ongoing_price_cents))) ? p : min, 
     null
   );
@@ -175,7 +175,7 @@ export default function Provider({ slug }: { slug: string }) {
               src={provider.favicon_url} 
               alt={`${provider.name} logo`}
               style={{ width: '80px', height: '80px', borderRadius: '12px', background: 'white', padding: '8px' }}
-              onError={(e: any) => { e.target.style.display = 'none'; }}
+              onError={(e: React.SyntheticEvent<HTMLImageElement>) => { (e.target as HTMLImageElement).style.display = 'none'; }}
             />
           )}
           <div>
@@ -229,7 +229,7 @@ export default function Provider({ slug }: { slug: string }) {
             All {provider.name} NBN Plans
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {plans.map((p: any) => (
+            {plans.map((p: unknown) => (
               <article 
                 key={p.id}
                 style={{
@@ -353,7 +353,7 @@ export default function Provider({ slug }: { slug: string }) {
                 <div style={{ marginBottom: '16px' }}>
                   <h4 style={{ color: '#10b981', margin: '0 0 8px 0', fontSize: '0.95em' }}>✅ Pros</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: darkMode ? '#e2e8f0' : '#333' }}>
-                    {(review as any).pros.split(', ').map((pro: any, i: any) => (
+                    {(review as unknown as {pros: string}).pros.split(', ').map((pro: string, i: number) => (
                       <li key={i} style={{ marginBottom: '4px' }}>{pro}</li>
                     ))}
                   </ul>
@@ -363,7 +363,7 @@ export default function Provider({ slug }: { slug: string }) {
                 <div>
                   <h4 style={{ color: '#ef4444', margin: '0 0 8px 0', fontSize: '0.95em' }}>❌ Cons</h4>
                   <ul style={{ margin: 0, paddingLeft: '20px', color: darkMode ? '#e2e8f0' : '#333' }}>
-                    {(review as any).cons.split(', ').map((con: any, i: any) => (
+                    {(review as unknown as {cons: string}).cons.split(', ').map((con: string, i: number) => (
                       <li key={i} style={{ marginBottom: '4px' }}>{con}</li>
                     ))}
                   </ul>
