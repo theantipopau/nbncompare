@@ -124,13 +124,20 @@ export default function Compare() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showProviderList, setShowProviderList] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  const [savedPresets, setSavedPresets] = useState(() => {
+  type FilterPreset = { name: string; filters: Record<string, unknown> };
+  const [savedPresets, setSavedPresets] = useState<Array<FilterPreset>>(() => {
+    if (typeof window === 'undefined') return [];
     try {
-      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<{name: string, filters: Record<string, unknown>}>;
+      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<FilterPreset>;
     } catch {
       return [];
     }
   });
+  const persistFilterPresets = (presets: Array<FilterPreset>) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('filterPresets', JSON.stringify(presets));
+    }
+  };
 
   const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '1000', '2000'];
   const fixedWirelessSpeedOptions = ['100', '200', '400'];
@@ -594,6 +601,7 @@ export default function Compare() {
 
   // Save current filters as a preset
   function saveFilterPreset() {
+    if (typeof window === 'undefined') return;
     const name = window.prompt('Save this filter combination as:', 'My Preset');
     if (!name) return;
     const currentFilters = {
@@ -613,11 +621,19 @@ export default function Compare() {
       viewMode,
       sortBy
     };
-    const newPresets = [...savedPresets.filter((p: {name: string}) => p.name !== name), { name, filters: currentFilters }];
+    const newPresets: Array<FilterPreset> = [...savedPresets.filter((p) => p.name !== name), { name, filters: currentFilters }];
     setSavedPresets(newPresets);
-    localStorage.setItem('filterPresets', JSON.stringify(newPresets));
+    persistFilterPresets(newPresets);
     alert(`Preset "${name}" saved!`);
   }
+
+  const removeFilterPreset = (name: string) => {
+    setSavedPresets(prev => {
+      const updated = prev.filter(p => p.name !== name);
+      persistFilterPresets(updated);
+      return updated;
+    });
+  };
 
   // Load a saved preset
   function loadFilterPreset(preset: {name: string, filters: Record<string, unknown>}) {
@@ -1466,7 +1482,7 @@ export default function Compare() {
             <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `2px solid ${darkMode ? '#4a5568' : '#e0e0e0'}` }}>
               <strong style={{ color: darkMode ? '#cbd5e0' : '#666', fontSize: '0.9em' }}>📌 Your Saved Filter Presets:</strong>
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                {savedPresets.map((preset: {name: string, filters: Record<string, unknown>}) => (
+                {savedPresets.map((preset) => (
                   <div key={preset.name} style={{ display: 'flex', gap: '4px' }}>
                     <button
                       onClick={() => loadFilterPreset(preset)}
@@ -1485,10 +1501,7 @@ export default function Compare() {
                       📂 {preset.name}
                     </button>
                     <button
-                      onClick={() => {
-                        setSavedPresets(savedPresets.filter((p: {name: string, filters: Record<string, unknown>}) => p.name !== preset.name));
-                        localStorage.setItem('filterPresets', JSON.stringify(savedPresets.filter((p: {name: string, filters: Record<string, unknown>}) => p.name !== preset.name)));
-                      }}
+                      onClick={() => removeFilterPreset(preset.name)}
                       style={{
                         padding: '6px 10px',
                         background: '#ef4444',
