@@ -5,6 +5,11 @@ account_id = "c54f3f1bd51c54c0b1040f11c0b5c869"
 workers_dev = true
 preview_urls = false
 assets = { directory = "../web/dist" }
+routes = [
+  { pattern = "nbncompare.info/*", zone_name = "nbncompare.info" },
+  { pattern = "www.nbncompare.info/*", zone_name = "nbncompare.info" }
+]
+
 [triggers]
 crons = [ "0 3 * * *" ]
 
