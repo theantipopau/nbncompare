@@ -9,11 +9,8 @@ import PriceHistoryModal from "../components/PriceHistoryModal";
 import SpeedCalculator from "../components/SpeedCalculator";
 import BillComparison from "../components/BillComparison";
 import { ProviderTooltip } from "../components/ProviderTooltip";
-import { FreshnessIndicator } from "../components/FreshnessIndicator";
-import { ReportDataIssue } from "../components/ReportDataIssue";
-import { SavingsCalculator } from "../components/SavingsCalculator";
 import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix";
-import type { _PlanCard } from "../components/PlanCard";  // TODO: integrate into mobile card view
+import { PlanCard } from "../components/PlanCard";
 import { getApiBaseUrl } from "../lib/api";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
@@ -393,7 +390,7 @@ export default function Compare() {
     return badgesByPlan;
   }
 
-  const _bestValueBadges = useMemo(() => calculateBestValueBadges(plans), [plans]);  // TODO: use in PlanCard integration
+  const bestValueBadges = useMemo(() => calculateBestValueBadges(plans), [plans]);
 
   async function fetchPriceHistory(plan: Plan) {
     setSelectedPlanForHistory(plan);
@@ -594,6 +591,89 @@ export default function Compare() {
     } else {
       setMessage("Please select an address from the suggestions");
     }
+  }
+
+  // Helper to render mobile cards using PlanCard component
+  function renderMobileCards() {
+    return [...plans]
+      .filter(p => {
+        if (!matchesSelectedSpeeds(p)) return false;
+        if (viewMode === 'business') {
+          // Business plans filtered by API
+        } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
+          return false;
+        } else if (viewMode === 'satellite' && p.technology_type !== 'satellite') {
+          return false;
+        } else if (viewMode === '5g-home' && p.technology_type !== '5g-home') {
+          return false;
+        } else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) {
+          return false;
+        }
+        if (searchTerm) {
+          const term = searchTerm.toLowerCase();
+          if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
+            return false;
+          }
+        }
+        if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) {
+          return false;
+        }
+        if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) {
+          return false;
+        }
+        if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) {
+          return false;
+        }
+        if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) {
+          return false;
+        }
+        if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) {
+          return false;
+        }
+        if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) {
+          return false;
+        }
+        if (uploadSpeedFilter) {
+          const minUpload = parseInt(uploadSpeedFilter);
+          if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) {
+            return false;
+          }
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortBy === 'price') {
+          const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity;
+          const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity;
+          return priceA - priceB;
+        } else if (sortBy === 'price-desc') {
+          const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity;
+          const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
+          return priceB - priceA;
+        } else if (sortBy === 'provider') {
+          return a.provider_name.localeCompare(b.provider_name);
+        } else if (sortBy === 'speed') {
+          return (b.speed_tier ?? 0) - (a.speed_tier ?? 0);
+        }
+        return 0;
+      })
+      .map((p: Plan) => (
+        <PlanCard
+          key={p.id}
+          plan={p}
+          darkMode={darkMode}
+          isFavorite={favorites.includes(p.id)}
+          onToggleFavorite={toggleFavorite}
+          onCompare={toggleCompare}
+          onPriceHistory={fetchPriceHistory}
+          getProviderColor={getProviderColor}
+          getProviderInitials={getProviderInitials}
+          stripHtml={stripHtml}
+          isBestValue={bestValueBadges.get(p.id)?.isBestValue}
+          isCheapest={bestValueBadges.get(p.id)?.isCheapest}
+          isPopular={false}
+        />
+      ));
   }
 
   return (
@@ -1898,380 +1978,7 @@ export default function Compare() {
                     <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginTop: '16px' }}></div>
                   </div>
                 ))
-              ) : (
-                [...plans]
-                  .filter(p => {
-                    if (!matchesSelectedSpeeds(p)) return false;
-                    // Technology type filter based on viewMode (skip for business - handled by API)
-                  if (viewMode === 'business') {
-                    // Business plans filtered by API, no frontend technology_type filter needed
-                  } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
-                  else if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
-                  else if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
-                  else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
-                  // Search term
-                  if (searchTerm) {
-                    const term = searchTerm.toLowerCase();
-                    if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
-                  }
-                  // Provider filter
-                  if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
-                  // Selected providers filter (multi-select)
-                  if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
-                  // Metadata filters
-                  if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
-                  if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
-                  if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
-                  if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
-                  // Don't filter out 6-month deals - just change display
-                  // Upload speed filter
-                  if (uploadSpeedFilter) {
-                    const minUpload = parseInt(uploadSpeedFilter);
-                    if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
-                  }
-                  return true;
-                })
-                .sort((a, b) => {
-                  if (sortBy === 'price') {
-                    const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity;
-                    const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity;
-                    return priceA - priceB;
-                  } else if (sortBy === 'price-desc') {
-                    const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity;
-                    const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
-                    return priceB - priceA;
-                  } else if (sortBy === 'provider') {
-                    return a.provider_name.localeCompare(b.provider_name);
-                  } else if (sortBy === 'speed') {
-                    return (b.speed_tier ?? 0) - (a.speed_tier ?? 0);
-                  }
-                  return 0;
-                })
-                .map((p: Plan) => (
-                  <div key={p.id} className={`plan-card ${favorites.includes(p.id) ? 'favorite' : ''}`}>
-                    <div className="plan-card-header">
-                      <div className="plan-card-logo">
-                        {p.favicon_url ? (
-                          <img
-                            src={p.favicon_url}
-                            alt={p.provider_name}
-                            loading="lazy"
-                            style={{
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '8px',
-                              objectFit: 'contain',
-                              background: 'white',
-                              padding: '4px'
-                            }}
-                          />
-                        ) : (
-                          <div 
-                            style={{
-                              background: getProviderColor(p.provider_name),
-                              color: 'white',
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 'bold',
-                              fontSize: '1em'
-                            }}
-                          >
-                            {getProviderInitials(p.provider_name)}
-                          </div>
-                        )}
-                      </div>
-                      <div className="plan-card-title">
-                        <h3>
-                          {p.provider_name}
-                          <ProviderTooltip 
-                            provider={{
-                              name: p.provider_name,
-                              description: p.provider_description,
-                              ipv6_support: p.provider_ipv6_support ?? 0,
-                              cgnat: p.provider_cgnat ?? 0,
-                              cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
-                              static_ip_available: p.provider_static_ip_available ?? 0,
-                              australian_support: p.provider_australian_support ?? 0,
-                              parent_company: p.provider_parent_company,
-                              routing_info: p.provider_routing_info,
-                              support_hours: p.provider_support_hours
-                            }}
-                            darkMode={darkMode}
-                          />
-                        </h3>
-                        <p style={{ marginBottom: '6px' }}>{stripHtml(p.plan_name)}</p>
-                        {/* Quick feature badges */}
-                        <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap', marginTop: '6px' }}>
-                          {p.provider_ipv6_support && p.provider_ipv6_support >= 1 && (
-                            <span style={{ 
-                              fontSize: '0.65em', 
-                              background: 'linear-gradient(135deg, #10b981, #059669)', 
-                              color: 'white', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
-                            }} title="Supports IPv6">
-                              IPv6
-                            </span>
-                          )}
-                          {p.provider_australian_support && p.provider_australian_support >= 2 && (
-                            <span style={{ 
-                              fontSize: '0.65em', 
-                              background: 'linear-gradient(135deg, #3b82f6, #2563eb)', 
-                              color: 'white', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              boxShadow: '0 1px 3px rgba(59, 130, 246, 0.3)'
-                            }} title="100% Australian support">
-                              🇦🇺 AU Support
-                            </span>
-                          )}
-                          {p.provider_static_ip_available && p.provider_static_ip_available >= 1 && (
-                            <span style={{ 
-                              fontSize: '0.65em', 
-                              background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', 
-                              color: 'white', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              boxShadow: '0 1px 3px rgba(139, 92, 246, 0.3)'
-                            }} title={p.provider_static_ip_available === 1 ? 'Free static IP' : 'Paid static IP'}>
-                              Static IP{p.provider_static_ip_available === 1 && ' ✓'}
-                            </span>
-                          )}
-                          {p.provider_cgnat === 0 && (
-                            <span style={{ 
-                              fontSize: '0.65em', 
-                              background: 'linear-gradient(135deg, #10b981, #059669)', 
-                              color: 'white', 
-                              padding: '2px 6px', 
-                              borderRadius: '4px',
-                              fontWeight: '600',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '2px',
-                              boxShadow: '0 1px 3px rgba(16, 185, 129, 0.3)'
-                            }} title="No CGNAT">
-                              No CGNAT
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Data Freshness Indicator */}
-                    <div style={{ marginBottom: '12px' }}>
-                      <FreshnessIndicator 
-                        lastCheckedAt={p.last_checked_at}
-                      />
-                    </div>
-
-                    <div className="plan-card-price">
-                      {p.intro_price_cents ? (
-                        <>
-                          ${(p.intro_price_cents/100).toFixed(2)}/mo
-                          {p.price_trend && <span style={{ fontSize: '0.5em' }}> {p.price_trend === 'down' ? '↓' : '↑'}</span>}
-                          <span className="plan-card-price-original">
-                            then ${(p.ongoing_price_cents!/100).toFixed(2)}/mo
-                          </span>
-                          {p.intro_duration_days && (
-                            <div style={{ fontSize: '0.4em', color: '#E91E63', marginTop: '4px' }}>
-                              for {Math.round(p.intro_duration_days/30)} months
-                            </div>
-                          )}
-                        </>
-                      ) : p.ongoing_price_cents ? (
-                        <>
-                          ${(p.ongoing_price_cents/100).toFixed(2)}/mo
-                          {p.price_trend && <span style={{ fontSize: '0.5em' }}> {p.price_trend === 'down' ? '↓' : '↑'}</span>}
-                        </>
-                      ) : (
-                        <span style={{ fontSize: '0.5em' }}>Contact provider</span>
-                      )}
-                    </div>
-
-                    {p.promo_code && (
-                      <div style={{ 
-                        textAlign: 'center', 
-                        padding: '8px 12px', 
-                        background: 'rgba(16, 185, 129, 0.1)', 
-                        borderRadius: '8px',
-                        marginBottom: '12px',
-                        border: '1px dashed #10b981'
-                      }}>
-                        <div style={{ fontSize: '0.85em', color: '#666', marginBottom: '4px' }}>Use promo code:</div>
-                        <div style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#10b981', fontFamily: 'monospace' }}>
-                          {p.promo_code}
-                        </div>
-                        {p.promo_description && (
-                          <div style={{ fontSize: '0.8em', color: '#666', marginTop: '4px' }}>{p.promo_description}</div>
-                        )}
-                      </div>
-                    )}
-
-                    <div className="plan-card-details">
-                      <div className="plan-card-detail">
-                        <strong>Speed</strong>
-                        NBN {p.speed_tier ?? '—'}
-                        {p.upload_speed_mbps && <span> / {p.upload_speed_mbps}↑</span>}
-                      </div>
-                      <div className="plan-card-detail">
-                        <strong>Data</strong>
-                        {p.data_allowance || 'Not stated'}
-                      </div>
-                      <div className="plan-card-detail">
-                        <strong>Contract</strong>
-                        {p.contract_type || 'Not stated'}
-                      </div>
-                      <div className="plan-card-detail">
-                        <strong>Tech</strong>
-                        {p.technology_type === 'fixed-wireless' ? 'Fixed Wireless' : 'Standard NBN'}
-                      </div>
-                    </div>
-
-                    <div className="plan-card-badges">
-                      {bestValuePlanIds.has(p.id) && (
-                        <span style={{ 
-                          fontSize: '0.85em', 
-                          background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', 
-                          color: '#000', 
-                          padding: '6px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '800',
-                          boxShadow: '0 4px 12px rgba(255, 215, 0, 0.5), 0 0 20px rgba(255, 215, 0, 0.3)',
-                          cursor: 'help',
-                          letterSpacing: '0.5px',
-                          border: '2px solid #FFD700',
-                          textTransform: 'uppercase',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px',
-                          animation: 'glow 2s ease-in-out infinite'
-                        }} title="Best overall value for this speed tier">
-                          ⭐ Best Value
-                        </span>
-                      )}
-                      {p.modem_included === 1 && (
-                        <span style={{ 
-                          fontSize: '0.8em', 
-                          background: 'linear-gradient(135deg, #4CAF50, #45a049)', 
-                          color: 'white', 
-                          padding: '5px 10px', 
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                          boxShadow: '0 2px 6px rgba(76, 175, 80, 0.3)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          📡 Modem Included
-                        </span>
-                      )}
-                      {favorites.includes(p.id) && (
-                        <span style={{ 
-                          fontSize: '0.8em', 
-                          background: 'linear-gradient(135deg, #E91E63, #C2185B)', 
-                          color: 'white', 
-                          padding: '5px 10px', 
-                          borderRadius: '6px',
-                          fontWeight: '600',
-                          boxShadow: '0 2px 6px rgba(233, 30, 99, 0.3)',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '4px'
-                        }}>
-                          ⭐ Favorite
-                        </span>
-                      )}
-                    </div>
-
-                    <div className="plan-card-actions">
-                      <button
-                        onClick={() => toggleFavorite(p.id)}
-                        style={{
-                          background: favorites.includes(p.id) ? '#E91E63' : '#f0f0f0',
-                          color: favorites.includes(p.id) ? 'white' : '#666'
-                        }}
-                      >
-                        {favorites.includes(p.id) ? '⭐' : '☆'} Favorite
-                      </button>
-                      <button
-                        onClick={() => fetchPriceHistory(p)}
-                        style={{ background: '#10b981', color: 'white' }}
-                      >
-                        📊 History
-                      </button>
-                      <button
-                        onClick={() => toggleCompare(p.id)}
-                        style={{
-                          background: compareList.includes(p.id) ? '#667eea' : '#f0f0f0',
-                          color: compareList.includes(p.id) ? 'white' : '#666'
-                        }}
-                      >
-                        {compareList.includes(p.id) ? '✓' : '+'} Compare
-                      </button>
-                      <button
-                        onClick={() => alert('Report feature coming soon!')}
-                        style={{ background: '#f97316', color: 'white' }}
-                      >
-                        🚩 Report Issue
-                      </button>
-                    </div>
-
-                    {/* New Features: Savings Calculator and Report Issue */}
-                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', flexWrap: 'wrap' }}>
-                      <ReportDataIssue 
-                        planId={p.id}
-                        planName={p.plan_name}
-                        onSuccess={() => window.location.reload()}
-                      />
-                      <SavingsCalculator 
-                        currentPlan={{
-                          id: p.id,
-                          plan_name: p.plan_name,
-                          provider_name: p.provider_name,
-                          ongoing_price_cents: p.ongoing_price_cents || 0,
-                          speed_tier: p.speed_tier || undefined
-                        }}
-                        allPlans={plans}
-                      />
-                    </div>
-                    {p.source_url && (
-                      <a 
-                        href={p.source_url} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'block',
-                          textAlign: 'center',
-                          marginTop: '12px',
-                          color: '#667eea',
-                          textDecoration: 'none',
-                          fontWeight: '600',
-                          fontSize: '0.9em'
-                        }}
-                      >
-                        View Full Details →
-                      </a>
-                    )}
-                  </div>
-                ))
-              )}
+              ) : renderMobileCards()}
             </div>
           </>
         )}
