@@ -41,7 +41,7 @@ export default function App() {
          location.pathname.startsWith('/blog/') ? <BlogPost /> :
          location.pathname === '/blog' ? <Blog /> :
          location.pathname.startsWith('/provider/') ? <ProviderDetails /> :
-         location.pathname.startsWith('/providers/') ? <Provider slug={location.pathname.replace('/providers/', '')} /> : 
+         location.pathname.startsWith('/providers/') ? (<Provider slug={(location.pathname.replace('/providers/', '') || '').trim()} />) : 
          location.pathname === '/status' ? <Status /> : 
          location.pathname === '/about' ? <About /> : 
          <Compare />}

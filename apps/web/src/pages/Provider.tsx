@@ -53,7 +53,11 @@ interface _Plan {
   source_url: string | null;
 }
 
-export default function Provider({ slug }: { slug: string }) {
+export default function Provider({ slug }: { slug: string | null | undefined }) {
+  if (!slug) {
+    return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>Invalid provider</div>;
+  }
+
   const [provider, setProvider] = (useState as unknown)<ProviderData | null>(null);
   const [plans, setPlans] = (useState as unknown)<_Plan[]>([]);
   const [review, setReview] = (useState as unknown)(null);
