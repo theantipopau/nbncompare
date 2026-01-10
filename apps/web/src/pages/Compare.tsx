@@ -785,7 +785,7 @@ export default function Compare() {
           const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
           return priceB - priceA;
         } else if (sortBy === 'provider') {
-          return a.provider_name.localeCompare(b.provider_name);
+          return (a.provider_name || '').localeCompare(b.provider_name || '');
         } else if (sortBy === 'speed') {
           return (b.speed_tier ?? 0) - (a.speed_tier ?? 0);
         }
@@ -1786,7 +1786,7 @@ export default function Compare() {
                       const priceB = is6MonthB ? (b.ongoing_price_cents ?? -Infinity) : (b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity);
                       return priceB - priceA;
                     } else if (sortBy === 'provider') {
-                      return a.provider_name.localeCompare(b.provider_name);
+                      return (a.provider_name || '').localeCompare(b.provider_name || '');
                     } else if (sortBy === 'speed') {
                       return (b.speed_tier ?? 0) - (a.speed_tier ?? 0);
                     }
