@@ -12,7 +12,8 @@ export async function debugProvider(slug: string) {
     const parser = findParserForUrl(prov.canonical_url);
     const out = await parser.parse(html, prov.canonical_url);
     return { ok: true, count: out.length, sample: out.slice(0,3) };
-  } catch (err: any) {
-    return { error: String(err), stack: err?.stack };
+  } catch (err: unknown) {
+    const error = err as Error;
+    return { error: String(err), stack: error?.stack };
   }
 }

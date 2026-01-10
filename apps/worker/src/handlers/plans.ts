@@ -12,7 +12,7 @@ const CACHE_TTL = 300;
 const planQueryCache = new Map<string, { rows: unknown[]; expires: number }>();
 const PLAN_CACHE_TTL_MS = 30 * 1000;
 
-export async function getPlans(req: Request, env?: { CACHE?: any }) {
+export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
   try {
     const url = new URL(req.url);
     const speedParam = url.searchParams.get("speed");

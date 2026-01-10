@@ -70,12 +70,17 @@ export async function searchAddress(request: Request): Promise<Response> {
     
     // Filter for LOC IDs (actual NBN locations, not Google Places)
     const results: AddressSearchResult[] = suggestions
-      .filter((item: any) => item.id && item.id.startsWith('LOC'))
-      .map((item: any) => ({
-        id: item.id, // LOC ID for qualification
-        formattedAddress: item.formattedAddress || item.address,
-        latitude: item.latitude,
-        longitude: item.longitude
+      .filter((item: unknown) => {
+        const suggestion = item as { id?: string };
+        return suggestion.id && suggestion.id.startsWith('LOC');
+      })
+      .map((item: unknown) => {
+        const suggestion = item as { id: string; formattedAddress?: string; address?: string; latitude?: number; longitude?: number };
+        return {
+        id: suggestion.id, // LOC ID for qualification
+        formattedAddress: suggestion.formattedAddress || suggestion.address,
+        latitude: suggestion.latitude,
+        longitude: suggestion.longitude
       }));
 
     return jsonResponse({
