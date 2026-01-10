@@ -123,6 +123,14 @@ export default function Compare() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showProviderList, setShowProviderList] = useState(false);
+  const [showMobileFilters, setShowMobileFilters] = useState(false);
+  const [savedPresets, setSavedPresets] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<{name: string, filters: Record<string, any>}>;
+    } catch {
+      return [];
+    }
+  });
 
   const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '1000', '2000'];
   const fixedWirelessSpeedOptions = ['100', '200', '400'];
@@ -591,6 +599,120 @@ export default function Compare() {
     } else {
       setMessage("Please select an address from the suggestions");
     }
+  }
+
+  // Save current filters as a preset
+  function saveFilterPreset() {
+    const name = prompt('Save this filter combination as:', 'My Preset');
+    if (!name) return;
+    const currentFilters = {
+      selectedSpeeds,
+      contractFilter,
+      dataFilter,
+      technologyFilter,
+      modemFilter,
+      ipv6Filter,
+      noCgnatFilter,
+      auSupportFilter,
+      staticIpFilter,
+      exclude6MonthFilter,
+      uploadSpeedFilter,
+      providerFilter,
+      selectedProviders,
+      viewMode,
+      sortBy
+    };
+    const newPresets = [...savedPresets.filter((p: {name: string}) => p.name !== name), { name, filters: currentFilters }];
+    setSavedPresets(newPresets);
+    localStorage.setItem('filterPresets', JSON.stringify(newPresets));
+    alert(`Preset "${name}" saved!`);
+  }
+
+  // Load a saved preset
+  function loadFilterPreset(preset: {name: string, filters: Record<string, any>}) {
+    const f = preset.filters;
+    setSelectedSpeeds(f.selectedSpeeds || ['all']);
+    setContractFilter(f.contractFilter || '');
+    setDataFilter(f.dataFilter || '');
+    setTechnologyFilter(f.technologyFilter || '');
+    setModemFilter(f.modemFilter || '');
+    setIpv6Filter(f.ipv6Filter || false);
+    setNoCgnatFilter(f.noCgnatFilter || false);
+    setAuSupportFilter(f.auSupportFilter || false);
+    setStaticIpFilter(f.staticIpFilter || false);
+    setExclude6MonthFilter(f.exclude6MonthFilter || false);
+    setUploadSpeedFilter(f.uploadSpeedFilter || '');
+    setProviderFilter(f.providerFilter || '');
+    setSelectedProviders(f.selectedProviders || []);
+    setViewMode(f.viewMode || 'standard');
+    setSortBy(f.sortBy || 'price');
+  }
+
+  // Get statistics for current filtered plans
+  function getPlanStatistics() {
+    const filteredPlans = plans.filter((p: Plan) => {
+      if (!matchesSelectedSpeeds(p)) return false;
+      if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+      if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+      if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+      if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
+      return true;
+    });
+
+    const stats: Record<string | number, number> = {};
+    filteredPlans.forEach((p: Plan) => {
+      const tier = p.speed_tier || 'Unknown';
+      stats[tier] = (stats[tier] || 0) + 1;
+    });
+    return stats;
+  }
+
+  // Export favorites as CSV
+  function exportFavoritesAsCSV() {
+    const favPlans = plans.filter((p: Plan) => favorites.includes(p.id));
+    if (favPlans.length === 0) {
+      alert('No favorites to export');
+      return;
+    }
+
+    const headers = ['Provider', 'Plan Name', 'Speed (Mbps)', 'Intro Price (AUD)', 'Ongoing Price (AUD)', 'Contract', 'Data', 'Technology'];
+    const rows = favPlans.map((p: Plan) => [
+      p.provider_name,
+      stripHtml(p.plan_name),
+      p.speed_tier || 'N/A',
+      p.intro_price_cents ? `$${(p.intro_price_cents / 100).toFixed(2)}` : 'N/A',
+      p.ongoing_price_cents ? `$${(p.ongoing_price_cents / 100).toFixed(2)}` : 'N/A',
+      p.contract_type || 'N/A',
+      p.data_allowance || 'N/A',
+      p.technology_type || 'Standard'
+    ]);
+
+    const csv = [headers, ...rows].map((row: (string | number)[]) => row.map((cell: string | number) => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nbn-favorites-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    window.URL.revokeObjectURL(url);
+  }
+
+  // Export favorites as JSON
+  function exportFavoritesAsJSON() {
+    const favPlans = plans.filter((p: Plan) => favorites.includes(p.id));
+    if (favPlans.length === 0) {
+      alert('No favorites to export');
+      return;
+    }
+
+    const json = JSON.stringify(favPlans, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `nbn-favorites-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    window.URL.revokeObjectURL(url);
   }
 
   // Helper to render mobile cards using PlanCard component
@@ -1099,7 +1221,17 @@ export default function Compare() {
         </section>
       )}
 
-      <section className="filters">
+      {/* Mobile Filters Drawer Toggle Button */}
+      <div className="mobile-filters-toggle-container">
+        <button
+          onClick={() => setShowMobileFilters(!showMobileFilters)}
+          className="mobile-filters-toggle"
+        >
+          {showMobileFilters ? '▼ Hide Filters' : '▶ Show Filters'}
+        </button>
+      </div>
+
+      <section className={`filters ${showMobileFilters ? 'visible' : 'hidden'}`}>
         <label style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <strong>Speed tier:</strong>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -1262,18 +1394,130 @@ export default function Compare() {
           {darkMode ? '☀️' : '🌙'} {darkMode ? 'Light' : 'Dark'}
         </button>
         {favorites.length > 0 && (
-          <button onClick={() => {
-            const favPlans = plans.filter((p: Plan) => favorites.includes(p.id));
-            if (favPlans.length > 0) {
-              alert(`Favorites (${favPlans.length}):\n\n` + favPlans.map((p: Plan) => 
-                `${p.provider_name} - ${stripHtml(p.plan_name)}\n$${(p.ongoing_price_cents! / 100).toFixed(2)}/mo`
-              ).join('\n\n'));
-            }
-          }} style={{ background: '#E91E63' }}>
-            ⭐ Favorites ({favorites.length})
-          </button>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button onClick={() => {
+              const favPlans = plans.filter((p: Plan) => favorites.includes(p.id));
+              if (favPlans.length > 0) {
+                alert(`Favorites (${favPlans.length}):\n\n` + favPlans.map((p: Plan) => 
+                  `${p.provider_name} - ${stripHtml(p.plan_name)}\n$${(p.ongoing_price_cents! / 100).toFixed(2)}/mo`
+                ).join('\n\n'));
+              }
+            }} style={{ background: '#E91E63' }}>
+              ⭐ Favorites ({favorites.length})
+            </button>
+            <button onClick={exportFavoritesAsCSV} style={{ background: '#10b981' }} title="Export as CSV spreadsheet">
+              📥 Export CSV
+            </button>
+            <button onClick={exportFavoritesAsJSON} style={{ background: '#3b82f6' }} title="Export as JSON">
+              📥 Export JSON
+            </button>
+          </div>
         )}
       </section>
+
+      {/* Statistics & Presets Section */}
+      {plans.length > 0 && (
+        <section style={{
+          background: darkMode 
+            ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
+            : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
+          padding: '20px 30px',
+          borderRadius: 'var(--radius-xl)',
+          marginTop: '20px',
+          marginBottom: '20px',
+          boxShadow: darkMode ? '0 4px 12px rgba(0,0,0,0.4)' : '0 4px 12px rgba(0,0,0,0.08)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px', flexWrap: 'wrap' }}>
+            <div>
+              <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748', fontSize: '1.1em' }}>📊 Plan Statistics by Speed Tier:</strong>
+              <div style={{ display: 'flex', gap: '16px', marginTop: '12px', flexWrap: 'wrap' }}>
+                {Object.entries(getPlanStatistics()).sort((a, b) => {
+                  const aSpeed = parseInt(String(a[0]));
+                  const bSpeed = parseInt(String(b[0]));
+                  if (isNaN(aSpeed)) return 1;
+                  if (isNaN(bSpeed)) return -1;
+                  return aSpeed - bSpeed;
+                }).map(([tier, count]) => (
+                  <div key={tier} style={{
+                    padding: '8px 16px',
+                    background: darkMode ? '#374151' : '#f3f4f6',
+                    borderRadius: '8px',
+                    fontSize: '0.9em',
+                    border: `2px solid ${getSpeedTierColor(parseInt(String(tier)))}`,
+                    color: darkMode ? '#e5e7eb' : '#374151'
+                  }}>
+                    <strong>{getSpeedTierLabel(parseInt(String(tier)))}</strong>: {count} plans
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <button
+                onClick={saveFilterPreset}
+                style={{
+                  padding: '10px 16px',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.9em'
+                }}
+              >
+                💾 Save Filters
+              </button>
+            </div>
+          </div>
+
+          {/* Filter Presets */}
+          {savedPresets.length > 0 && (
+            <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `2px solid ${darkMode ? '#4a5568' : '#e0e0e0'}` }}>
+              <strong style={{ color: darkMode ? '#cbd5e0' : '#666', fontSize: '0.9em' }}>📌 Your Saved Filter Presets:</strong>
+              <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                {savedPresets.map((preset: {name: string, filters: Record<string, any>}) => (
+                  <div key={preset.name} style={{ display: 'flex', gap: '4px' }}>
+                    <button
+                      onClick={() => loadFilterPreset(preset)}
+                      style={{
+                        padding: '6px 12px',
+                        background: darkMode ? '#1a202c' : '#f5f5f5',
+                        color: darkMode ? '#e2e8f0' : '#333',
+                        border: `2px solid #667eea`,
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.85em',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      📂 {preset.name}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setSavedPresets(savedPresets.filter((p: {name: string, filters: Record<string, any>}) => p.name !== preset.name));
+                        localStorage.setItem('filterPresets', JSON.stringify(savedPresets.filter((p: {name: string, filters: Record<string, any>}) => p.name !== preset.name)));
+                      }}
+                      style={{
+                        padding: '6px 10px',
+                        background: '#ef4444',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '0.85em'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="plan-list">
         {/* Provider Comparison Matrix */}
@@ -1563,8 +1807,8 @@ export default function Compare() {
                             loading="lazy"
                             decoding="async"
                             style={{
-                              width: '40px',
-                              height: '40px',
+                              width: '48px',
+                              height: '48px',
                               borderRadius: '8px',
                               objectFit: 'contain',
                               background: 'white',
@@ -1575,7 +1819,7 @@ export default function Compare() {
                               (e.target as HTMLImageElement).style.display = 'none';
                               const parent = (e.target as HTMLElement).parentElement;
                               if (parent) {
-                                parent.innerHTML = `<div style="background:${getProviderColor(p.provider_name)};color:white;width:40px;height:40px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:0.9em">${getProviderInitials(p.provider_name)}</div>`;
+                                parent.innerHTML = `<div style="background:${getProviderColor(p.provider_name)};color:white;width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1em">${getProviderInitials(p.provider_name)}</div>`;
                               }
                             }}
                           />
@@ -1585,14 +1829,14 @@ export default function Compare() {
                             style={{
                               background: getProviderColor(p.provider_name),
                               color: 'white',
-                              width: '40px',
-                              height: '40px',
+                              width: '48px',
+                              height: '48px',
                               borderRadius: '8px',
                               display: 'flex',
                               alignItems: 'center',
                               justifyContent: 'center',
                               fontWeight: 'bold',
-                              fontSize: '0.9em'
+                              fontSize: '1em'
                             }}
                           >
                             {getProviderInitials(p.provider_name)}

@@ -351,10 +351,16 @@ export const PlanCard: React.FC<PlanCardProps> = ({
               cursor: 'pointer',
               fontWeight: '600',
               fontSize: '0.85em',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '4px'
             }}
+            title="View full plan details on provider website"
           >
-            Visit
+            🔗 View Plan
           </button>
         )}
       </div>

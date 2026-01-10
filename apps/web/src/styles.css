@@ -637,6 +637,10 @@ body.dark-mode footer {
     backdrop-filter: blur(10px); /* Blur effect for content behind */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Shadow when floating */
   }
+
+  .mobile-filters-toggle-container {
+    display: flex;
+  }
   
   .filters label {
     width: 100%;
@@ -695,6 +699,50 @@ body.dark-mode footer {
   td span[style*="padding"] {
     font-size: 0.7em !important;
     padding: 2px 6px !important;
+  }
+
+  /* Mobile filters drawer toggle */
+  .mobile-filters-toggle-container {
+    display: none;
+    justify-content: center;
+    margin: 20px 0 12px;
+  }
+
+  .mobile-filters-toggle {
+    display: inline-block !important;
+    margin-bottom: 1rem;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-filters-toggle:hover {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+  }
+
+  .filters {
+    max-height: 1000px;
+    overflow: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease;
+  }
+
+  .filters.hidden {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+  }
+
+  .filters.visible {
+    max-height: 1000px;
+    opacity: 1;
+    overflow: auto;
   }
 }
 
