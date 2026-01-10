@@ -1,4 +1,3 @@
-// @ts-expect-error - useMemo is exported from react
 import React, { useEffect, useMemo, useState } from "react";
 // Type aliases for React events
 type ChangeEvent<T> = React.ChangeEvent<T>;
@@ -262,14 +261,18 @@ export default function Compare() {
       ? favorites.filter((id: number) => id !== planId)
       : [...favorites, planId];
     setFavorites(newFavorites);
-    localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('favorites', JSON.stringify(newFavorites));
+    }
   }
 
   function toggleDarkMode() {
     const newMode = !darkMode;
     setDarkMode(newMode);
-    localStorage.setItem('darkMode', String(newMode));
-    document.body.classList.toggle('dark-mode', newMode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('darkMode', String(newMode));
+      document.body.classList.toggle('dark-mode', newMode);
+    }
   }
 
   function getProviderColor(providerName: string): string {
