@@ -9,6 +9,9 @@ type D1Result = {
 // Cache TTL: 5 minutes (300 seconds)
 const CACHE_TTL = 300;
 
+const planQueryCache = new Map<string, { rows: unknown[]; expires: number }>();
+const PLAN_CACHE_TTL_MS = 30 * 1000;
+
 export async function getPlans(req: Request, env?: { CACHE?: any }) {
   try {
     const url = new URL(req.url);
@@ -25,6 +28,13 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
 
     // Generate cache key from query parameters
     const cacheKey = `plans:${url.searchParams.toString() || 'all'}`;
+    const now = Date.now();
+    const inMemory = planQueryCache.get(cacheKey);
+    if (inMemory && inMemory.expires > now) {
+      const response = jsonResponse({ ok: true, rows: inMemory.rows });
+      response.headers.set('X-Cache', 'MEMORY');
+      return response;
+    }
     
     // Try to get from cache first
     if (env?.CACHE) {
@@ -92,6 +102,7 @@ export async function getPlans(req: Request, env?: { CACHE?: any }) {
     const rowsRes = await (db.prepare(q) as D1Result).bind(...params).all();
     const rows = rowsRes && (rowsRes as any).results ? (rowsRes as any).results : rowsRes;
 
+    planQueryCache.set(cacheKey, { rows, expires: Date.now() + PLAN_CACHE_TTL_MS });
     const responseData = { ok: true, rows };
     
     // Store in cache

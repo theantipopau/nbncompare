@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 // Type aliases for React events
 type ChangeEvent<T> = React.ChangeEvent<T>;
 type MouseEvent<T> = React.MouseEvent<T>;
@@ -79,6 +79,7 @@ interface ServiceQualification {
 export default function Compare() {
   const [plans, setPlans] = useState([] as Plan[]);
   const [speed, setSpeed] = useState("all");
+  const [selectedSpeeds, setSelectedSpeeds] = useState<string[]>(['all']);
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState([] as AddressResult[]);
   const [_selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
@@ -120,14 +121,102 @@ export default function Compare() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showProviderList, setShowProviderList] = useState(false);
 
-  async function fetchPlans(s: string) {
+  const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '1000', '2000'];
+  const fixedWirelessSpeedOptions = ['100', '200', '400'];
+  const fiveGSpeedOptions = ['100', '250', '300'];
+  const satelliteSpeedOptions = ['25', '50', '100', '150'];
+  const allowAllSpeedChips = viewMode === 'standard' || viewMode === 'business';
+  const currentModeSpeedOptions = viewMode === 'fixed-wireless'
+    ? fixedWirelessSpeedOptions
+    : viewMode === '5g-home'
+      ? fiveGSpeedOptions
+      : viewMode === 'satellite'
+        ? satelliteSpeedOptions
+        : standardSpeedOptions;
+  const speedChips = allowAllSpeedChips ? ['all', ...currentModeSpeedOptions] : currentModeSpeedOptions;
+
+  const toggleSpeedTier = (value: string) => {
+    setSelectedSpeeds(prev => {
+      if (value === 'all') return ['all'];
+      const cleaned = prev.filter(s => s !== 'all');
+      if (cleaned.includes(value)) {
+        const updated = cleaned.filter(s => s !== value);
+        if (updated.length === 0) {
+          return allowAllSpeedChips ? ['all'] : [value];
+        }
+        return updated;
+      }
+      return [...cleaned, value];
+    });
+  };
+
+  const formatSpeedLabel = (value: string) => {
+    if (value === 'all') return 'All speeds';
+    if (viewMode === 'fixed-wireless') return `Fixed Wireless ${value}Mbps`;
+    if (viewMode === '5g-home') return `5G ${value}Mbps`;
+    if (viewMode === 'satellite') return `Satellite ${value}Mbps`;
+    return `NBN ${value}`;
+  };
+
+  const numericSelectedSpeeds = useMemo(() => {
+    if (selectedSpeeds.includes('all')) return null;
+    return selectedSpeeds
+      .map(s => parseInt(s, 10))
+      .filter(n => !isNaN(n));
+  }, [selectedSpeeds]);
+
+  const matchesSelectedSpeeds = (plan: Plan) => {
+    if (!numericSelectedSpeeds) return true;
+    if (!plan.speed_tier) return false;
+    return numericSelectedSpeeds.includes(plan.speed_tier);
+  };
+
+  useEffect(() => {
+    setSpeed(selectedSpeeds[0] ?? 'all');
+  }, [selectedSpeeds]);
+
+  useEffect(() => {
+    if (viewMode === 'fixed-wireless') {
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('residential');
+      setSelectedSpeeds(prev => {
+        const filtered = prev.filter(s => fixedWirelessSpeedOptions.includes(s));
+        return filtered.length > 0 ? filtered : ['100'];
+      });
+    } else if (viewMode === '5g-home') {
+      setServiceTypeFilter('5g-home');
+      setPlanTypeFilter('residential');
+      setSelectedSpeeds(prev => {
+        const filtered = prev.filter(s => fiveGSpeedOptions.includes(s));
+        return filtered.length > 0 ? filtered : ['100'];
+      });
+    } else if (viewMode === 'satellite') {
+      setServiceTypeFilter('satellite');
+      setPlanTypeFilter('residential');
+      setSelectedSpeeds(prev => {
+        const filtered = prev.filter(s => satelliteSpeedOptions.includes(s));
+        return filtered.length > 0 ? filtered : ['100'];
+      });
+    } else if (viewMode === 'business') {
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('business');
+      setSelectedSpeeds(['all']);
+    } else {
+      setServiceTypeFilter('nbn');
+      setPlanTypeFilter('residential');
+      setSelectedSpeeds(['all']);
+    }
+  }, [viewMode]);
+
+
+  async function fetchPlans() {
     setLoading(true);
     setMessage('Loading plans...');
     try {
       const apiUrl = getApiBaseUrl();
       const params = new URLSearchParams();
-      // Only add speed param if not "all"
-      if (s !== 'all') params.append('speed', s);
+      const speedForApi = selectedSpeeds.length === 1 && selectedSpeeds[0] !== 'all' ? selectedSpeeds[0] : 'all';
+      if (speedForApi !== 'all') params.append('speed', speedForApi);
       if (contractFilter) params.append('contract', contractFilter);
       if (dataFilter) params.append('data', dataFilter);
       if (modemFilter) params.append('modem', modemFilter);
@@ -146,6 +235,7 @@ export default function Compare() {
         params.append('serviceType', 'nbn');  // standard and fixed-wireless use NBN
       }
       
+      if (planTypeFilter !== 'all') params.append('planType', planTypeFilter);
       const res = await fetch(`${apiUrl}/api/plans?${params}`);
       const json = await res.json();
       setPlans(json.rows || json || []);
@@ -204,8 +294,34 @@ export default function Compare() {
     }
   }
 
+  const handleSpeedRecommendation = (recommended: number) => {
+    setSelectedSpeeds([String(recommended)]);
+  };
+
   function getComparePlans(): Plan[] {
     return plans.filter((p: Plan) => compareList.includes(p.id));
+  }
+
+  function getProviderTrustBadges(plan: Plan): Array<{icon: string, label: string, color: string}> {
+    const badges = [];
+    
+    if (plan.provider_ipv6_support === 1) {
+      badges.push({ icon: '🌐', label: 'IPv6 Support', color: '#10b981' });
+    }
+    
+    if (plan.provider_cgnat === 0 || plan.provider_cgnat_opt_out === 1) {
+      badges.push({ icon: '🔓', label: 'No CGNAT', color: '#3b82f6' });
+    }
+    
+    if (plan.provider_australian_support === 1) {
+      badges.push({ icon: '🇦🇺', label: 'AU Support', color: '#f59e0b' });
+    }
+    
+    if (plan.provider_static_ip_available === 1) {
+      badges.push({ icon: '📍', label: 'Static IP', color: '#8b5cf6' });
+    }
+    
+    return badges;
   }
 
   async function fetchPriceHistory(plan: Plan) {
@@ -233,45 +349,8 @@ export default function Compare() {
   }, [darkMode]);
 
   useEffect(() => {
-    fetchPlans(speed);
-  }, [speed, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode]);
-
-  // Reset speed when switching between view modes
-  useEffect(() => {
-    if (viewMode === 'fixed-wireless') {
-      // If current speed isn't valid for Fixed Wireless (100, 200, 400), reset to 100
-      if (!['100', '200', '400'].includes(speed)) {
-        setSpeed('100');
-      }
-      setServiceTypeFilter('nbn');
-      setPlanTypeFilter('residential');
-    } else if (viewMode === '5g-home') {
-      // 5G Home typically has speeds up to 300
-      setServiceTypeFilter('5g-home');
-      setPlanTypeFilter('residential');
-      if (!['100', '250', '300'].includes(speed)) {
-        setSpeed('100');
-      }
-    } else if (viewMode === 'satellite') {
-      // Satellite has varying speeds
-      setServiceTypeFilter('satellite');
-      setPlanTypeFilter('residential');
-      if (!['25', '50', '100', '150'].includes(speed)) {
-        setSpeed('100');
-      }
-    } else if (viewMode === 'business') {
-      setServiceTypeFilter('nbn');
-      setPlanTypeFilter('business');
-    } else {
-      // Standard mode
-      setServiceTypeFilter('nbn');
-      setPlanTypeFilter('residential');
-      // If current speed is only valid for Fixed Wireless (200, 400), reset to 100 for Standard
-      if (['200', '400'].includes(speed)) {
-        setSpeed('all');
-      }
-    }
-  }, [viewMode]);
+    fetchPlans();
+  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode]);
 
   // Speed tier color function
   const getSpeedTierColor = (tier: number | null): string => {
@@ -417,9 +496,9 @@ export default function Compare() {
           setMessage(`✅ ${qual.techType} available! Max speed: NBN ${qual.maxSpeed}Mbps.${techMessage} ${json.note || ''}`);
           
           // Auto-adjust speed filter to match available service
-          const currentSpeed = parseInt(speed);
-          if (currentSpeed > qual.maxSpeed) {
-            setSpeed(String(qual.maxSpeed));
+          const currentSpeed = numericSelectedSpeeds && numericSelectedSpeeds.length > 0 ? numericSelectedSpeeds[0] : null;
+          if (currentSpeed && currentSpeed > qual.maxSpeed) {
+            setSelectedSpeeds([String(qual.maxSpeed)]);
           }
         } else {
           setMessage(`⚠️ NBN not available at this address. Service type: ${qual.serviceType}`);
@@ -554,7 +633,7 @@ export default function Compare() {
       }}>
         <SpeedCalculator 
           darkMode={darkMode} 
-          onSpeedRecommended={(s) => setSpeed(String(s))} 
+          onSpeedRecommended={handleSpeedRecommendation} 
         />
         <BillComparison 
           darkMode={darkMode} 
@@ -834,34 +913,45 @@ export default function Compare() {
       )}
 
       <section className="filters">
-        <label>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
           <strong>Speed tier:</strong>
-          <select value={speed} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSpeed(e.target.value)}>
-            {viewMode === 'fixed-wireless' ? (
-              <>
-                <option value="all">All Speeds</option>
-                <option value="100">Fixed Wireless Plus 100Mbps</option>
-                <option value="200">Fixed Wireless Max 200Mbps</option>
-                <option value="400">Fixed Wireless Ultra 400Mbps</option>
-              </>
-            ) : (
-              <>
-                <option value="all">All Speeds</option>
-                <option value="12">NBN 12 (Basic)</option>
-                <option value="25">NBN 25 (Standard)</option>
-                <option value="50">NBN 50 (Standard Plus)</option>
-                <option value="100">NBN 100 (Fast)</option>
-                <option value="250">NBN 250 (Superfast)</option>
-                <option value="500">NBN 500 (Ultrafast)</option>
-                <option value="1000">NBN 1000 (Home Ultrafast)</option>
-                <option value="2000">NBN 2000 (2 Gigabit)</option>
-              </>
-            )}
-          </select>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {speedChips.map(option => {
+              const isSelected = option === 'all' ? selectedSpeeds.includes('all') : selectedSpeeds.includes(option);
+              return (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => toggleSpeedTier(option)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '999px',
+                    border: `1px solid ${isSelected ? 'transparent' : (darkMode ? '#4a5568' : '#cbd5e0')}`,
+                    background: isSelected
+                      ? 'linear-gradient(135deg, #667eea 0%, #8b5cf6 100%)'
+                      : 'transparent',
+                    color: isSelected ? 'white' : (darkMode ? '#e2e8f0' : '#1f2937'),
+                    cursor: 'pointer',
+                    fontSize: '0.85em',
+                    fontWeight: 600,
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? '0 8px 20px rgba(66, 165, 245, 0.2)' : 'none'
+                  }}
+                >
+                  {formatSpeedLabel(option)}
+                </button>
+              );
+            })}
+          </div>
+          <small style={{ color: darkMode ? '#cbd5e0' : '#475569', fontSize: '0.85em' }}>
+            {selectedSpeeds.includes('all')
+              ? 'Showing plans across every tier'
+              : `Showing ${selectedSpeeds.map(value => formatSpeedLabel(value)).join(', ')}`}
+          </small>
         </label>
         <label>
           <strong>Contract:</strong>
-          <select value={contractFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setContractFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={contractFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setContractFilter(e.target.value)}>
             <option value="">All</option>
             <option value="month-to-month">Month-to-Month</option>
             <option value="12-month">12 Month</option>
@@ -870,7 +960,7 @@ export default function Compare() {
         </label>
         <label>
           <strong>Data:</strong>
-          <select value={dataFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setDataFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={dataFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setDataFilter(e.target.value)}>
             <option value="">All</option>
             <option value="unlimited">Unlimited</option>
             <option value="limited">Limited</option>
@@ -878,7 +968,7 @@ export default function Compare() {
         </label>
         <label>
           <strong>Modem:</strong>
-          <select value={modemFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => { setModemFilter(e.target.value); fetchPlans(speed); }}>
+          <select value={modemFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setModemFilter(e.target.value)}>
             <option value="">All</option>
             <option value="1">Included</option>
           </select>
@@ -980,7 +1070,7 @@ export default function Compare() {
             }}
           />
         </label>
-        <button onClick={() => fetchPlans(speed)}>🔄 Refresh</button>
+        <button onClick={() => fetchPlans()}>🔄 Refresh</button>
         <button onClick={toggleDarkMode} style={{ background: darkMode ? '#FDB813' : '#2C3E50' }}>
           {darkMode ? '☀️' : '🌙'} {darkMode ? 'Light' : 'Dark'}
         </button>
@@ -1000,6 +1090,7 @@ export default function Compare() {
 
       <section className="plan-list">
         <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : viewMode === 'satellite' ? 'Satellite Internet Plans' : viewMode === '5g-home' ? '5G Home Internet Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
+          if (!matchesSelectedSpeeds(p)) return false;
           // Technology type filter based on viewMode (skip for business - handled by API)
           if (viewMode === 'business') return true;  // Business plans filtered by API via service_type
           if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
@@ -1048,30 +1139,133 @@ export default function Compare() {
               : 'No Standard NBN plans found for NBN ' + speed + '. Try a different speed tier or check Fixed Wireless.'}
           </div>
         ) : (
-          <div className="table-wrapper">
-            <table style={{
-              borderCollapse: 'separate',
-              borderSpacing: '0 12px',
-              width: '100%'
+          <>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px',
+              padding: '12px 16px',
+              background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.05)',
+              borderRadius: '8px',
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(102, 126, 234, 0.15)'}`,
             }}>
-              <thead>
-                <tr style={{
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
-                }}>
-                  <th style={{ padding: '16px 12px', borderRadius: '12px 0 0 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Logo</th>
-                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Provider</th>
-                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Plan Details</th>
-                  <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Price</th>
-                  <th className="hide-mobile" style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Speed</th>
-                  <th style={{ padding: '16px 12px', borderRadius: '0 12px 12px 0', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...plans]
-                  .filter(p => {
-                    // Technology type filter based on viewMode (skip for business - handled by API)
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                fontSize: '0.95em',
+                color: darkMode ? '#e2e8f0' : '#475569',
+              }}>
+                <span style={{ fontWeight: '600', color: '#667eea', fontSize: '1.1em' }}>
+                  {[...plans].filter(p => {
+                    // Apply same filters
+                    if (viewMode === 'business') {
+                      if (p.plan_type !== 'business') return false;
+                    } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+                    else if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+                    else if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+                    else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
+                    if (searchTerm) {
+                      const term = searchTerm.toLowerCase();
+                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                    }
+                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                    if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
+                    if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
+                    if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
+                    if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
+                    if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
+                    // Don't filter out 6-month deals - we'll display them differently
+                    if (uploadSpeedFilter) {
+                      const minUpload = parseInt(uploadSpeedFilter);
+                      if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
+                    }
+                    return true;
+                  }).length}
+                </span>
+                <span>
+                  {[...plans].filter(p => {
+                    if (viewMode === 'business') {
+                      if (p.plan_type !== 'business') return false;
+                    } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+                    else if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+                    else if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+                    else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
+                    if (searchTerm) {
+                      const term = searchTerm.toLowerCase();
+                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                    }
+                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                    if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
+                    if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
+                    if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
+                    if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
+                    if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
+                    // Don't filter out 6-month deals - we'll display them differently
+                    if (uploadSpeedFilter) {
+                      const minUpload = parseInt(uploadSpeedFilter);
+                      if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
+                    }
+                    return true;
+                  }).length === 1 ? 'plan' : 'plans'} shown
+                </span>
+                {[...plans].filter(p => {
+                  if (viewMode === 'business') {
+                    if (p.plan_type !== 'business') return false;
+                  } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
+                  else if (viewMode === 'satellite' && p.technology_type !== 'satellite') return false;
+                  else if (viewMode === '5g-home' && p.technology_type !== '5g-home') return false;
+                  else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
+                  if (searchTerm) {
+                    const term = searchTerm.toLowerCase();
+                    if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                  }
+                  if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                  if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
+                  if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
+                  if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
+                  if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
+                  if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
+                  if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) return false;
+                  if (uploadSpeedFilter) {
+                    const minUpload = parseInt(uploadSpeedFilter);
+                    if (!p.upload_speed_mbps || p.upload_speed_mbps < minUpload) return false;
+                  }
+                  return true;
+                }).length !== plans.length && (
+                  <span style={{ color: darkMode ? '#94a3b8' : '#64748b', fontSize: '0.9em' }}>
+                    (filtered from {plans.length} total)
+                  </span>
+                )}
+              </div>
+            </div>
+          
+          <div className="table-wrapper">
+                    <table style={{
+                      borderCollapse: 'separate',
+                      borderSpacing: '0 12px',
+                      width: '100%'
+                    }}>
+                      <thead>
+                        <tr style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
+                        }}>
+                          <th style={{ padding: '16px 12px', borderRadius: '12px 0 0 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Logo</th>
+                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Provider</th>
+                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Plan Details</th>
+                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Price</th>
+                          <th className="hide-mobile" style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Speed</th>
+                          <th style={{ padding: '16px 12px', borderRadius: '0 12px 12px 0', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...plans]
+                          .filter(p => {
+                            if (!matchesSelectedSpeeds(p)) return false;
+                            // Technology type filter based on viewMode (skip for business - handled by API)
                     if (viewMode === 'business') {
                       // Business plans filtered by API, no frontend technology_type filter needed
                     } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
@@ -1116,10 +1310,7 @@ export default function Compare() {
                       return false;
                     }
                     
-                    // Exclude 6-month deals filter: check both contract type AND intro duration
-                    if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) {
-                      return false;
-                    }
+                    // Don't filter out 6-month deals - we'll display them with ongoing price when filter is active
                     
                     // Upload speed filter
                     if (uploadSpeedFilter) {
@@ -1137,12 +1328,17 @@ export default function Compare() {
                   })
                   .sort((a, b) => {
                     if (sortBy === 'price') {
-                      const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity;
-                      const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity;
+                      // When excluding 6-month deals, sort by ongoing price for those plans
+                      const is6MonthA = exclude6MonthFilter && a.intro_price_cents && (a.contract_type === '6-month' || (a.intro_duration_days && a.intro_duration_days >= 175 && a.intro_duration_days <= 185));
+                      const is6MonthB = exclude6MonthFilter && b.intro_price_cents && (b.contract_type === '6-month' || (b.intro_duration_days && b.intro_duration_days >= 175 && b.intro_duration_days <= 185));
+                      const priceA = is6MonthA ? (a.ongoing_price_cents ?? Infinity) : (a.intro_price_cents ?? a.ongoing_price_cents ?? Infinity);
+                      const priceB = is6MonthB ? (b.ongoing_price_cents ?? Infinity) : (b.intro_price_cents ?? b.ongoing_price_cents ?? Infinity);
                       return priceA - priceB;
                     } else if (sortBy === 'price-desc') {
-                      const priceA = a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity;
-                      const priceB = b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity;
+                      const is6MonthA = exclude6MonthFilter && a.intro_price_cents && (a.contract_type === '6-month' || (a.intro_duration_days && a.intro_duration_days >= 175 && a.intro_duration_days <= 185));
+                      const is6MonthB = exclude6MonthFilter && b.intro_price_cents && (b.contract_type === '6-month' || (b.intro_duration_days && b.intro_duration_days >= 175 && b.intro_duration_days <= 185));
+                      const priceA = is6MonthA ? (a.ongoing_price_cents ?? -Infinity) : (a.intro_price_cents ?? a.ongoing_price_cents ?? -Infinity);
+                      const priceB = is6MonthB ? (b.ongoing_price_cents ?? -Infinity) : (b.intro_price_cents ?? b.ongoing_price_cents ?? -Infinity);
                       return priceB - priceA;
                     } else if (sortBy === 'provider') {
                       return a.provider_name.localeCompare(b.provider_name);
@@ -1212,35 +1408,64 @@ export default function Compare() {
                         )}
                       </td>
                       <td className="provider-name" style={{ padding: '20px 16px' }}>
-                        <a 
-                          href={`/provider/${p.provider_name.toLowerCase().replace(/\s+/g, '-')}`}
-                          style={{
-                            color: 'inherit',
-                            textDecoration: 'none',
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '4px'
-                          }}
-                          onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = '#667eea'; }}
-                          onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = 'inherit'; }}
-                        >
-                          {p.provider_name}
-                        </a>
-                        <ProviderTooltip 
-                          provider={{
-                            name: p.provider_name,
-                            description: p.provider_description,
-                            ipv6_support: p.provider_ipv6_support ?? 0,
-                            cgnat: p.provider_cgnat ?? 0,
-                            cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
-                            static_ip_available: p.provider_static_ip_available ?? 0,
-                            australian_support: p.provider_australian_support ?? 0,
-                            parent_company: p.provider_parent_company,
-                            routing_info: p.provider_routing_info,
-                            support_hours: p.provider_support_hours
-                          }}
-                          darkMode={darkMode}
-                        />
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <a 
+                              href={`/provider/${p.provider_name.toLowerCase().replace(/\s+/g, '-')}`}
+                              style={{
+                                color: 'inherit',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px'
+                              }}
+                              onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = '#667eea'; }}
+                              onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = 'inherit'; }}
+                            >
+                              {p.provider_name}
+                            </a>
+                            <ProviderTooltip 
+                              provider={{
+                                name: p.provider_name,
+                                description: p.provider_description,
+                                ipv6_support: p.provider_ipv6_support ?? 0,
+                                cgnat: p.provider_cgnat ?? 0,
+                                cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
+                                static_ip_available: p.provider_static_ip_available ?? 0,
+                                australian_support: p.provider_australian_support ?? 0,
+                                parent_company: p.provider_parent_company,
+                                routing_info: p.provider_routing_info,
+                                support_hours: p.provider_support_hours
+                              }}
+                              darkMode={darkMode}
+                            />
+                          </div>
+                          {getProviderTrustBadges(p).length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                              {getProviderTrustBadges(p).map((badge, idx) => (
+                                <span
+                                  key={idx}
+                                  title={badge.label}
+                                  style={{
+                                    fontSize: '0.7em',
+                                    padding: '2px 6px',
+                                    borderRadius: '4px',
+                                    background: `${badge.color}15`,
+                                    color: badge.color,
+                                    border: `1px solid ${badge.color}40`,
+                                    fontWeight: '600',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '2px',
+                                    whiteSpace: 'nowrap'
+                                  }}
+                                >
+                                  {badge.icon}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       </td>
                       <td style={{ padding: '20px 16px', maxWidth: '280px' }}>
                         <div style={{ fontWeight: '600', marginBottom: '4px', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
@@ -1305,7 +1530,41 @@ export default function Compare() {
                         </div>
                       </td>
                       <td style={{ padding: '20px 16px' }}>
-                        {p.intro_price_cents ? (
+                        {exclude6MonthFilter && p.intro_price_cents && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185)) ? (
+                          // Show ongoing price when 6-month filter is active, with discount badge
+                          <div style={{ lineHeight: '1.6' }}>
+                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                              <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c', WebkitTextFillColor: darkMode ? '#e2e8f0' : '#1a202c', background: 'none' }}>
+                                ${(p.ongoing_price_cents!/100).toFixed(0)}
+                              </span>
+                              <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b' }}>/mo</span>
+                              {p.price_trend && (
+                                <span 
+                                  style={{ 
+                                    color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
+                                    fontSize: '1em',
+                                    fontWeight: 'bold'
+                                  }} 
+                                  title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                                >
+                                  {p.price_trend === 'down' ? '↓' : '↑'}
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ 
+                              fontSize: '0.75em', 
+                              color: '#10b981', 
+                              marginTop: '4px',
+                              background: 'rgba(16, 185, 129, 0.1)',
+                              padding: '2px 8px',
+                              borderRadius: '4px',
+                              display: 'inline-block',
+                              border: '1px solid rgba(16, 185, 129, 0.3)'
+                            }}>
+                              💰 First {Math.round(p.intro_duration_days!/30)}mo: ${(p.intro_price_cents/100).toFixed(0)}
+                            </div>
+                          </div>
+                        ) : p.intro_price_cents ? (
                           <div style={{ lineHeight: '1.6' }}>
                             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
                               <span style={{ fontWeight: '700', color: '#f59e0b', fontSize: '1.3em', WebkitTextFillColor: '#f59e0b', background: 'none' }}>
@@ -1501,12 +1760,40 @@ export default function Compare() {
                   ))}
               </tbody>
             </table>
+          </div>
 
             {/* Mobile Card View */}
             <div className="plans-card-view">
-              {[...plans]
-                .filter(p => {
-                  // Technology type filter based on viewMode (skip for business - handled by API)
+              {loading ? (
+                // Loading skeleton for mobile cards
+                [1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="plan-card skeleton" style={{
+                    background: darkMode ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))' : 'white',
+                    padding: '24px',
+                    borderRadius: '16px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
+                    marginBottom: '16px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
+                      <div className="skeleton" style={{ width: '48px', height: '48px', borderRadius: '8px' }}></div>
+                      <div style={{ flex: 1 }}>
+                        <div className="skeleton" style={{ width: '140px', height: '20px', marginBottom: '8px', borderRadius: '4px' }}></div>
+                        <div className="skeleton" style={{ width: '200px', height: '16px', borderRadius: '4px' }}></div>
+                      </div>
+                    </div>
+                    <div className="skeleton" style={{ width: '100%', height: '1px', margin: '16px 0' }}></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px' }}>
+                      <div className="skeleton" style={{ width: '100px', height: '32px', borderRadius: '4px' }}></div>
+                      <div className="skeleton" style={{ width: '80px', height: '24px', borderRadius: '4px' }}></div>
+                    </div>
+                    <div className="skeleton" style={{ width: '100%', height: '44px', borderRadius: '8px', marginTop: '16px' }}></div>
+                  </div>
+                ))
+              ) : (
+                [...plans]
+                  .filter(p => {
+                    if (!matchesSelectedSpeeds(p)) return false;
+                    // Technology type filter based on viewMode (skip for business - handled by API)
                   if (viewMode === 'business') {
                     // Business plans filtered by API, no frontend technology_type filter needed
                   } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') return false;
@@ -1527,8 +1814,7 @@ export default function Compare() {
                   if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
                   if (auSupportFilter && (!p.provider_australian_support || p.provider_australian_support < 1)) return false;
                   if (staticIpFilter && (!p.provider_static_ip_available || p.provider_static_ip_available < 1)) return false;
-                  // Exclude 6-month deals: check both contract type AND intro duration (6 months = ~180 days)
-                  if (exclude6MonthFilter && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185))) return false;
+                  // Don't filter out 6-month deals - just change display
                   // Upload speed filter
                   if (uploadSpeedFilter) {
                     const minUpload = parseInt(uploadSpeedFilter);
@@ -1843,9 +2129,10 @@ export default function Compare() {
                       </a>
                     )}
                   </div>
-                ))}
+                ))
+              )}
             </div>
-          </div>
+          </>
         )}
       </section>
 

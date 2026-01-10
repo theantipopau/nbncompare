@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, readdirSync } from 'fs';
 import { findParserForUrl } from '../src/parsers/index';
 import { normalizeExtract, validatePlan } from '../src/validators';
 // @ts-ignore
@@ -8,18 +8,37 @@ import { JSDOM } from 'jsdom';
 (globalThis as any).DOMParser = new JSDOM('').window.DOMParser;
 
 async function run() {
-  const samples = [
-    { file: '../test-samples/telstra.html', url: 'https://www.telstra.com.au/internet/broadband/nbn' },
-    { file: '../test-samples/optus.html', url: 'https://www.optus.com.au/broadband/nbn' },
-    { file: '../test-samples/tpg.html', url: 'https://www.tpg.com.au/broadband/nbn' },
-    { file: '../test-samples/vodafone.html', url: 'https://www.vodafone.com.au/broadband/nbn' },
-    { file: '../test-samples/superloop.html', url: 'https://www.superloop.net/nbn' },
-    { file: '../test-samples/kogan.html', url: 'https://www.kogan.com/au/broadband/nbn' },
-    { file: '../test-samples/foxtel.html', url: 'https://www.foxtel.com.au/broadband/nbn' },
-    { file: '../test-samples/aussie.html', url: 'https://www.aussiebroadband.com.au/broadband/nbn' },
-    { file: '../test-samples/spintel.html', url: 'https://www.spintel.net.au/nbn' },
-    { file: '../test-samples/dodo.html', url: 'https://www.dodo.com/m/nbn' },
-  ];
+  const sampleUrlMap: Record<string, string> = {
+    telstra: 'https://www.telstra.com.au/internet/broadband/nbn',
+    optus: 'https://www.optus.com.au/broadband/nbn',
+    tpg: 'https://www.tpg.com.au/broadband/nbn',
+    vodafone: 'https://www.vodafone.com.au/broadband/nbn',
+    superloop: 'https://www.superloop.net/nbn',
+    kogan: 'https://www.kogan.com/au/broadband/nbn',
+    foxtel: 'https://www.foxtel.com.au/broadband/nbn',
+    aussie: 'https://www.aussiebroadband.com.au/broadband/nbn',
+    spintel: 'https://www.spintel.net.au/nbn',
+    dodo: 'https://www.dodo.com/m/nbn',
+  };
+
+  const sampleDir = new URL('../test-samples', import.meta.url);
+  const sampleFiles = readdirSync(sampleDir).filter(file => file.endsWith('.html'));
+  const missingUrls: string[] = [];
+  const samples = sampleFiles
+    .map(file => {
+      const key = file.replace('.html', '');
+      const url = sampleUrlMap[key as keyof typeof sampleUrlMap];
+      if (!url) {
+        missingUrls.push(file);
+        return null;
+      }
+      return { file: `../test-samples/${file}`, url };
+    })
+    .filter(Boolean) as Array<{ file: string; url: string }>;
+
+  if (missingUrls.length > 0) {
+    console.warn('No URL mapping found for test samples:', missingUrls.join(', '));
+  }
 
   for (const s of samples) {
     const html = readFileSync(new URL(s.file, import.meta.url), 'utf-8');
