@@ -748,11 +748,11 @@ export default function Compare() {
         }
         if (searchTerm) {
           const term = searchTerm.toLowerCase();
-          if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
+          if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
             return false;
           }
         }
-        if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) {
+        if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) {
           return false;
         }
         if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) {
@@ -1548,10 +1548,10 @@ export default function Compare() {
           // Search term
           if (searchTerm) {
             const term = searchTerm.toLowerCase();
-            if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+            if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
           }
           // Provider filter
-          if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+          if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) return false;
           // Selected providers filter (multi-select)
           if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
           // Metadata filters
@@ -1616,9 +1616,9 @@ export default function Compare() {
                     else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
                     if (searchTerm) {
                       const term = searchTerm.toLowerCase();
-                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                      if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
                     }
-                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                    if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) return false;
                     if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
                     if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
                     if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
@@ -1642,9 +1642,9 @@ export default function Compare() {
                     else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
                     if (searchTerm) {
                       const term = searchTerm.toLowerCase();
-                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                      if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
                     }
-                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                    if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) return false;
                     if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
                     if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
                     if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
@@ -1667,9 +1667,9 @@ export default function Compare() {
                   else if (viewMode === 'standard' && (p.technology_type === 'fixed-wireless' || p.technology_type === 'satellite' || p.technology_type === '5g-home')) return false;
                   if (searchTerm) {
                     const term = searchTerm.toLowerCase();
-                    if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
+                    if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) return false;
                   }
-                  if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) return false;
+                  if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) return false;
                   if (selectedProviders.length > 0 && !selectedProviders.includes(p.provider_name)) return false;
                   if (ipv6Filter && (!p.provider_ipv6_support || p.provider_ipv6_support < 1)) return false;
                   if (noCgnatFilter && p.provider_cgnat !== 0 && (!p.provider_cgnat_opt_out || p.provider_cgnat_opt_out < 1)) return false;
@@ -1729,13 +1729,13 @@ export default function Compare() {
                     // Search term filter
                     if (searchTerm) {
                       const term = searchTerm.toLowerCase();
-                      if (!(p.provider_name.toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
+                      if (!((p.provider_name || '').toLowerCase().includes(term) || stripHtml(p.plan_name).toLowerCase().includes(term))) {
                         return false;
                       }
                     }
                     
                     // Provider filter
-                    if (providerFilter && !p.provider_name.toLowerCase().includes(providerFilter.toLowerCase())) {
+                    if (providerFilter && !(p.provider_name || '').toLowerCase().includes(providerFilter.toLowerCase())) {
                       return false;
                     }
                     
@@ -1859,7 +1859,7 @@ export default function Compare() {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                             <a 
-                              href={`/provider/${p.provider_name.toLowerCase().replace(/\s+/g, '-')}`}
+                              href={`/provider/${(p.provider_name || '').toLowerCase().replace(/\s+/g, '-')}`}
                               style={{
                                 color: 'inherit',
                                 textDecoration: 'none',
@@ -1937,7 +1937,7 @@ export default function Compare() {
                               border: '2px solid #FFD700',
                               textTransform: 'uppercase'
                             }}
-                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support && p.provider_australian_support >= 1 ? '• Australian support team\n' : ''}${p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1) ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support && p.provider_ipv6_support >= 1 ? '• IPv6 support\n' : ''}${p.provider_static_ip_available && p.provider_static_ip_available >= 1 ? '• Static IP available\n' : ''}${p.provider_routing_info && p.provider_routing_info.toLowerCase().includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
+                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support && p.provider_australian_support >= 1 ? '• Australian support team\n' : ''}${p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1) ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support && p.provider_ipv6_support >= 1 ? '• IPv6 support\n' : ''}${p.provider_static_ip_available && p.provider_static_ip_available >= 1 ? '• Static IP available\n' : ''}${p.provider_routing_info && (p.provider_routing_info || '').toLowerCase().includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
                           >
                             ⭐ Best Value
                           </span>
