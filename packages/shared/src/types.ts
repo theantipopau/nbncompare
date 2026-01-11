@@ -11,6 +11,9 @@ export interface PlanExtract {
   planName: string;
   speedTier: SpeedTier | null;
   uploadSpeedMbps?: number | null; // Upload speed for high-tier plans (e.g., 2000/200)
+  dataAllowance?: string | null; // "Unlimited", "1TB", "500GB", etc.
+  contractMonths?: number | null; // 0 = month-to-month, 12, 24, etc.
+  modemIncluded?: boolean | null; // true if modem/router included in plan
   introPriceCents: number | null;
   introDurationDays: number | null; // normalized to days
   ongoingPriceCents: number | null;
