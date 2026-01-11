@@ -569,6 +569,23 @@ body.dark-mode footer {
     background: rgba(255, 255, 255, 0.98); /* Slightly transparent background */
     backdrop-filter: blur(10px); /* Blur effect for content behind */
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1); /* Shadow when floating */
+    max-height: 1000px;
+    overflow: auto;
+    transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  }
+
+  .filters.hidden {
+    max-height: 0 !important;
+    opacity: 0 !important;
+    overflow: hidden !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .filters.visible {
+    max-height: 1000px !important;
+    opacity: 1 !important;
+    overflow: auto !important;
   }
 
   .mobile-filters-toggle-container {
@@ -658,24 +675,6 @@ body.dark-mode footer {
   .mobile-filters-toggle:hover {
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
     transform: translateY(-2px);
-  }
-
-  .filters {
-    max-height: 1000px;
-    overflow: auto;
-    transition: max-height 0.3s ease, opacity 0.3s ease;
-  }
-
-  .filters.hidden {
-    max-height: 0;
-    opacity: 0;
-    overflow: hidden;
-  }
-
-  .filters.visible {
-    max-height: 1000px;
-    opacity: 1;
-    overflow: auto;
   }
 }
 
