@@ -1,4 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React from "react";
+const { useEffect, useMemo, useState } = React;
 // Type aliases for React events
 type ChangeEvent<T> = React.ChangeEvent<T>;
 type MouseEvent<T> = React.MouseEvent<T>;
@@ -123,16 +124,17 @@ export default function Compare() {
   const [highlightedIndex, setHighlightedIndex] = useState(-1);
   const [showProviderList, setShowProviderList] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
-  type FilterPreset = { name: string; filters: Record<string, unknown> };
-  const [savedPresets, setSavedPresets] = useState<Array<FilterPreset>>(() => {
+  const [activePreset, setActivePreset] = useState('');
+  type SavedFilterPreset = { name: string; filters: Record<string, unknown> };
+  const [savedPresets, setSavedPresets] = useState(() => {
     if (typeof window === 'undefined') return [];
     try {
-      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as Array<FilterPreset>;
+      return JSON.parse(localStorage.getItem('filterPresets') || '[]') as SavedFilterPreset[];
     } catch {
       return [];
     }
   });
-  const persistFilterPresets = (presets: Array<FilterPreset>) => {
+  const persistFilterPresets = (presets: SavedFilterPreset[]) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('filterPresets', JSON.stringify(presets));
     }
@@ -186,6 +188,76 @@ export default function Compare() {
     if (!numericSelectedSpeeds) return true;
     if (!plan.speed_tier) return false;
     return numericSelectedSpeeds.includes(plan.speed_tier);
+  };
+
+  const heroStats = useMemo(() => {
+    const providerSet = new Set<string>();
+    let cheapest = Infinity;
+    let highestSpeed = 0;
+    plans.forEach((plan: Plan) => {
+      if (plan.provider_name) providerSet.add(plan.provider_name);
+      if (plan.ongoing_price_cents && plan.ongoing_price_cents < cheapest) cheapest = plan.ongoing_price_cents;
+      if (plan.speed_tier && plan.speed_tier > highestSpeed) highestSpeed = plan.speed_tier;
+    });
+    return {
+      plans: plans.length,
+      providers: providerSet.size,
+      cheapest: isFinite(cheapest) ? (cheapest / 100).toFixed(2) : null,
+      topSpeed: highestSpeed || null,
+    };
+  }, [plans]);
+
+  const bestPlan = useMemo(() => {
+    return plans.reduce((best: Plan | null, candidate: Plan) => {
+      if (!candidate.ongoing_price_cents) return best;
+      if (!best) return candidate;
+      return candidate.ongoing_price_cents < (best.ongoing_price_cents ?? Infinity) ? candidate : best;
+    }, null as Plan | null);
+  }, [plans]);
+
+  type HeroPreset = {
+    name: string;
+    description: string;
+    settings: {
+      selectedSpeeds: string[];
+      viewMode: typeof viewMode;
+      sortBy: string;
+      uploadSpeedFilter?: string;
+      auSupportFilter?: boolean;
+    };
+  };
+
+  const heroPresets: HeroPreset[] = [
+    {
+      name: 'Budget pick',
+      description: 'Lowest monthly price',
+      settings: { selectedSpeeds: ['all'], viewMode: 'standard', sortBy: 'price', uploadSpeedFilter: '' }
+    },
+    {
+      name: 'Fastest upload',
+      description: 'Accelerated upload-focused plans',
+      settings: { selectedSpeeds: ['500'], viewMode: 'standard', sortBy: 'upload', uploadSpeedFilter: '40' }
+    },
+    {
+      name: 'Reliable Favorites',
+      description: 'Providers with Australian support',
+      settings: { selectedSpeeds: ['all'], viewMode: 'standard', sortBy: 'price', auSupportFilter: true }
+    },
+  ];
+
+  const applyPreset = (preset: HeroPreset) => {
+    setActivePreset(preset.name);
+    setSelectedSpeeds(preset.settings.selectedSpeeds);
+    setViewMode(preset.settings.viewMode);
+    setSortBy(preset.settings.sortBy);
+    setUploadSpeedFilter(preset.settings.uploadSpeedFilter ?? '');
+    setAuSupportFilter(!!preset.settings.auSupportFilter);
+    setProviderFilter('');
+    setContractFilter('');
+    setDataFilter('');
+    setTechnologyFilter('');
+    setModemFilter('');
+    setSelectedProviders([]);
   };
 
   useEffect(() => {
@@ -629,22 +701,22 @@ export default function Compare() {
       viewMode,
       sortBy
     };
-    const newPresets: Array<FilterPreset> = [...savedPresets.filter((p) => p.name !== name), { name, filters: currentFilters }];
+    const newPresets: SavedFilterPreset[] = [...savedPresets.filter((p: SavedFilterPreset) => p.name !== name), { name, filters: currentFilters }];
     setSavedPresets(newPresets);
     persistFilterPresets(newPresets);
     alert(`Preset "${name}" saved!`);
   }
 
   const removeFilterPreset = (name: string) => {
-    setSavedPresets(prev => {
-      const updated = prev.filter(p => p.name !== name);
+    setSavedPresets((prev: SavedFilterPreset[]) => {
+      const updated = prev.filter((p: SavedFilterPreset) => p.name !== name);
       persistFilterPresets(updated);
       return updated;
     });
   };
 
   // Load a saved preset
-  function loadFilterPreset(preset: {name: string, filters: Record<string, unknown>}) {
+  function loadFilterPreset(preset: SavedFilterPreset) {
     const f = preset.filters;
     setSelectedSpeeds(f.selectedSpeeds || ['all']);
     setContractFilter(f.contractFilter || '');
@@ -1074,7 +1146,7 @@ export default function Compare() {
 
       {/* Quick provider filter */}
       {plans.length > 0 && (
-        <section style={{ 
+        <section style={{
           background: darkMode 
             ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
             : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
@@ -1142,7 +1214,7 @@ export default function Compare() {
 
       {/* Multi-Select Provider Filter */}
       {plans.length > 0 && (
-        <section style={{ 
+        <section style={{
           background: darkMode 
             ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
             : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
@@ -1432,7 +1504,8 @@ export default function Compare() {
 
       {/* Statistics & Presets Section */}
       {plans.length > 0 && (
-        <section style={{
+        <>
+          <section style={{
           background: darkMode 
             ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
             : 'linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.95))',
@@ -1490,7 +1563,7 @@ export default function Compare() {
             <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: `2px solid ${darkMode ? '#4a5568' : '#e0e0e0'}` }}>
               <strong style={{ color: darkMode ? '#cbd5e0' : '#666', fontSize: '0.9em' }}>📌 Your Saved Filter Presets:</strong>
               <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
-                {savedPresets.map((preset) => (
+                {savedPresets.map((preset: SavedFilterPreset) => (
                   <div key={preset.name} style={{ display: 'flex', gap: '4px' }}>
                     <button
                       onClick={() => loadFilterPreset(preset)}
@@ -1528,7 +1601,71 @@ export default function Compare() {
               </div>
             </div>
           )}
-        </section>
+          <div className="hero-stats">
+            <div className="hero-stat-card">
+              <span className="hero-stat-value">{heroStats.plans}</span>
+              <span className="hero-stat-label">Plans covered</span>
+              <span className="hero-stat-note">all tiers refreshed daily</span>
+            </div>
+            <div className="hero-stat-card">
+              <span className="hero-stat-value">{heroStats.providers}</span>
+              <span className="hero-stat-label">Providers indexed</span>
+              <span className="hero-stat-note">ratings & trust signals</span>
+            </div>
+            {heroStats.cheapest && (
+              <div className="hero-stat-card">
+                <span className="hero-stat-value">${heroStats.cheapest}</span>
+                <span className="hero-stat-label">Cheapest ongoing</span>
+                <span className="hero-stat-note">per month</span>
+              </div>
+            )}
+            {heroStats.topSpeed && (
+              <div className="hero-stat-card">
+                <span className="hero-stat-value">{heroStats.topSpeed}Mbps</span>
+                <span className="hero-stat-label">Top speed</span>
+                <span className="hero-stat-note">across plans</span>
+              </div>
+            )}
+          </div>
+          <div className="preset-toolbar">
+            {heroPresets.map((preset: HeroPreset) => (
+              <button
+                key={preset.name}
+                type="button"
+                onClick={() => applyPreset(preset)}
+                className={`preset-button ${activePreset === preset.name ? 'active' : ''}`}
+              >
+                <strong>{preset.name}</strong>
+                <span>{preset.description}</span>
+              </button>
+            ))}
+          </div>
+          </section>
+          {bestPlan && (
+          <section className="best-plan-card">
+            <div>
+              <p className="best-plan-label">Expert pick</p>
+              <h3>{bestPlan.provider_name}</h3>
+              <p>{stripHtml(bestPlan.plan_name)}</p>
+            </div>
+            <div className="best-plan-price">
+              <span>${((bestPlan.ongoing_price_cents ?? 0)/100).toFixed(2)}</span>
+              <small>/mo ongoing</small>
+              <small className="best-plan-speed">{bestPlan.speed_tier}Mbps ⋅ {bestPlan.upload_speed_mbps ?? 0}Mbps upload</small>
+            </div>
+            <div className="best-plan-actions">
+              <button onClick={() => bestPlan.source_url && window.open(bestPlan.source_url, '_blank')}>
+                View plan
+              </button>
+              <button onClick={() => {
+                if (!favorites.includes(bestPlan.id)) setFavorites((prev: number[]) => [...prev, bestPlan.id]);
+              }}>
+                Save for later
+              </button>
+            </div>
+          </section>
+          )}
+        </>
       )}
 
       <section className="plan-list">

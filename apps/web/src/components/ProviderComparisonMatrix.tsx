@@ -20,8 +20,8 @@ interface Provider {
  * Compare IPv6, CGNAT, static IP, support location, parent company
  */
 export function ProviderComparisonMatrix() {
-  const [providers, setProviders] = useState<Provider[]>([]);
-  const [selectedProviders, setSelectedProviders] = useState<string[]>([])
+  const [providers, setProviders] = useState([] as Provider[]);
+  const [selectedProviders, setSelectedProviders] = useState([] as string[]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
