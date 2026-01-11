@@ -378,6 +378,10 @@ button:active {
     border: 1px solid var(--border);
     animation: slideDown 0.6s ease;
   }
+
+  .mobile-filters-toggle-container {
+    display: none !important;
+  }
 }
 
 /* Mobile filters (hidden by default, toggle to show) */
@@ -744,6 +748,10 @@ body.dark-mode footer {
     opacity: 0;
     overflow: hidden !important;
     transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease;
+  }
+
+  .filters.hidden {
+    display: none !important;
   }
 
   .filters.visible {
