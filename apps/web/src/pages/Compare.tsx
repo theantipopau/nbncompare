@@ -1641,30 +1641,6 @@ export default function Compare() {
             ))}
           </div>
           </section>
-          {bestPlan && (
-          <section className="best-plan-card">
-            <div>
-              <p className="best-plan-label">Expert pick</p>
-              <h3>{bestPlan.provider_name}</h3>
-              <p>{stripHtml(bestPlan.plan_name)}</p>
-            </div>
-            <div className="best-plan-price">
-              <span>${((bestPlan.ongoing_price_cents ?? 0)/100).toFixed(2)}</span>
-              <small>/mo ongoing</small>
-              <small className="best-plan-speed">{bestPlan.speed_tier}Mbps ⋅ {bestPlan.upload_speed_mbps ?? 0}Mbps upload</small>
-            </div>
-            <div className="best-plan-actions">
-              <button onClick={() => bestPlan.source_url && window.open(bestPlan.source_url, '_blank')}>
-                View plan
-              </button>
-              <button onClick={() => {
-                if (!favorites.includes(bestPlan.id)) setFavorites((prev: number[]) => [...prev, bestPlan.id]);
-              }}>
-                Save for later
-              </button>
-            </div>
-          </section>
-          )}
         </>
       )}
 
