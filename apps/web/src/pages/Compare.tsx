@@ -1319,9 +1319,9 @@ export default function Compare() {
       </div>
 
       <section className={`filters ${showMobileFilters ? 'visible' : 'hidden'}`}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
           <strong>Speed tier:</strong>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
             {speedChips.map(option => {
               const isSelected = option === 'all' ? selectedSpeeds.includes('all') : selectedSpeeds.includes(option);
               return (
@@ -1330,7 +1330,7 @@ export default function Compare() {
                   type="button"
                   onClick={() => toggleSpeedTier(option)}
                   style={{
-                    padding: '8px 16px',
+                    padding: '4px 10px',
                     borderRadius: '999px',
                     border: `1px solid ${isSelected ? 'transparent' : (darkMode ? '#4a5568' : '#cbd5e0')}`,
                     background: isSelected
@@ -1338,7 +1338,7 @@ export default function Compare() {
                       : 'transparent',
                     color: isSelected ? 'white' : (darkMode ? '#e2e8f0' : '#1f2937'),
                     cursor: 'pointer',
-                    fontSize: '0.85em',
+                    fontSize: '0.80em',
                     fontWeight: 600,
                     transition: 'all 0.2s ease',
                     boxShadow: isSelected ? '0 8px 20px rgba(66, 165, 245, 0.2)' : 'none'
@@ -1349,7 +1349,7 @@ export default function Compare() {
               );
             })}
           </div>
-          <small style={{ color: darkMode ? '#cbd5e0' : '#475569', fontSize: '0.85em' }}>
+          <small style={{ color: darkMode ? '#cbd5e0' : '#475569', fontSize: '0.80em' }}>
             {selectedSpeeds.includes('all')
               ? 'Showing plans across every tier'
               : `Showing ${selectedSpeeds.map((value: string) => formatSpeedLabel(value)).join(', ')}`}

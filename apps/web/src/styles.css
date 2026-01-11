@@ -369,10 +369,10 @@ button:active {
   .filters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 12px;
-    margin-top: 12px;
+    gap: 8px;
+    margin-top: 8px;
     background: white;
-    padding: 12px;
+    padding: 8px;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border);
@@ -398,16 +398,16 @@ button:active {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   display: block;
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .filters select,
 .filters input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 6px 8px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  font-size: 13px;
+  font-size: 12px;
   background: white;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -759,8 +759,8 @@ body.dark-mode footer {
     max-height: 1500px !important;
     opacity: 1 !important;
     overflow: auto !important;
-    padding: 12px !important;
-    margin-bottom: 12px !important;
+    padding: 8px !important;
+    margin-bottom: 8px !important;
     border-radius: var(--radius-xl);
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
