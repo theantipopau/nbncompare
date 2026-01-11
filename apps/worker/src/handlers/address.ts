@@ -77,11 +77,12 @@ export async function searchAddress(request: Request): Promise<Response> {
       .map((item: unknown) => {
         const suggestion = item as { id: string; formattedAddress?: string; address?: string; latitude?: number; longitude?: number };
         return {
-        id: suggestion.id, // LOC ID for qualification
-        formattedAddress: suggestion.formattedAddress || suggestion.address,
-        latitude: suggestion.latitude,
-        longitude: suggestion.longitude
-      }));
+          id: suggestion.id, // LOC ID for qualification
+          formattedAddress: suggestion.formattedAddress || suggestion.address,
+          latitude: suggestion.latitude,
+          longitude: suggestion.longitude
+        };
+      });
 
     return jsonResponse({
       ok: true,
