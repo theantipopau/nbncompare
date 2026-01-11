@@ -636,7 +636,7 @@ body.dark-mode footer {
 
   /* Mobile filters drawer toggle */
   .mobile-filters-toggle-container {
-    display: none;
+    display: flex;
     justify-content: center;
     margin: 20px 0 12px;
   }
