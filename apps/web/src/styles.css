@@ -364,17 +364,27 @@ button:active {
   box-shadow: var(--shadow-sm);
 }
 
-.filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
-  background: white;
-  padding: 20px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-sm);
-  border: 1px solid var(--border);
-  animation: slideDown 0.6s ease;
+/* Desktop filters (always visible) */
+@media (min-width: 769px) {
+  .filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 16px;
+    margin-top: 20px;
+    background: white;
+    padding: 20px;
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    border: 1px solid var(--border);
+    animation: slideDown 0.6s ease;
+  }
+}
+
+/* Mobile filters (hidden by default, toggle to show) */
+@media (max-width: 768px) {
+  .filters {
+    display: none !important;
+  }
 }
 
 .filters label {
