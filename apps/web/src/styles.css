@@ -137,6 +137,12 @@ nav a:hover {
 .search input {
   flex: 1;
   min-width: 200px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 14px;
+}
+
 .hero-stats {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
@@ -269,14 +275,55 @@ nav a:hover {
 .best-plan-actions button:hover {
   background: rgba(255, 255, 255, 0.25);
   border-color: rgba(255, 255, 255, 0.6);
-}
   padding: 10px 14px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: 4px;
   font-size: 14px;
   font-weight: 400;
   transition: all 0.2s ease;
-  background: white;
+  cursor: pointer;
+}
+
+@media (max-width: 768px) {
+  .best-plan-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px;
+  }
+
+  .best-plan-actions {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .best-plan-actions button {
+    flex: 1;
+    padding: 12px 16px;
+    font-size: 0.9em;
+  }
+}
+
+@media (max-width: 480px) {
+  .best-plan-card {
+    padding: 16px;
+    margin-bottom: 20px;
+  }
+
+  .best-plan-price span {
+    font-size: 1.6em;
+  }
+
+  .best-plan-card h3 {
+    font-size: 1.1em;
+  }
+
+  .best-plan-actions {
+    flex-direction: column;
+  }
+
+  .best-plan-actions button {
+    width: 100%;
+  }
 }
 
 .search input::placeholder {
