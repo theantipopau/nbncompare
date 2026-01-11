@@ -35,6 +35,7 @@ export function ProviderComparisonMatrix() {
       setProviders(data.providers || []);
     } catch (err) {
       console.error('Failed to fetch provider comparison:', err);
+      setProviders([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -46,8 +47,9 @@ export function ProviderComparisonMatrix() {
     ? providers.filter((p: Provider) => selectedProviders.includes(p.slug))
     : providers.slice(0, 5);
 
-  if (loading) {
-    return <div style={{ padding: '20px', textAlign: 'center' }}>Loading providers...</div>;
+  // Don't render anything if loading or no providers
+  if (loading || providers.length === 0) {
+    return null;
   }
 
   return (
