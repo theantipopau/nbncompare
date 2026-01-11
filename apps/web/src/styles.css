@@ -782,6 +782,26 @@ body.dark-mode footer {
     width: 100%;
   }
   
+  /* Mobile filters drawer toggle - styled for all mobile sizes */
+  .mobile-filters-toggle {
+    display: inline-block !important;
+    margin: 20px 0 12px !important;
+    padding: 0.75rem 1.25rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 0.95em;
+    transition: all 0.3s ease;
+  }
+
+  .mobile-filters-toggle:hover {
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    transform: translateY(-2px);
+  }
+  
   /* Add padding to plan-list section on mobile to prevent overlap */
   .plan-list {
     margin-top: 20px;
@@ -832,34 +852,7 @@ body.dark-mode footer {
     padding: 2px 6px !important;
   }
 
-  /* Mobile filters drawer toggle */
-  .mobile-filters-toggle-container {
-    display: flex;
-    justify-content: center;
-    margin: 20px 0 12px;
-  }
-
-  .mobile-filters-toggle {
-    display: inline-block !important;
-    margin-bottom: 1rem;
-    padding: 0.75rem 1.25rem;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-weight: 600;
-    font-size: 0.95em;
-    transition: all 0.3s ease;
-  }
-
-  .mobile-filters-toggle:hover {
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-    transform: translateY(-2px);
-  }
-}
-
-/* Dark Mode */
+  /* Dark Mode */
 body.dark-mode {
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   background-size: 400% 400%;
