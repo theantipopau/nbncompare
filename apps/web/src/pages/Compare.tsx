@@ -236,7 +236,7 @@ export default function Compare() {
     {
       name: 'Fastest upload',
       description: 'Accelerated upload-focused plans',
-      settings: { selectedSpeeds: ['500'], viewMode: 'standard', sortBy: 'upload', uploadSpeedFilter: '40' }
+      settings: { selectedSpeeds: ['500'], viewMode: 'standard', sortBy: 'speed', uploadSpeedFilter: '40' }
     },
     {
       name: 'Reliable Favorites',
