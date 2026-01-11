@@ -369,10 +369,10 @@ button:active {
   .filters {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-    gap: 16px;
-    margin-top: 20px;
+    gap: 12px;
+    margin-top: 12px;
     background: white;
-    padding: 20px;
+    padding: 12px;
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
     border: 1px solid var(--border);
@@ -398,7 +398,7 @@ button:active {
   letter-spacing: 0.02em;
   text-transform: uppercase;
   display: block;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .filters select,
@@ -759,8 +759,8 @@ body.dark-mode footer {
     max-height: 1500px !important;
     opacity: 1 !important;
     overflow: auto !important;
-    padding: 20px !important;
-    margin-bottom: 20px !important;
+    padding: 12px !important;
+    margin-bottom: 12px !important;
     border-radius: var(--radius-xl);
     background: rgba(255, 255, 255, 0.98);
     backdrop-filter: blur(10px);
