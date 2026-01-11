@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import Compare from "./pages/Compare";
 import Admin from "./pages/Admin";
@@ -10,6 +10,26 @@ import Blog from "./pages/Blog";
 import BlogPost from "./pages/BlogPost";
 
 export default function App() {
+  const [currentPath, setCurrentPath] = useState(location.pathname);
+
+  useEffect(() => {
+    // Handle browser back/forward buttons
+    const handlePopState = () => {
+      setCurrentPath(location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigate = (path: string, e?: React.MouseEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+    window.scrollTo(0, 0);
+  };
+
   return (
     <div className="container">
       <header>
@@ -27,23 +47,23 @@ export default function App() {
           </div>
         </div>
         <nav style={{ display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
-          <a href="/" style={{ textDecoration: 'none', color: location.pathname === '/' ? '#667eea' : '#333', fontWeight: location.pathname === '/' ? '700' : '600', transition: 'all 0.2s' }}>🏠 Home</a>
-          <a href="/blog" style={{ textDecoration: 'none', color: location.pathname.startsWith('/blog') ? '#667eea' : '#333', fontWeight: location.pathname.startsWith('/blog') ? '700' : '600', transition: 'all 0.2s' }}>📝 Blog</a>
-          <a href="/about" style={{ textDecoration: 'none', color: location.pathname === '/about' ? '#667eea' : '#333', fontWeight: location.pathname === '/about' ? '700' : '600', transition: 'all 0.2s' }}>ℹ️ About</a>
-          <a href="/status" style={{ textDecoration: 'none', color: location.pathname === '/status' ? '#667eea' : '#333', fontWeight: location.pathname === '/status' ? '700' : '600', transition: 'all 0.2s' }}>📊 Status</a>
-          <a href="/admin" style={{ textDecoration: 'none', color: location.pathname === '/admin' ? '#667eea' : '#333', fontWeight: location.pathname === '/admin' ? '700' : '600', transition: 'all 0.2s' }}>⚙️ Admin</a>
+          <a href="/" onClick={(e) => navigate('/', e)} style={{ textDecoration: 'none', color: currentPath === '/' ? '#667eea' : '#333', fontWeight: currentPath === '/' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>🏠 Home</a>
+          <a href="/blog" onClick={(e) => navigate('/blog', e)} style={{ textDecoration: 'none', color: currentPath.startsWith('/blog') ? '#667eea' : '#333', fontWeight: currentPath.startsWith('/blog') ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>📝 Blog</a>
+          <a href="/about" onClick={(e) => navigate('/about', e)} style={{ textDecoration: 'none', color: currentPath === '/about' ? '#667eea' : '#333', fontWeight: currentPath === '/about' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>ℹ️ About</a>
+          <a href="/status" onClick={(e) => navigate('/status', e)} style={{ textDecoration: 'none', color: currentPath === '/status' ? '#667eea' : '#333', fontWeight: currentPath === '/status' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>📊 Status</a>
+          <a href="/admin" onClick={(e) => navigate('/admin', e)} style={{ textDecoration: 'none', color: currentPath === '/admin' ? '#667eea' : '#333', fontWeight: currentPath === '/admin' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>⚙️ Admin</a>
         </nav>
       </header>
       {/* @ts-expect-error - ErrorBoundary component type issues in local build */}
       <ErrorBoundary>
         <main>
-          {location.pathname === '/admin' ? <Admin /> : 
-         location.pathname.startsWith('/blog/') ? <BlogPost /> :
-         location.pathname === '/blog' ? <Blog /> :
-         location.pathname.startsWith('/provider/') ? <ProviderDetails /> :
-         location.pathname.startsWith('/providers/') ? (<Provider slug={(location.pathname.replace('/providers/', '') || '').trim()} />) : 
-         location.pathname === '/status' ? <Status /> : 
-         location.pathname === '/about' ? <About /> : 
+          {currentPath === '/admin' ? <Admin /> : 
+         currentPath.startsWith('/blog/') ? <BlogPost /> :
+         currentPath === '/blog' ? <Blog /> :
+         currentPath.startsWith('/provider/') ? <ProviderDetails /> :
+         currentPath.startsWith('/providers/') ? (<Provider slug={(currentPath.replace('/providers/', '') || '').trim()} />) : 
+         currentPath === '/status' ? <Status /> : 
+         currentPath === '/about' ? <About /> : 
          <Compare />}
         </main>
       </ErrorBoundary>
@@ -61,10 +81,10 @@ export default function App() {
           <div className="footer-section">
             <h4>Quick Links</h4>
             <ul className="footer-links">
-              <li><a href="/">Compare Plans</a></li>
-              <li><a href="/blog">Blog & Guides</a></li>
-              <li><a href="/about">About</a></li>
-              <li><a href="/status">System Status</a></li>
+              <li><a href="/" onClick={(e) => navigate('/', e)}>Compare Plans</a></li>
+              <li><a href="/blog" onClick={(e) => navigate('/blog', e)}>Blog & Guides</a></li>
+              <li><a href="/about" onClick={(e) => navigate('/about', e)}>About</a></li>
+              <li><a href="/status" onClick={(e) => navigate('/status', e)}>System Status</a></li>
             </ul>
           </div>
           
