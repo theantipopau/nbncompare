@@ -207,7 +207,7 @@ export default function Compare() {
     };
   }, [plans]);
 
-  const bestPlan = useMemo(() => {
+  const _bestPlan = useMemo(() => {
     return plans.reduce((best: Plan | null, candidate: Plan) => {
       if (!candidate.ongoing_price_cents) return best;
       if (!best) return candidate;

@@ -6,6 +6,7 @@
  * 
  * Usage: npx ts-node src/tools/verify-provider-urls.ts
  */
+/// <reference types="node" />
 
 interface ProviderUrl {
   name: string;

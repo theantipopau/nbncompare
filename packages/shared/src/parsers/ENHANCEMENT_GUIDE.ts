@@ -29,8 +29,8 @@
  * 
  * Example extraction:
  */
-function extractUploadSpeed(planElement: Element, downloadSpeed: number): number | null {
-  const planText = planElement.textContent || "";
+function _extractUploadSpeed(planElement: Element | null, downloadSpeed: number): number | null {
+  const planText = planElement?.textContent || "";
   
   // Try to find "X Mbps" upload mentions
   const uploadMatch = planText.match(/(\d+)\s*Mbps\s*(up|upload)/i);
@@ -65,8 +65,8 @@ function extractUploadSpeed(planElement: Element, downloadSpeed: number): number
  * 
  * Example extraction:
  */
-function extractDataAllowance(planElement: Element): string | null {
-  const planText = (planElement.textContent || "").toLowerCase();
+function _extractDataAllowance(planElement: Element | null): string | null {
+  const planText = (planElement?.textContent || "").toLowerCase();
   
   // Check for unlimited
   if (planText.includes("unlimited")) {
@@ -94,8 +94,8 @@ function extractDataAllowance(planElement: Element): string | null {
  * 
  * Example extraction:
  */
-function extractContractTerm(planElement: Element): number | null {
-  const planText = (planElement.textContent || "").toLowerCase();
+function _extractContractTerm(planElement: Element | null): number | null {
+  const planText = (planElement?.textContent || "").toLowerCase();
   
   if (planText.includes("no contract") || planText.includes("month-to-month")) {
     return 0;
@@ -126,8 +126,8 @@ function extractContractTerm(planElement: Element): number | null {
  * 
  * Example extraction:
  */
-function extractModemIncluded(planElement: Element): boolean | null {
-  const planText = (planElement.textContent || "").toLowerCase();
+function _extractModemIncluded(planElement: Element | null): boolean | null {
+  const planText = (planElement?.textContent || "").toLowerCase();
   
   if (planText.includes("modem included") || planText.includes("router included")) {
     return true;
@@ -156,8 +156,8 @@ function extractModemIncluded(planElement: Element): boolean | null {
  * 
  * Example extraction:
  */
-function extractSetupFee(planElement: Element): number | null {
-  const planText = planElement.textContent || "";
+function _extractSetupFee(planElement: Element | null): number | null {
+  const planText = planElement?.textContent || "";
   
   if (planText.match(/free\s*(setup|connection|installation)/i)) {
     return 0;
