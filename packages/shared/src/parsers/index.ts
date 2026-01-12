@@ -10,10 +10,18 @@ import * as kogan from "./providers/kogan";
 import * as foxtel from "./providers/foxtel";
 import * as exetel from "./providers/exetel";
 import * as arctel from "./providers/arctel";
+import * as launtel from "./providers/launtel";
+import * as leaptel from "./providers/leaptel";
+import * as myrepublic from "./providers/myrepublic";
+import * as iinet from "./providers/iinet";
+import * as internode from "./providers/internode";
+import * as westnet from "./providers/westnet";
+import * as localbroadband from "./providers/localbroadband";
+import * as netspace from "./providers/netspace";
 import * as generic from "./generic";
 
 // Order matters: prefer specialized providers first
-const PROVIDER_PARSERS = [telstra, optus, tpg, vodafone, superloop, kogan, foxtel, aussie, spintel, dodo, exetel, arctel];
+const PROVIDER_PARSERS = [telstra, optus, tpg, vodafone, superloop, kogan, foxtel, aussie, spintel, dodo, exetel, arctel, launtel, leaptel, myrepublic, iinet, internode, westnet, localbroadband, netspace];
 
 export function findParserForUrl(url: string) {
   for (const p of PROVIDER_PARSERS) {
