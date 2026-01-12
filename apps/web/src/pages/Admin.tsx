@@ -38,11 +38,27 @@ interface ScraperRun {
   notes?: string;
 }
 
+interface ProviderMetadata {
+  id: number;
+  name: string;
+  slug: string;
+  metadata_verification_status: string;
+  metadata_verified_date?: string;
+  metadata_verified_by?: string;
+  metadata_verification_notes?: string;
+  plan_count: number;
+  has_upload_speed: number;
+  has_data_allowance: number;
+  has_contract_months: number;
+  has_modem_included: number;
+}
+
 export default function Admin() {
   usePageTitle('Admin - NBN Compare');
   const [issues, setIssues] = useState([] as ProviderIssue[]);
   const [feedback, setFeedback] = useState([] as Feedback[]);
   const [scraperRuns, setScraperRuns] = useState([] as ScraperRun[]);
+  const [providerMetadata, setProviderMetadata] = useState([] as ProviderMetadata[]);
   const [token, setToken] = useState("" as string);
   const [scraping, setScraping] = useState(false);
   const [scrapeResult, setScrapeResult] = useState(null as unknown);
@@ -53,6 +69,7 @@ export default function Admin() {
       setIssues([]);
       setFeedback([]);
       setScraperRuns([]);
+      setProviderMetadata([]);
       return;
     }
 
@@ -75,6 +92,12 @@ export default function Admin() {
       .then(r => r.json())
       .then((data) => setScraperRuns(Array.isArray(data) ? data : data.runs || []))
       .catch(() => setScraperRuns([])); // Silently fail if endpoint not available
+
+    // Fetch provider metadata verification status
+    fetch(`${apiUrl}/api/admin/provider-verification`, { headers: { 'x-admin-token': token } })
+      .then(r => r.json())
+      .then((data) => setProviderMetadata(Array.isArray(data) ? data : data.providers || []))
+      .catch(() => setProviderMetadata([])); // Silently fail if endpoint not available
   }, [token]);
 
   async function approve(slug: string) {
@@ -195,7 +218,7 @@ export default function Admin() {
       )}
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid #ddd', paddingBottom: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', borderBottom: '2px solid #ddd', paddingBottom: '12px', flexWrap: 'wrap' }}>
         <button
           onClick={() => setSelectedTab('issues')}
           style={{
@@ -237,6 +260,20 @@ export default function Admin() {
           }}
         >
           🤖 Scraper Runs ({scraperRuns.length})
+        </button>
+        <button
+          onClick={() => setSelectedTab('metadata')}
+          style={{
+            padding: '10px 16px',
+            background: selectedTab === 'metadata' ? '#667eea' : 'transparent',
+            color: selectedTab === 'metadata' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          ✅ Metadata Verification ({providerMetadata.length})
         </button>
       </div>
 
@@ -389,6 +426,84 @@ export default function Admin() {
                         {run.errors_encountered}
                       </td>
                       <td style={{ padding: '12px' }}>{duration}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
+        </div>
+      )}
+
+      {/* Metadata Verification Tab */}
+      {selectedTab === 'metadata' && (
+        <div>
+          <h3>Provider Metadata Verification Status</h3>
+          {!token && <p>Enter admin token to load metadata verification data</p>}
+          {token && providerMetadata.length === 0 && <p>No metadata verification data available</p>}
+          {providerMetadata.length > 0 && (
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '12px' }}>
+              <thead>
+                <tr style={{ background: '#f3f4f6', borderBottom: '2px solid #ddd' }}>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Provider</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Plans</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Upload Speed %</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Data Allowance %</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Contract Info %</th>
+                  <th style={{ padding: '12px', textAlign: 'center' }}>Modem Info %</th>
+                  <th style={{ padding: '12px', textAlign: 'left' }}>Last Verified</th>
+                </tr>
+              </thead>
+              <tbody>
+                {providerMetadata.map((pm: ProviderMetadata) => {
+                  const uploadPct = pm.plan_count > 0 ? ((pm.has_upload_speed / pm.plan_count) * 100).toFixed(0) : '0';
+                  const dataPct = pm.plan_count > 0 ? ((pm.has_data_allowance / pm.plan_count) * 100).toFixed(0) : '0';
+                  const contractPct = pm.plan_count > 0 ? ((pm.has_contract_months / pm.plan_count) * 100).toFixed(0) : '0';
+                  const modemPct = pm.plan_count > 0 ? ((pm.has_modem_included / pm.plan_count) * 100).toFixed(0) : '0';
+
+                  return (
+                    <tr key={pm.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '12px' }}>
+                        <strong>{pm.name}</strong>
+                        <br />
+                        <small style={{ color: '#666' }}>({pm.slug})</small>
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        <span style={{
+                          display: 'inline-block',
+                          background: pm.metadata_verification_status === 'Verified' ? '#10b981' : 
+                                     pm.metadata_verification_status === 'Pending' ? '#f59e0b' : '#ef4444',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '4px',
+                          fontSize: '12px',
+                          fontWeight: '600'
+                        }}>
+                          {pm.metadata_verification_status}
+                        </span>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center' }}>
+                        <strong>{pm.plan_count}</strong>
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', color: parseInt(uploadPct) >= 80 ? '#10b981' : '#f59e0b' }}>
+                        {uploadPct}%
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', color: parseInt(dataPct) >= 80 ? '#10b981' : '#f59e0b' }}>
+                        {dataPct}%
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', color: parseInt(contractPct) >= 80 ? '#10b981' : '#f59e0b' }}>
+                        {contractPct}%
+                      </td>
+                      <td style={{ padding: '12px', textAlign: 'center', color: parseInt(modemPct) >= 80 ? '#10b981' : '#f59e0b' }}>
+                        {modemPct}%
+                      </td>
+                      <td style={{ padding: '12px' }}>
+                        {pm.metadata_verified_date 
+                          ? new Date(pm.metadata_verified_date).toLocaleDateString()
+                          : <span style={{ color: '#999' }}>Never</span>
+                        }
+                      </td>
                     </tr>
                   );
                 })}

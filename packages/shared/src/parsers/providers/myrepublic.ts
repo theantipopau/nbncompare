@@ -3,7 +3,7 @@ import { normalizeSpeed, parsePriceToCents } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
 function extractUploadSpeed(planElement: Element | null, downloadSpeed: number | null): number | null {
-  if (!downloadSpeed) return null;
+  if (!planElement || !downloadSpeed) return null;
   const planText = planElement.textContent || "";
   const uploadMatch = planText.match(/(\d+)\s*Mbps\s*(up|upload|↑)/i);
   if (uploadMatch) {
