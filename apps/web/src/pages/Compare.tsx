@@ -110,6 +110,10 @@ export default function Compare() {
   const [staticIpFilter, setStaticIpFilter] = useState(false);
   const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
   const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
+  const [setupFeeFilter, setSetupFeeFilter] = useState(''); // New: filter for setup fees
+  const [dataAllowanceFilter, setDataAllowanceFilter] = useState(''); // New: filter for data allowance details
+  const [contractMonthsFilter, setContractMonthsFilter] = useState(''); // New: filter for contract duration
+  const [modemCostFilter, setModemCostFilter] = useState(''); // New: filter for modem costs
   const [providerFilter, setProviderFilter] = useState('');
   const [selectedProviders, setSelectedProviders] = useState([] as string[]);
   const [viewMode, setViewMode] = useState('standard' as 'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite');
@@ -848,6 +852,22 @@ export default function Compare() {
             return false;
           }
         }
+        if (setupFeeFilter) {
+          if (setupFeeFilter === '0' && (p.setup_fee_cents === null || p.setup_fee_cents > 0)) {
+            return false;
+          } else if (setupFeeFilter === '1-100' && (p.setup_fee_cents === null || p.setup_fee_cents < 100 || p.setup_fee_cents > 10000)) {
+            return false;
+          } else if (setupFeeFilter === '100-200' && (p.setup_fee_cents === null || p.setup_fee_cents < 10000)) {
+            return false;
+          }
+        }
+        if (modemCostFilter) {
+          if (modemCostFilter === '0' && (p.modem_cost_cents === null || p.modem_cost_cents > 0)) {
+            return false;
+          } else if (modemCostFilter === 'paid' && (p.modem_cost_cents === null || p.modem_cost_cents === 0)) {
+            return false;
+          }
+        }
         return true;
       })
       .sort((a, b) => {
@@ -1387,6 +1407,23 @@ export default function Compare() {
             <option value="50">50+ Mbps</option>
             <option value="100">100+ Mbps</option>
             <option value="200">200+ Mbps</option>
+          </select>
+        </label>
+        <label>
+          <strong>Setup Fee:</strong>
+          <select value={setupFeeFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setSetupFeeFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="0">Free Setup</option>
+            <option value="1-100">$1-$100</option>
+            <option value="100-200">$100-$200</option>
+          </select>
+        </label>
+        <label>
+          <strong>Modem Cost:</strong>
+          <select value={modemCostFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setModemCostFilter(e.target.value)}>
+            <option value="">All</option>
+            <option value="0">Free Modem</option>
+            <option value="paid">Paid Modem</option>
           </select>
         </label>
         <label>
