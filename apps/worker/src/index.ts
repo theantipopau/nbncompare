@@ -52,6 +52,11 @@ try {
     return getIssues(req);
   });
 
+  router.get("/api/admin/provider-verification", async (req: Request) => {
+    const { getProviderVerification } = await import("./handlers/provider-verification");
+    return getProviderVerification(req);
+  });
+
   router.post("/api/admin/review/approve", async (request: Request) => {
     const { adminApprove } = await import("./handlers/admin");
     return adminApprove(request as Request, { ADMIN_TOKEN: (globalThis as any).ADMIN_TOKEN });
@@ -85,6 +90,29 @@ try {
       return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (err: unknown) {
       console.error('Favicon update failed:', err);
+      return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  });
+
+  // Data population endpoints
+  router.post("/internal/data-population/populate", async (req: Request, env: Env) => {
+    try {
+      const { handleDataPopulation } = await import("./handlers/data-population");
+      const result = await handleDataPopulation(env);
+      return new Response(JSON.stringify(result), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (err: unknown) {
+      console.error('Data population failed:', err);
+      return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  });
+
+  router.get("/internal/data-population/status", async () => {
+    try {
+      const { getDataPopulationStatus } = await import("./handlers/data-population");
+      const result = await getDataPopulationStatus();
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (err: unknown) {
+      console.error('Status check failed:', err);
       return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   });
