@@ -1,31 +1,17 @@
 -- Migration: 0024_add_parser_enhancement_fields.sql
 -- Purpose: Add new fields extracted by Phase 1 parser enhancements
 -- Created: 2026-01-11
--- Status: Ready to deploy
+-- Note: Some columns (data_allowance, modem_included, upload_speed_mbps, setup_fee_cents, modem_cost_cents) already exist
+-- This migration adds the remaining enhancement columns
 
--- Add parser-extracted fields to plans table
-ALTER TABLE plans ADD COLUMN upload_speed_mbps INTEGER;
--- ↑ Upload speed in Mbps (e.g., 10 for NBN 100)
-
-ALTER TABLE plans ADD COLUMN data_allowance TEXT;
--- ↑ Data allowance: "Unlimited", "1TB", "500GB", etc. or NULL
-
+-- Add remaining parser-extracted fields to plans table
 ALTER TABLE plans ADD COLUMN contract_months INTEGER;
 -- ↑ Contract term: 0 (month-to-month), 12, 24, or NULL
-
-ALTER TABLE plans ADD COLUMN setup_fee_cents INTEGER DEFAULT 0;
--- ↑ Setup/connection fee in cents (0 if free)
-
-ALTER TABLE plans ADD COLUMN modem_included BOOLEAN DEFAULT 1;
--- ↑ Whether modem/router is included in plan
-
-ALTER TABLE plans ADD COLUMN modem_cost_cents INTEGER DEFAULT 0;
--- ↑ Cost of modem if not included (0 if included)
 
 ALTER TABLE plans ADD COLUMN nbn_technology TEXT;
 -- ↑ NBN type: FTTP, FTTC, FTTN, HFC, Fixed Wireless, etc.
 
--- Add metadata verification tracking columns
+-- Add metadata verification tracking columns to providers table
 ALTER TABLE providers ADD COLUMN metadata_verified_date TEXT;
 -- ↑ Date when provider metadata was last verified
 
