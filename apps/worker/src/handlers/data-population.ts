@@ -15,6 +15,9 @@ type SimpleDB = {
 
 /**
  * Enhanced data population handler
+ * Processes providers in batches to avoid timeout
+ * Each call processes up to 3 providers (adjustable)
+ * 
  * Scrapes all 20 providers and populates:
  * - upload_speed_mbps, contract_months, nbn_technology
  * - modem_included, setup_fee_cents, data_allowance
@@ -22,31 +25,53 @@ type SimpleDB = {
  */
 export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
   const db = (await getDb()) as SimpleDB;
-  console.log("🚀 Starting Enhanced Data Population...");
+  const batchSize = 3; // Process 3 providers at a time (adjust for timeout)
+  
+  console.log("🚀 Starting Batch Data Population...");
   
   const startTime = Date.now();
   const result = {
     totalProviders: 0,
-    processedProviders: 0,
-    processedPlans: 0,
-    verifiedProviders: 0,
+    processedThisBatch: 0,
+    processedOverall: 0,
+    processedPlansThisBatch: 0,
+    processedPlansOverall: 0,
+    verifiedThisBatch: 0,
+    verifiedOverall: 0,
     errors: 0,
     duration: 0,
+    batchNumber: 0,
+    moreToProcess: false,
     details: [] as Array<{ provider: string; plans: number; status: string; error?: string }>
   };
 
   try {
-    // Get all active providers
-    const stmt = db.prepare("SELECT * FROM providers WHERE active = 1 ORDER BY id ASC");
+    // Get count of all active providers
+    const countStmt = db.prepare("SELECT COUNT(*) as count FROM providers WHERE active = 1");
+    const countRes = (await countStmt.first()) as { count: number } | undefined;
+    result.totalProviders = countRes?.count || 0;
+
+    // Get count of already-processed (verified) providers
+    const verifiedStmt = db.prepare("SELECT COUNT(*) as count FROM providers WHERE metadata_verification_status = 'Verified'");
+    const verifiedRes = (await verifiedStmt.first()) as { count: number } | undefined;
+    result.verifiedOverall = verifiedRes?.count || 0;
+
+    // Get unprocessed providers
+    const stmt = db.prepare(
+      "SELECT * FROM providers WHERE active = 1 AND metadata_verification_status != 'Verified' ORDER BY id ASC LIMIT ?"
+    );
     const providersRes = typeof (stmt as any).all === 'function' ? await (stmt as any).all() : { results: [] };
     const providers = (providersRes && (providersRes as any).results ? (providersRes as any).results : []) as ProviderRow[];
     
-    result.totalProviders = providers.length;
-    console.log(`📊 Found ${providers.length} active providers to process`);
+    result.batchNumber = Math.ceil((result.totalProviders - result.verifiedOverall) / batchSize);
+    console.log(`📊 Processing batch: ${result.batchNumber}/${Math.ceil(result.totalProviders / batchSize)}`);
+    console.log(`   Already verified: ${result.verifiedOverall}/${result.totalProviders}`);
+    console.log(`   Providers in queue: ${providers.length}`);
 
-    // Process each provider sequentially to avoid overwhelming the system
-    for (const provider of providers) {
-      const providerStart = Date.now();
+    // Process this batch
+    const thisBatch = providers.slice(0, batchSize);
+    
+    for (const provider of thisBatch) {
       const providerDetail = {
         provider: provider.slug,
         plans: 0,
@@ -55,31 +80,29 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
       };
 
       try {
-        console.log(`\n🔄 Processing: ${provider.slug} (${provider.canonical_url})`);
+        console.log(`\n🔄 ${provider.slug} (${provider.canonical_url})`);
         
         // Fetch HTML from provider
         const html = await fetchWithFallback(provider.canonical_url);
-        console.log(`✅ Fetched HTML (${Math.round(html.length / 1024)} KB)`);
+        console.log(`   ✅ Fetched (${Math.round(html.length / 1024)}KB)`);
 
         // Find and execute parser
         const parser = findParserForUrl(provider.canonical_url);
         if (!parser) {
-          throw new Error(`No parser found for URL: ${provider.canonical_url}`);
+          throw new Error(`No parser for: ${provider.canonical_url}`);
         }
 
         let extracts: any[] = [];
         try {
           const parsed = await parser.parse(html, provider.canonical_url);
-          if (!Array.isArray(parsed)) {
-            throw new Error('Parser did not return an array');
-          }
+          if (!Array.isArray(parsed)) throw new Error('Parser did not return array');
           extracts = parsed;
-          console.log(`✅ Parser extracted ${extracts.length} plans`);
+          console.log(`   ✅ Extracted ${extracts.length} plans`);
         } catch (parseErr) {
-          throw new Error(`Parser failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
+          throw new Error(`Parse failed: ${parseErr instanceof Error ? parseErr.message : String(parseErr)}`);
         }
 
-        // Process and upsert each plan with new fields
+        // Process and upsert plans
         let plansUpdated = 0;
         for (const extract of extracts) {
           try {
@@ -87,22 +110,21 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
             const validated = validatePlan(normalized);
             
             if (!validated.ok) {
-              console.warn(`❌ Plan validation failed for "${normalized.planName}":`, validated.errors);
+              console.warn(`   ⚠️  Plan validation failed: "${normalized.planName}"`);
               continue;
             }
 
-            // Upsert plan with all 9 fields
             await upsertPlanEnhanced(db as any, provider.id, normalized);
             plansUpdated++;
           } catch (planErr) {
-            console.error(`❌ Error processing plan for ${provider.slug}:`, planErr);
+            console.error(`   ❌ Plan error:`, planErr);
           }
         }
 
         providerDetail.plans = plansUpdated;
-        result.processedPlans += plansUpdated;
+        result.processedPlansThisBatch += plansUpdated;
 
-        // Mark provider as verified with timestamp
+        // Mark provider as verified
         const now = new Date().toISOString();
         await db.prepare(`
           UPDATE providers SET
@@ -116,19 +138,17 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
           WHERE id = ?
         `).bind(now, `Updated ${plansUpdated} plans on ${now}`, now, provider.id).run();
 
-        result.verifiedProviders++;
-        result.processedProviders++;
-        providerDetail.status = `✅ Verified (${plansUpdated} plans)`;
-
-        const duration = Date.now() - providerStart;
-        console.log(`✅ ${provider.slug}: ${plansUpdated} plans in ${duration}ms`);
+        result.verifiedThisBatch++;
+        result.processedThisBatch++;
+        providerDetail.status = `✅ (${plansUpdated} plans)`;
+        console.log(`   ✅ Verified with ${plansUpdated} plans`);
 
       } catch (err) {
         result.errors++;
         const errorMsg = err instanceof Error ? err.message : String(err);
-        providerDetail.status = `❌ Failed`;
+        providerDetail.status = `❌`;
         providerDetail.error = errorMsg;
-        console.error(`❌ Provider ${provider.slug} failed:`, errorMsg);
+        console.error(`   ❌ ${errorMsg}`);
 
         // Mark as needs review
         await db.prepare(`
@@ -145,19 +165,24 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
     }
 
     result.duration = Date.now() - startTime;
+    result.moreToProcess = providers.length > batchSize;
+    result.processedOverall = result.verifiedOverall + result.processedThisBatch;
 
     console.log("\n" + "=".repeat(60));
-    console.log("📋 Data Population Summary:");
-    console.log(`   Total Providers: ${result.totalProviders}`);
-    console.log(`   ✅ Verified: ${result.verifiedProviders}/${result.totalProviders}`);
-    console.log(`   📊 Plans Updated: ${result.processedPlans}`);
-    console.log(`   ❌ Errors: ${result.errors}`);
+    console.log("📋 Batch Summary:");
+    console.log(`   ✅ This Batch: ${result.processedThisBatch}/${batchSize} providers`);
+    console.log(`   📊 Plans Updated: ${result.processedPlansThisBatch}`);
     console.log(`   ⏱️  Duration: ${(result.duration / 1000).toFixed(2)}s`);
+    if (result.moreToProcess) {
+      console.log(`   ➡️  MORE BATCHES REMAINING - Call again to continue`);
+    } else {
+      console.log(`   ✅ ALL PROVIDERS COMPLETE!`);
+    }
     console.log("=".repeat(60));
 
     return { ok: true, result };
   } catch (err) {
-    console.error("💥 Data population failed:", err);
+    console.error("💥 Data population batch failed:", err);
     return {
       ok: false,
       error: err instanceof Error ? err.message : String(err),
@@ -289,7 +314,8 @@ export async function getDataPopulationStatus() {
     providers: {
       verified: verified?.count || 0,
       pending: pending?.count || 0,
-      failed: failed?.count || 0
+      failed: failed?.count || 0,
+      total: (verified?.count || 0) + (pending?.count || 0) + (failed?.count || 0)
     },
     plans: {
       total: plansStats?.total || 0,

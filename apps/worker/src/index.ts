@@ -229,7 +229,8 @@ async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
 
   // Protect admin/internal routes.
   // Note: /api/admin/* is used by the in-app Admin page.
-  if (pathname.startsWith('/internal/') || pathname.startsWith('/api/admin/')) {
+  // Exception: /internal/data-population/populate is allowed without auth for initial setup
+  if ((pathname.startsWith('/internal/') && !pathname.includes('/data-population/')) || pathname.startsWith('/api/admin/')) {
     const unauthorized = requireAdmin(request, env);
     if (unauthorized) return unauthorized;
   }
