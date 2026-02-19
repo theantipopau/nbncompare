@@ -1,9 +1,13 @@
 import { getDb } from "../lib/db";
 import { jsonResponse } from "../lib/cors";
 
-type D1Result = {
-  bind: (...args: unknown[]) => D1Result;
-  all: () => Promise<{ results: unknown[] }>;
+type D1Statement = {
+  bind: (...args: unknown[]) => D1Statement;
+  all: () => Promise<{ results?: unknown[] }>;
+};
+
+type D1DatabaseLike = {
+  prepare: (q: string) => D1Statement;
 };
 
 // Cache TTL: 5 minutes (300 seconds)
@@ -59,7 +63,7 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     if (isNaN(limit) || limit < 1) limit = 100;
     limit = Math.min(limit, 500);
 
-    const db = await getDb() as unknown as { prepare: (q: string) => { all: (...args: unknown[]) => Promise<any> } };
+    const db = (await getDb()) as D1DatabaseLike;
 
     let q = `SELECT p.*, prov.name as provider_name, prov.favicon_url,
       prov.ipv6_support as provider_ipv6_support,
@@ -71,6 +75,8 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
       prov.routing_info as provider_routing_info,
       prov.description as provider_description,
       prov.support_hours as provider_support_hours,
+      p.promo_code, p.promo_description,
+      p.technology_type,
       CASE 
         WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents < ph.price_cents THEN 'down'
         WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents > ph.price_cents THEN 'up'
@@ -87,20 +93,32 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     const params: unknown[] = [];
     if (speed !== null) { q += ` AND p.speed_tier = ?`; params.push(speed); }
     if (provider) { q += ` AND prov.slug = ?`; params.push(provider); }
-    if (discount === "1") { q += ` AND p.intro_price_cents IS NOT NULL`; }
+    if (discount === "1") {
+      q += ` AND (p.intro_price_cents IS NOT NULL OR p.promo_code IS NOT NULL OR p.promo_description IS NOT NULL)`;
+    }
     if (contractType) { q += ` AND p.contract_type = ?`; params.push(contractType); }
     if (dataAllowance) { q += ` AND p.data_allowance = ?`; params.push(dataAllowance); }
     if (modemIncluded === "1") { q += ` AND p.modem_included = 1`; }
     if (technologyType) { q += ` AND p.technology_type = ?`; params.push(technologyType); }
     if (planType) { q += ` AND p.plan_type = ?`; params.push(planType); }
     if (serviceType) { q += ` AND p.service_type = ?`; params.push(serviceType); }
+    
+    // Add upload speed filter support
+    const uploadSpeedParam = url.searchParams.get("uploadSpeed");
+    if (uploadSpeedParam) {
+      const uploadSpeed = parseInt(uploadSpeedParam, 10);
+      if (!isNaN(uploadSpeed)) {
+        q += ` AND p.upload_speed_mbps >= ?`;
+        params.push(uploadSpeed);
+      }
+    }
 
     // SQLite-friendly NULLS LAST emulation: order by (ongoing_price_cents IS NULL), then value asc
     q += ` ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC LIMIT ?`;
     params.push(limit);
 
-    const rowsRes = await (db.prepare(q) as D1Result).bind(...params).all();
-    const rows = rowsRes && (rowsRes as any).results ? (rowsRes as any).results : rowsRes;
+    const rowsRes = await db.prepare(q).bind(...params).all();
+    const rows = Array.isArray(rowsRes?.results) ? rowsRes.results : [];
 
     planQueryCache.set(cacheKey, { rows, expires: Date.now() + PLAN_CACHE_TTL_MS });
     const responseData = { ok: true, rows };

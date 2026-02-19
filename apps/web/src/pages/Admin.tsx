@@ -1,7 +1,7 @@
 import * as React from "react";
 import { getApiBaseUrl } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
-const { useEffect, useState } = React as unknown;
+const { useEffect, useState } = React;
 
 interface ProviderIssue {
   id: number;
@@ -61,8 +61,8 @@ export default function Admin() {
   const [providerMetadata, setProviderMetadata] = useState([] as ProviderMetadata[]);
   const [token, setToken] = useState("" as string);
   const [scraping, setScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState(null as unknown);
-  const [selectedTab, setSelectedTab] = useState('issues' as string);
+  const [scrapeResult, setScrapeResult] = useState<unknown | null>(null);
+  const [selectedTab, setSelectedTab] = useState('issues');
 
   useEffect(() => {
     if (!token) {
@@ -108,7 +108,7 @@ export default function Admin() {
       body: JSON.stringify({ provider_slug: slug }),
     });
     if (res.ok) {
-      setIssues(issues.filter((i: unknown) => (i as any).slug !== slug));
+      setIssues(issues.filter((i: ProviderIssue) => i.slug !== slug));
     } else {
       const body = await res.json();
       alert('Error: ' + JSON.stringify(body));

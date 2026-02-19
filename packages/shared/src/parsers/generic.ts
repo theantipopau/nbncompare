@@ -1,4 +1,5 @@
 import type { PlanExtract, SpeedTier } from "../types";
+import { extractPromoFromText } from "../validators";
 
 export function canHandle(_url: string) {
   return true; // fallback
@@ -60,6 +61,8 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
     const uploadMatch = chunk.match(/(\d{1,4})\s*\/\s*(\d{1,4})\s*Mbps/i) || 
                         chunk.match(/Upload[:\s]+(\d{1,4})\s*Mbps/i);
     const uploadSpeed = uploadMatch ? parseInt(uploadMatch[uploadMatch.length === 3 ? 2 : 1]) : null;
+
+    const promo = extractPromoFromText(chunk);
     
     // Detect technology type and plan type
     const isFixedWireless = /fixed.?wireless|wireless.?broadband/i.test(chunk) || /fixed.?wireless/i.test(url);
@@ -124,6 +127,8 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       minTermDays: null,
       setupFeeCents: null,
       modemCostCents: null,
+      promoCode: promo.promoCode,
+      promoDescription: promo.promoDescription,
       conditionsText: null,
       typicalEveningSpeedMbps: null,
       sourceUrl: url,

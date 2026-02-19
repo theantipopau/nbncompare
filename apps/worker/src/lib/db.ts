@@ -1,14 +1,16 @@
-let DB: unknown = null;
+import type { D1Database } from "@cloudflare/workers-types";
 
-export async function getDb(): Promise<any> {
-  if (DB) return DB as any;
+let DB: D1Database | null = null;
+
+export async function getDb(): Promise<D1Database> {
+  if (DB) return DB;
   // In real deploy this will use D1 binding via ENV (wrangler.toml + bindings)
   // For local dev we'll use D1 SQLite in-memory for simple tests
   // But here we call globalThis.D1 if available
-  const g = globalThis as any;
+  const g = globalThis as { D1?: D1Database };
   if (g.D1) {
     DB = g.D1;
-    return DB as any;
+    return DB;
   }
   // Fallback: very small in-memory sqlite using better-sqlite3 not available => throw for now
   throw new Error("D1 binding not configured. Configure D1 binding in wrangler and run migrations.");
@@ -18,8 +20,8 @@ export async function recordRunStartEnd({ started, runId, notes }: { started: bo
   const db = await getDb();
   if (started) {
     const now = new Date().toISOString();
-    const r = await db.prepare("INSERT INTO runs (started_at, status) VALUES (?, ?)").bind(now, 'running').run();
-    return r.meta.last_row_id as number;
+    const r = await db.prepare("INSERT INTO runs (started_at, status) VALUES (?, ?)").bind(now, 'running').run() as { meta?: { last_row_id?: number } };
+    return r?.meta?.last_row_id ?? null;
   } else {
     const now = new Date().toISOString();
     if (!runId) return null;

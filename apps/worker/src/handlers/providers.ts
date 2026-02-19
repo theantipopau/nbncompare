@@ -3,8 +3,8 @@ import { jsonResponse } from "../lib/cors";
 
 export async function getProviders(_req: Request) {
   const db = await getDb();
-  const rowsData = await db.prepare("SELECT * FROM providers ORDER BY name").all();
-  const rows = (rowsData as any)?.results || rowsData;
+  const rowsData = await db.prepare("SELECT * FROM providers ORDER BY name").all() as { results?: unknown[] };
+  const rows = rowsData?.results ?? [];
   return jsonResponse(rows);
 }
 

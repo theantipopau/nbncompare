@@ -7,7 +7,7 @@ export function canHandle(url: string) {
 }
 
 // Extract upload speed from plan element or use standard ratios
-function extractUploadSpeed(planElement: Element, downloadSpeed: number | null): number | null {
+function extractUploadSpeed(planElement: globalThis.Element, downloadSpeed: number | null): number | null {
   if (!downloadSpeed) return null;
 
   const planText = planElement.textContent || "";
@@ -36,7 +36,7 @@ function extractUploadSpeed(planElement: Element, downloadSpeed: number | null):
 }
 
 // Extract data allowance from plan element
-function extractDataAllowance(planElement: Element): string | null {
+function extractDataAllowance(planElement: globalThis.Element): string | null {
   const planText = (planElement.textContent || "").toLowerCase();
 
   // Check for unlimited
@@ -54,7 +54,7 @@ function extractDataAllowance(planElement: Element): string | null {
 }
 
 // Extract contract term from plan element
-function extractContractMonths(planElement: Element): number | null {
+function extractContractMonths(planElement: globalThis.Element): number | null {
   const planText = (planElement.textContent || "").toLowerCase();
 
   if (planText.includes("no contract") || planText.includes("month-to-month")) {
@@ -73,7 +73,7 @@ function extractContractMonths(planElement: Element): number | null {
 }
 
 // Check if modem is included in plan
-function extractModemIncluded(planElement: Element): boolean | null {
+function extractModemIncluded(planElement: globalThis.Element): boolean | null {
   const planText = (planElement.textContent || "").toLowerCase();
 
   if (planText.includes("modem included") || planText.includes("router included") || planText.includes("free modem")) {
@@ -92,7 +92,7 @@ function extractModemIncluded(planElement: Element): boolean | null {
 }
 
 // Extract setup fee from plan element
-function extractSetupFee(planElement: Element): number | null {
+function extractSetupFee(planElement: globalThis.Element): number | null {
   const planText = planElement.textContent || "";
 
   if (planText.match(/free\s*(setup|connection|installation)/i)) {
@@ -107,6 +107,16 @@ function extractSetupFee(planElement: Element): number | null {
   return null;
 }
 
+function extractIntroOffer(text: string): { introPriceCents: number | null; introDurationDays: number | null; thenPriceCents: number | null; promoDescription: string | null } {
+  const introMatch = text.match(/\$\s*([0-9]+(?:\.[0-9]{1,2})?)\s*(?:\/mo|\/month|per\s*month|pm)?\s*(?:for|first)\s*(\d{1,2})\s*(?:months|month|mo)/i);
+  const thenMatch = text.match(/then\s*\$\s*([0-9]+(?:\.[0-9]{1,2})?)/i);
+  const introPriceCents = introMatch ? parsePriceToCents(introMatch[1]) : null;
+  const introDurationDays = introMatch ? parseInt(introMatch[2], 10) * 30 : null;
+  const thenPriceCents = thenMatch ? parsePriceToCents(thenMatch[1]) : null;
+  const promoDescription = introMatch ? introMatch[0].trim() : null;
+  return { introPriceCents, introDurationDays, thenPriceCents, promoDescription };
+}
+
 export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   // Enhanced parser for Aussie Broadband's NBN plans
   // Extracts: plan name, speed, upload speed, data allowance, contract terms, modem info, fees
@@ -116,6 +126,8 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   const results: PlanExtract[] = cards.map((el) => {
     const planName = (el.querySelector("h3")?.textContent || el.querySelector(".title")?.textContent || "").trim();
     const priceText = (el.querySelector(".price")?.textContent || "").trim();
+    const planText = el.textContent || "";
+    const introOffer = extractIntroOffer(planText);
 
     // Extract download speed
     const speedMatch = (el.textContent || "").match(/NBN\s*(\d{1,4})/i);
@@ -137,13 +149,14 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       dataAllowance: dataAllowance,
       contractMonths: contractMonths,
       modemIncluded: modemIncluded,
-      introPriceCents: parsePriceToCents(priceText),
-      introDurationDays: null,
-      ongoingPriceCents: parsePriceToCents(priceText),
+      introPriceCents: introOffer.introPriceCents ?? parsePriceToCents(priceText),
+      introDurationDays: introOffer.introDurationDays,
+      ongoingPriceCents: introOffer.thenPriceCents ?? parsePriceToCents(priceText),
       minTermDays: null,
       setupFeeCents: setupFee,
       modemCostCents: null,
-      conditionsText: null,
+      conditionsText: (el.textContent || "").trim() || null,
+      promoDescription: introOffer.promoDescription,
       typicalEveningSpeedMbps: null,
       sourceUrl: url,
     };

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { getApiBaseUrl } from '../lib/api';
 
 interface Plan {
   id: number;
@@ -19,16 +20,11 @@ interface Plan {
   promo_description?: string | null;
 }
 
-function getApiBaseUrl() {
-  if (import.meta.env.DEV) {
-    return 'http://localhost:8787';
-  }
-  return 'https://nbncompare-worker.matt-hurley91.workers.dev';
-}
-
 interface ProviderMetadata {
+  id: number;
   name: string;
   description: string;
+  favicon_url?: string | null;
   logo_url?: string;
   canonical_url: string;
   ipv6_support: string;
@@ -51,6 +47,8 @@ export default function ProviderDetails() {
   const [plans, setPlans] = useState([] as Plan[]);
   const [loading, setLoading] = useState(true);
   const [selectedSpeed, setSelectedSpeed] = useState('');
+  const [providerSummary, setProviderSummary] = useState(null as string | null);
+  const [providerSummaryUpdatedAt, setProviderSummaryUpdatedAt] = useState(null as string | null);
 
   useEffect(() => {
     async function fetchProviderData() {
@@ -63,22 +61,21 @@ export default function ProviderDetails() {
         // Fetch provider metadata
         const providerRes = await fetch(`${apiUrl}/api/providers`);
         const providerData = await providerRes.json();
-        const matchingProvider = providerData.providers?.find((p: Record<string, unknown>) => {
+        const providerList = Array.isArray(providerData) ? providerData : providerData?.rows || [];
+        const matchingProvider = providerList.find((p: Record<string, unknown>) => {
           const name = (p.name as string | undefined)?.toLowerCase().replace(/\s+/g, '-');
           return name === slug.toLowerCase();
-        });
+        }) as ProviderMetadata | undefined;
         
         if (matchingProvider) {
           setProvider(matchingProvider);
         }
 
         // Fetch all plans for this provider
-        const plansRes = await fetch(`${apiUrl}/api/plans?provider=${encodeURIComponent(slug.replace(/-/g, ' '))}`);
+        const plansRes = await fetch(`${apiUrl}/api/plans?provider=${encodeURIComponent(slug)}`);
         const plansData = await plansRes.json();
-        
-        if (plansData.plans) {
-          setPlans(plansData.plans);
-        }
+        const planRows = plansData?.rows ?? plansData?.plans ?? plansData;
+        if (Array.isArray(planRows)) setPlans(planRows);
       } catch (err) {
         console.error('Failed to fetch provider data:', err);
       } finally {
@@ -94,6 +91,29 @@ export default function ProviderDetails() {
       document.title = `${provider.name} NBN Plans - Compare Prices | NBN Compare`;
     }
   }, [provider]);
+
+  useEffect(() => {
+    if (!provider?.id) return;
+    let active = true;
+    const loadSummary = async () => {
+      try {
+        const apiUrl = getApiBaseUrl();
+        const res = await fetch(`${apiUrl}/api/ai/provider-summary?providerId=${provider.id}`);
+        const data = await res.json();
+        if (!active) return;
+        setProviderSummary(data?.summary ?? null);
+        setProviderSummaryUpdatedAt(data?.updated_at ?? null);
+      } catch (err) {
+        if (active) {
+          console.error('Failed to load provider summary:', err);
+        }
+      }
+    };
+    void loadSummary();
+    return () => {
+      active = false;
+    };
+  }, [provider?.id]);
 
   const speedTiers = [...new Set(plans.map((p: Plan) => p.speed_tier).filter(Boolean))].sort((a, b) => (a as number) - (b as number));
   const filteredPlans = selectedSpeed 
@@ -171,6 +191,25 @@ export default function ProviderDetails() {
           </a>
         </div>
       </div>
+
+      {providerSummary && (
+        <div style={{
+          background: 'white',
+          border: '1px solid #e2e8f0',
+          borderRadius: '12px',
+          padding: '20px',
+          marginBottom: '24px',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.08)'
+        }}>
+          <h3 style={{ margin: '0 0 8px 0' }}>AI Provider Summary</h3>
+          <p style={{ margin: 0, color: '#475569', lineHeight: 1.6 }}>{providerSummary}</p>
+          {providerSummaryUpdatedAt && (
+            <div style={{ marginTop: '8px', fontSize: '0.8em', color: '#64748b' }}>
+              Updated {new Date(providerSummaryUpdatedAt).toLocaleDateString('en-AU')}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Provider Metadata Grid */}
       <div style={{
@@ -285,6 +324,25 @@ function MetadataCard({ title, value, icon }: { title: string; value: string; ic
 function PlanCard({ plan }: { plan: Plan }) {
   const price = plan.intro_price_cents ?? plan.ongoing_price_cents;
   const priceDisplay = price ? `$${(price / 100).toFixed(2)}/mo` : 'Contact provider';
+  const [aiSummary, setAiSummary] = useState(null as string | null);
+  const [aiSummaryUpdatedAt, setAiSummaryUpdatedAt] = useState(null as string | null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+
+  const loadSummary = async () => {
+    if (aiSummary || aiSummaryLoading) return;
+    setAiSummaryLoading(true);
+    try {
+      const apiUrl = getApiBaseUrl();
+      const res = await fetch(`${apiUrl}/api/ai/plan-summary?planId=${plan.id}`);
+      const data = await res.json();
+      setAiSummary(data?.summary ?? null);
+      setAiSummaryUpdatedAt(data?.updated_at ?? null);
+    } catch (err) {
+      console.error('Failed to load plan summary:', err);
+    } finally {
+      setAiSummaryLoading(false);
+    }
+  };
   
   return (
     <div style={{
@@ -409,6 +467,36 @@ function PlanCard({ plan }: { plan: Plan }) {
             View Plan →
           </a>
         </div>
+      </div>
+
+      <div style={{ marginTop: '16px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+          <strong style={{ color: '#1f2937' }}>AI Plan Summary</strong>
+          {!aiSummary && (
+            <button
+              onClick={loadSummary}
+              style={{
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                padding: '6px 12px',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '0.85em'
+              }}
+            >
+              {aiSummaryLoading ? 'Loading...' : 'Load Summary'}
+            </button>
+          )}
+        </div>
+        {aiSummary && (
+          <p style={{ margin: '8px 0 0 0', color: '#475569', lineHeight: 1.6 }}>{aiSummary}</p>
+        )}
+        {aiSummaryUpdatedAt && (
+          <div style={{ marginTop: '6px', fontSize: '0.8em', color: '#64748b' }}>
+            Updated {new Date(aiSummaryUpdatedAt).toLocaleDateString('en-AU')}
+          </div>
+        )}
       </div>
     </div>
   );

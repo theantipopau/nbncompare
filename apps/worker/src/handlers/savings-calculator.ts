@@ -64,6 +64,36 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
   try {
     const { current_plan_id, proposed_plans, usage_gb_per_month, months = 12 } = await request.json() as SavingsCalculation;
 
+    // Basic input validation
+    if (!Number.isInteger(current_plan_id) || current_plan_id <= 0) {
+      return new Response(JSON.stringify({ error: 'Invalid current_plan_id' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    if (!Array.isArray(proposed_plans) || proposed_plans.length === 0 || proposed_plans.length > 20 || !proposed_plans.every((n) => Number.isInteger(n) && n > 0)) {
+      return new Response(JSON.stringify({ error: 'Invalid proposed_plans (expect non-empty array of plan IDs)' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    if (typeof usage_gb_per_month !== 'number' || usage_gb_per_month < 0 || usage_gb_per_month > 1000000) {
+      return new Response(JSON.stringify({ error: 'Invalid usage_gb_per_month' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    if (!Number.isInteger(months) || months < 1 || months > 60) {
+      return new Response(JSON.stringify({ error: 'Invalid months (1-60 expected)' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Rate limiting (protect public endpoint)
+    try {
+      const { createRateLimiter } = await import('../lib/rate-limit');
+      const limiter = createRateLimiter({ windowMs: 60_000, maxRequests: 30 });
+      const rate = await limiter(request);
+      if (!rate.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests' }), { status: 429, headers: { 'Content-Type': 'application/json', 'X-RateLimit-Remaining': String(rate.remaining ?? 0), 'X-RateLimit-Reset': String(rate.resetTime ?? '') } });
+      }
+    } catch (rlErr) {
+      // If rate limiter fails, log and continue (don't block functionality)
+      console.error('Rate limiter init error:', rlErr);
+    }
+
     const db = env.DB;
     
     // Get current plan details

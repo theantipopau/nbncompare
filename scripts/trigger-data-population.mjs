@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process, console */
 /**
  * Trigger Data Population on Production Worker
  * 
@@ -11,11 +12,15 @@ const statusOnly = args.includes('--status');
 
 async function main() {
   const baseUrl = 'https://nbncompare.info';
+  const fetcher = globalThis.fetch;
+  if (typeof fetcher !== 'function') {
+    throw new Error('fetch is not available in this Node environment');
+  }
 
   if (statusOnly) {
     console.log('\n📊 Fetching data population status...\n');
     try {
-      const response = await fetch(`${baseUrl}/internal/data-population/status`);
+      const response = await fetcher(`${baseUrl}/internal/data-population/status`);
       const data = await response.json();
 
       if (data.ok) {
@@ -64,7 +69,7 @@ async function main() {
     console.log(`🚀 Sending POST /internal/data-population/populate`);
     const startTime = Date.now();
     
-    const response = await fetch(`${baseUrl}/internal/data-population/populate`, {
+    const response = await fetcher(`${baseUrl}/internal/data-population/populate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

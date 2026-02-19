@@ -2,7 +2,7 @@ import type { PlanExtract } from "../../types";
 import { normalizeSpeed, parsePriceToCents } from "../../validators";
 import { parseHTML } from "../dom-utils";
 
-function extractUploadSpeed(planElement: Element, downloadSpeed: number | null): number | null {
+function extractUploadSpeed(planElement: globalThis.Element, downloadSpeed: number | null): number | null {
   if (!downloadSpeed) return null;
   const planText = planElement.textContent || "";
   const uploadMatch = planText.match(/(\d+)\s*Mbps\s*(up|upload|↑)/i);
@@ -15,14 +15,14 @@ function extractUploadSpeed(planElement: Element, downloadSpeed: number | null):
   return uploadRatios[downloadSpeed] || null;
 }
 
-function extractDataAllowance(planElement: Element): string | null {
+function extractDataAllowance(planElement: globalThis.Element): string | null {
   const planText = (planElement.textContent || "").toLowerCase();
   if (planText.includes("unlimited")) return "Unlimited";
   const amountMatch = planText.match(/(\d+\.?\d*)\s*(tb|gb)/i);
   return amountMatch ? `${amountMatch[1]}${amountMatch[2].toUpperCase()}` : null;
 }
 
-function extractContractMonths(planElement: Element): number | null {
+function extractContractMonths(planElement: globalThis.Element): number | null {
   const planText = (planElement.textContent || "").toLowerCase();
   if (planText.includes("no contract") || planText.includes("month-to-month")) return 0;
   if (planText.includes("24 month") || planText.includes("2 year")) return 24;
@@ -30,14 +30,14 @@ function extractContractMonths(planElement: Element): number | null {
   return null;
 }
 
-function extractModemIncluded(planElement: Element): boolean | null {
+function extractModemIncluded(planElement: globalThis.Element): boolean | null {
   const planText = (planElement.textContent || "").toLowerCase();
   if (planText.includes("modem included") || planText.includes("router included") || planText.includes("free modem")) return true;
   if (planText.includes("modem $") || planText.includes("bring your own") || planText.includes("your own modem")) return false;
   return null;
 }
 
-function extractSetupFee(planElement: Element): number | null {
+function extractSetupFee(planElement: globalThis.Element): number | null {
   const planText = planElement.textContent || "";
   if (planText.match(/free\s*(setup|connection|installation)/i)) return 0;
   const feeMatch = planText.match(/(setup|connection|installation)[\s:]*\$(\d+(?:\.\d{2})?)/i);
@@ -87,7 +87,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       minTermDays: null,
       setupFeeCents: extractSetupFee(el),
       modemCostCents: null,
-      conditionsText: null,
+      conditionsText: (el.textContent || "").trim() || null,
       typicalEveningSpeedMbps: null,
       sourceUrl: url,
     });

@@ -8,10 +8,12 @@ type FormEvent<T> = React.FormEvent<T>;
 import PriceHistoryModal from "../components/PriceHistoryModal";
 import SpeedCalculator from "../components/SpeedCalculator";
 import BillComparison from "../components/BillComparison";
+import AIRecommendations from "../components/AIRecommendations";
 import { ProviderTooltip } from "../components/ProviderTooltip";
 import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix";
 import { PlanCard } from "../components/PlanCard";
 import { getApiBaseUrl } from "../lib/api";
+import { getFaviconUrl } from "../lib/favicon";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
 function stripHtml(str: string | null | undefined): string {
@@ -111,8 +113,6 @@ export default function Compare() {
   const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
   const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
   const [setupFeeFilter, setSetupFeeFilter] = useState(''); // New: filter for setup fees
-  const [dataAllowanceFilter, setDataAllowanceFilter] = useState(''); // New: filter for data allowance details
-  const [contractMonthsFilter, setContractMonthsFilter] = useState(''); // New: filter for contract duration
   const [modemCostFilter, setModemCostFilter] = useState(''); // New: filter for modem costs
   const [providerFilter, setProviderFilter] = useState('');
   const [selectedProviders, setSelectedProviders] = useState([] as string[]);
@@ -129,6 +129,9 @@ export default function Compare() {
   const [showProviderList, setShowProviderList] = useState(false);
   const [showMobileFilters, setShowMobileFilters] = useState(false);
   const [activePreset, setActivePreset] = useState('');
+  const [bestDealsSummary, setBestDealsSummary] = useState(null as string | null);
+  const [bestDealsUpdatedAt, setBestDealsUpdatedAt] = useState(null as string | null);
+  const [bestDealsLoading, setBestDealsLoading] = useState(false);
   type SavedFilterPreset = { name: string; filters: Record<string, unknown> };
   const [savedPresets, setSavedPresets] = useState(() => {
     if (typeof window === 'undefined') return [];
@@ -305,6 +308,7 @@ export default function Compare() {
       if (dataFilter) params.append('data', dataFilter);
       if (modemFilter) params.append('modem', modemFilter);
       if (technologyFilter) params.append('technology', technologyFilter);
+      if (uploadSpeedFilter) params.append('uploadSpeed', uploadSpeedFilter);
       
       // Set serviceType and planType based on viewMode
       if (viewMode === '5g-home') {
@@ -508,7 +512,33 @@ export default function Compare() {
 
   useEffect(() => {
     fetchPlans();
-  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode]);
+  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode, uploadSpeedFilter]);
+
+  useEffect(() => {
+    let active = true;
+    const loadBestDeals = async () => {
+      setBestDealsLoading(true);
+      try {
+        const apiUrl = getApiBaseUrl();
+        const res = await fetch(`${apiUrl}/api/ai/best-deals`);
+        const data = await res.json();
+        if (!active) return;
+        setBestDealsSummary(data?.summary ?? null);
+        setBestDealsUpdatedAt(data?.updated_at ?? null);
+      } catch (err) {
+        if (active) {
+          console.error('Failed to load best deals summary:', err);
+          setBestDealsSummary(null);
+        }
+      } finally {
+        if (active) setBestDealsLoading(false);
+      }
+    };
+    void loadBestDeals();
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Speed tier color function
   const getSpeedTierColor = (tier: number | null): string => {
@@ -910,6 +940,59 @@ export default function Compare() {
 
   return (
     <div>
+      {/* Modern Hero Section */}
+      <section className="hero-section">
+        <h1>🚀 Find Your Perfect NBN Plan</h1>
+        <p>Compare 200+ plans from 30+ providers with AI-powered recommendations and advanced filtering</p>
+      </section>
+
+      {/* Stats Grid */}
+      <div className="stats-grid">
+        <div className="stat-card">
+          <h3>{heroStats.plans}</h3>
+          <p>Active Plans</p>
+        </div>
+        <div className="stat-card">
+          <h3>{heroStats.providers}</h3>
+          <p>Providers</p>
+        </div>
+        <div className="stat-card">
+          <h3>${heroStats.cheapest}</h3>
+          <p>Cheapest Plan</p>
+        </div>
+        <div className="stat-card">
+          <h3>{heroStats.topSpeed}Mbps</h3>
+          <p>Fastest Speed</p>
+        </div>
+      </div>
+
+      {/* Hero Presets */}
+      <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
+        {heroPresets.map((preset) => (
+          <button
+            key={preset.name}
+            onClick={() => applyPreset(preset)}
+            className={activePreset === preset.name ? 'btn-success' : 'btn-secondary'}
+            style={{
+              padding: '12px 20px',
+              borderRadius: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              border: 'none',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '4px',
+              minWidth: '120px'
+            }}
+          >
+            <span style={{ fontSize: '1.1em' }}>{preset.name}</span>
+            <span style={{ fontSize: '0.8em', opacity: 0.8 }}>{preset.description}</span>
+          </button>
+        ))}
+      </div>
+
       <section className="hero">
         <h2>🏠 Find NBN plans for your home</h2>
         <p>Enter your address to check NBN availability and compare plans from 30+ Australian providers.</p>
@@ -1055,6 +1138,46 @@ export default function Compare() {
           darkMode={darkMode} 
           currentPlans={plans} 
         />
+      </section>
+
+      {/* AI Recommendations */}
+      <AIRecommendations
+        darkMode={darkMode}
+        onRecommendation={(filters) => {
+          // Apply the recommended filters
+          if (filters.speed) setSelectedSpeeds([String(filters.speed)]);
+          if (filters.ipv6Filter) setIpv6Filter(filters.ipv6Filter as boolean);
+          if (filters.noCgnatFilter) setNoCgnatFilter(filters.noCgnatFilter as boolean);
+          if (filters.auSupportFilter) setAuSupportFilter(filters.auSupportFilter as boolean);
+          if (filters.staticIpFilter) setStaticIpFilter(filters.staticIpFilter as boolean);
+          if (filters.contractFilter) setContractFilter(filters.contractFilter as string);
+          if (filters.dataFilter) setDataFilter(filters.dataFilter as string);
+          if (filters.selectedProviders) setSelectedProviders(filters.selectedProviders as string[]);
+        }}
+      />
+
+      <section style={{
+        marginTop: '16px',
+        background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.06)',
+        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(102, 126, 234, 0.15)'}`,
+        borderRadius: '12px',
+        padding: '20px'
+      }}>
+        <h3 style={{ margin: '0 0 8px 0', color: darkMode ? '#e2e8f0' : '#1a202c' }}>Best Deals Summary</h3>
+        {bestDealsLoading ? (
+          <div style={{ color: darkMode ? '#a0aec0' : '#666' }}>Loading summary...</div>
+        ) : bestDealsSummary ? (
+          <div style={{ whiteSpace: 'pre-line', color: darkMode ? '#e2e8f0' : '#333', lineHeight: 1.6 }}>
+            {bestDealsSummary}
+          </div>
+        ) : (
+          <div style={{ color: darkMode ? '#a0aec0' : '#666' }}>Summary not available yet.</div>
+        )}
+        {bestDealsUpdatedAt && (
+          <div style={{ marginTop: '8px', fontSize: '0.8em', color: darkMode ? '#94a3b8' : '#6b7280' }}>
+            Updated {new Date(bestDealsUpdatedAt).toLocaleDateString('en-AU')}
+          </div>
+        )}
       </section>
 
       {/* NBN Type Toggle */}
@@ -1403,10 +1526,10 @@ export default function Compare() {
           <strong>Upload Speed:</strong>
           <select value={uploadSpeedFilter} onChange={(e: ChangeEvent<HTMLSelectElement>) => setUploadSpeedFilter(e.target.value)}>
             <option value="">Any</option>
+            <option value="10">10+ Mbps</option>
             <option value="20">20+ Mbps</option>
-            <option value="50">50+ Mbps</option>
-            <option value="100">100+ Mbps</option>
-            <option value="200">200+ Mbps</option>
+            <option value="40">40+ Mbps</option>
+            <option value="100">100+ Mbps (Ultra-fast only)</option>
           </select>
         </label>
         <label>
@@ -1962,9 +2085,9 @@ export default function Compare() {
                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
                     }}>
                       <td style={{ padding: '20px 16px', borderRadius: '12px 0 0 12px' }}>
-                        {p.favicon_url ? (
+                        {getFaviconUrl(p.provider_name, p.favicon_url) ? (
                           <img
-                            src={p.favicon_url}
+                            src={getFaviconUrl(p.provider_name, p.favicon_url)}
                             alt={p.provider_name}
                             loading="lazy"
                             decoding="async"
@@ -2125,6 +2248,60 @@ export default function Compare() {
                           fontWeight: '700',
                           boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
                         }}>🏷️ {p.contract_type}</span>}
+                        {p.technology_type === 'fixed-wireless' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(6, 182, 212, 0.3)'
+                        }}>📡 Fixed Wireless</span>}
+                        {p.technology_type === 'satellite' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(139, 92, 246, 0.3)'
+                        }}>🛰️ Satellite</span>}
+                        {p.technology_type === '5g-home' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(236, 72, 153, 0.3)'
+                        }}>📶 5G Home</span>}
+                        {p.technology_type === 'fttp' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
+                        }}>🚀 FTTP</span>}
+                        {p.technology_type === 'fttc' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
+                        }}>🏢 FTTC</span>}
+                        {p.technology_type === 'fttn' && <span style={{ 
+                          fontSize: '0.75em', 
+                          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)', 
+                          color: 'white', 
+                          padding: '4px 12px', 
+                          borderRadius: '8px', 
+                          fontWeight: '700',
+                          boxShadow: '0 2px 6px rgba(107, 114, 128, 0.3)'
+                        }}>🏠 FTTN</span>}
                         </div>
                       </td>
                       <td style={{ padding: '20px 16px' }}>
