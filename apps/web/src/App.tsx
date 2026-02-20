@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { ComparisonProvider } from "./context/ComparisonContext";
+import { ComparisonBar } from "./components/ComparisonBar";
+import { ComparisonModal } from "./components/ComparisonModal";
 import Compare from "./pages/Compare";
 import Admin from "./pages/Admin";
 import Provider from "./pages/Provider";
@@ -11,6 +14,39 @@ import BlogPost from "./pages/BlogPost";
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(location.pathname);
+  const [showComparisonModal, setShowComparisonModal] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Initialize dark mode from localStorage or user preference
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('nbncompare:darkMode');
+      if (stored !== null) {
+        setDarkMode(stored === 'true');
+        return;
+      }
+    } catch (err) {
+      /* ignore */
+    }
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    setDarkMode(prefersDark);
+  }, []);
+
+  // Persist and apply class to document element
+  useEffect(() => {
+    try {
+      localStorage.setItem('nbncompare:darkMode', darkMode ? 'true' : 'false');
+    } catch (err) {
+      /* ignore */
+    }
+    document.documentElement.classList.toggle('dark-mode', darkMode);
+  }, [darkMode]);
+
+  useEffect(() => {
+    // Close mobile nav on navigation changes
+    setMobileNavOpen(false);
+  }, [currentPath]);
 
   useEffect(() => {
     // Handle browser back/forward buttons
@@ -31,32 +67,58 @@ export default function App() {
   };
 
   return (
-    <div className="container">
-      <header>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <img 
-            src="/nbncomparelogo.PNG" 
-            alt="NBN Compare" 
-            loading="eager"
-            decoding="async"
-            style={{ height: '60px' }} 
-          />
-          <div>
-            <h1>NBN Compare</h1>
-            <p>Compare NBN plans across providers — updated daily.</p>
+    <ComparisonProvider>
+      <div className="container">
+        <a className="skip-link" href="#main">Skip to main content</a>
+        <header className="site-header">
+          <div className="site-brand">
+            <img
+              src="/nbncomparelogo.PNG"
+              alt="NBN Compare"
+              loading="eager"
+              decoding="async"
+              width={180}
+              height={60}
+              className="site-logo"
+            />
+            <div>
+              <h1>NBN Compare</h1>
+              <p>Compare NBN plans across providers — updated daily.</p>
+            </div>
           </div>
-        </div>
-        <nav style={{ display: 'flex', gap: '24px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '16px' }}>
-          <a href="/" onClick={(e) => navigate('/', e)} style={{ textDecoration: 'none', color: currentPath === '/' ? '#667eea' : '#333', fontWeight: currentPath === '/' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>🏠 Home</a>
-          <a href="/blog" onClick={(e) => navigate('/blog', e)} style={{ textDecoration: 'none', color: currentPath.startsWith('/blog') ? '#667eea' : '#333', fontWeight: currentPath.startsWith('/blog') ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>📝 Blog</a>
-          <a href="/about" onClick={(e) => navigate('/about', e)} style={{ textDecoration: 'none', color: currentPath === '/about' ? '#667eea' : '#333', fontWeight: currentPath === '/about' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>ℹ️ About</a>
-          <a href="/status" onClick={(e) => navigate('/status', e)} style={{ textDecoration: 'none', color: currentPath === '/status' ? '#667eea' : '#333', fontWeight: currentPath === '/status' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>📊 Status</a>
-          <a href="/admin" onClick={(e) => navigate('/admin', e)} style={{ textDecoration: 'none', color: currentPath === '/admin' ? '#667eea' : '#333', fontWeight: currentPath === '/admin' ? '700' : '600', transition: 'all 0.2s', cursor: 'pointer' }}>⚙️ Admin</a>
-        </nav>
-      </header>
+          <nav id="primary-nav" className={`site-nav ${mobileNavOpen ? 'site-nav--open' : ''}`} aria-label="Primary">
+            <a href="/" onClick={(e) => navigate('/', e)} className={`nav-link ${currentPath === '/' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/' ? 'page' : undefined}>🏠 Home</a>
+            <a href="/blog" onClick={(e) => navigate('/blog', e)} className={`nav-link ${currentPath.startsWith('/blog') ? 'nav-link--active' : ''}`} aria-current={currentPath.startsWith('/blog') ? 'page' : undefined}>📝 Blog</a>
+            <a href="/about" onClick={(e) => navigate('/about', e)} className={`nav-link ${currentPath === '/about' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/about' ? 'page' : undefined}>ℹ️ About</a>
+            <a href="/status" onClick={(e) => navigate('/status', e)} className={`nav-link ${currentPath === '/status' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/status' ? 'page' : undefined}>📊 Status</a>
+            <a href="/admin" onClick={(e) => navigate('/admin', e)} className={`nav-link ${currentPath === '/admin' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/admin' ? 'page' : undefined}>⚙️ Admin</a>
+          </nav>
+
+          <div className="header-actions">
+            <button
+              className="mobile-nav-toggle"
+              aria-controls="primary-nav"
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen((s) => !s)}
+              title={mobileNavOpen ? 'Close menu' : 'Open menu'}
+            >
+              {mobileNavOpen ? '✕' : '☰'}
+            </button>
+
+            <button
+              className="theme-toggle"
+              onClick={() => setDarkMode((d) => !d)}
+              aria-pressed={darkMode}
+              aria-label="Toggle dark mode"
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? '🌙' : '☀️'}
+            </button>
+          </div>
+        </header>
       {/* @ts-expect-error - ErrorBoundary component type issues in local build */}
       <ErrorBoundary>
-        <main>
+        <main id="main">
           {currentPath === '/admin' ? <Admin /> : 
          currentPath.startsWith('/blog/') ? <BlogPost /> :
          currentPath === '/blog' ? <Blog /> :
@@ -113,6 +175,19 @@ export default function App() {
           <small>Independent comparison service · Not affiliated with NBN Co or any provider · Brisbane, Australia 🇦🇺</small>
         </div>
       </footer>
+
+      {/* Comparison Features */}
+      <ComparisonBar 
+        onOpenModal={() => setShowComparisonModal(true)} 
+        darkMode={darkMode} 
+      />
+      {showComparisonModal && (
+        <ComparisonModal 
+          onClose={() => setShowComparisonModal(false)} 
+          darkMode={darkMode} 
+        />
+      )}
     </div>
+    </ComparisonProvider>
   );
 }

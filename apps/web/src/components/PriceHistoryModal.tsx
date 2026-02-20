@@ -2,9 +2,15 @@ import React, { useEffect } from 'react';
 
 declare global {
   interface Window {
-    Chart: unknown;
+    Chart?: ChartCtor;
   }
 }
+
+type ChartInstance = {
+  destroy: () => void;
+};
+
+type ChartCtor = new (ctx: CanvasRenderingContext2D, config: unknown) => ChartInstance;
 
 interface PriceHistory {
   id: number;
@@ -29,11 +35,11 @@ interface Props {
 }
 
 export default function PriceHistoryModal({ plan, history, loading, onClose, darkMode }: Props) {
-  const canvasRef = React.useRef(null);
-  const chartRef = React.useRef(null);
-  const dialogRef = React.useRef(null);
-  const closeButtonRef = React.useRef(null);
-  const previouslyFocusedRef = React.useRef(null);
+  const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
+  const chartRef = React.useRef<ChartInstance | null>(null);
+  const dialogRef = React.useRef<HTMLDivElement | null>(null);
+  const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
+  const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     previouslyFocusedRef.current = document.activeElement as HTMLElement | null;
@@ -145,8 +151,8 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
           },
           tooltip: {
             callbacks: {
-              label: function(context: unknown) {
-                return '$' + (context as any).parsed.y.toFixed(2) + '/mo';
+              label: (context: { parsed: { y: number } }) => {
+                return '$' + context.parsed.y.toFixed(2) + '/mo';
               }
             }
           }
@@ -155,9 +161,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
           y: {
             beginAtZero: false,
             ticks: {
-              callback: function(value: unknown) {
-                return '$' + value;
-              },
+              callback: (value: number | string) => '$' + value,
               color: darkMode ? '#ccc' : '#666'
             },
             grid: {

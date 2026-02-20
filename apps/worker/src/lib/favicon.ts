@@ -20,8 +20,9 @@ export async function fetchProviderLogo(domain: string, _providerName: string): 
 }
 
 export async function updateProviderFavicons() {
-  const db = await getDb() as any;
-  const providers = await db.prepare('SELECT id, name, slug FROM providers').all();
+  const db = await getDb();
+  const providersRes = await db.prepare('SELECT id, name, slug FROM providers').all() as { results?: Array<{ id: number; name: string; slug: string }> };
+  const providers = providersRes.results ?? [];
   
   const domainMap: Record<string, string> = {
     'telstra': 'telstra.com.au',
@@ -64,10 +65,10 @@ export async function updateProviderFavicons() {
   };
   
   let updated = 0;
-  for (const provider of (providers as any).results || []) {
+  for (const provider of providers) {
     const domain = domainMap[provider.slug];
     if (domain) {
-      const logoUrl = fetchProviderLogo(domain, provider.name);
+      const logoUrl = await fetchProviderLogo(domain, provider.name);
       await db.prepare('UPDATE providers SET favicon_url = ? WHERE id = ?')
         .bind(logoUrl, provider.id)
         .run();

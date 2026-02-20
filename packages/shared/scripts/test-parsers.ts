@@ -1,11 +1,13 @@
 import { readFileSync, readdirSync } from 'fs';
 import { findParserForUrl } from '../src/parsers/index';
+import type { PlanExtract } from '../src/types';
 import { normalizeExtract, validatePlan } from '../src/validators';
 // @ts-expect-error - jsdom types not available
 import { JSDOM } from 'jsdom';
 
 // polyfill DOMParser for node-based smoke tests
-(globalThis as any).DOMParser = new JSDOM('').window.DOMParser;
+const domParser = new JSDOM('').window.DOMParser;
+(globalThis as { DOMParser?: typeof domParser }).DOMParser = domParser;
 
 async function run() {
   const sampleUrlMap: Record<string, string> = {
@@ -43,7 +45,7 @@ async function run() {
   for (const s of samples) {
     const html = readFileSync(new URL(s.file, import.meta.url), 'utf-8');
     const parser = findParserForUrl(s.url);
-    const out = await parser.parse(html, s.url);
+    const out = (await parser.parse(html, s.url)) as PlanExtract[];
     console.log('==', s.url, '==');
     console.log(JSON.stringify(out, null, 2));
 

@@ -13,6 +13,7 @@ export interface PlanExtract {
   uploadSpeedMbps?: number | null; // Upload speed for high-tier plans (e.g., 2000/200)
   dataAllowance?: string | null; // "Unlimited", "1TB", "500GB", etc.
   contractMonths?: number | null; // 0 = month-to-month, 12, 24, etc.
+  contractType?: string | null; // "month-to-month", "12-month", "24-month", etc.
   modemIncluded?: boolean | null; // true if modem/router included in plan
   introPriceCents: number | null;
   introDurationDays: number | null; // normalized to days
@@ -20,11 +21,14 @@ export interface PlanExtract {
   minTermDays: number | null;
   setupFeeCents: number | null;
   modemCostCents: number | null;
+  promoCode?: string | null;
+  promoDescription?: string | null;
   conditionsText: string | null;
   typicalEveningSpeedMbps: number | null;
   sourceUrl: string;
-  technologyType?: 'standard' | 'fixed-wireless';
+  technologyType?: 'standard' | 'fixed-wireless' | '5g-home' | 'satellite';
   planType?: 'residential' | 'business'; // Business plans typically have SLAs, static IPs, priority support
+  serviceType?: 'nbn' | '5g-home' | 'satellite';
 }
 
 export interface ProviderRow {

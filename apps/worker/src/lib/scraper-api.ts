@@ -96,8 +96,8 @@ export async function fetchWithFallback(
     // First attempt: no delay
     console.log(`Fetching ${url} with user-agent rotation (attempt ${retryCount + 1})...`);
     return await fetchWithRotation(url, { delay: retryCount > 0 });
-  } catch (error: any) {
-    const errorMsg = error?.message || String(error);
+  } catch (error: unknown) {
+    const errorMsg = error instanceof Error ? error.message : String(error);
     
     // Check if it's a 403 (rate limited/blocked)
     if (errorMsg.includes('403') && retryCount < maxRetries) {
@@ -127,7 +127,7 @@ export async function fetchWithFallback(
 /**
  * Check ScraperAPI account status
  */
-export async function getScraperAPIStatus(_apiKey: string): Promise<any> {
+export async function getScraperAPIStatus(_apiKey: string): Promise<{ message: string; cost: string; unlimited: boolean; service: string }> {
   return {
     message: 'Now using free User-Agent rotation instead of ScraperAPI',
     cost: '$0/month',

@@ -8,7 +8,10 @@
   },
   "dependencies": {
     "@clearnbn/shared": "workspace:*",
-    "itty-router": "^5.0.22"
+    "@cloudflare/ai": "^1.1.0",
+    "base64-js": "^1.5.1",
+    "itty-router": "^5.0.22",
+    "mustache": "^4.2.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20240403.0",

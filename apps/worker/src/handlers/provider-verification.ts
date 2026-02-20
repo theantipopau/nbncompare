@@ -60,13 +60,8 @@ export async function getProviderVerification(req: Request) {
     `;
 
     const stmt = db.prepare(query);
-    const result = typeof (stmt as any).all === 'function'
-      ? await (stmt as any).all()
-      : { results: [] };
-
-    const metadata = (
-      result && (result as any).results ? (result as any).results : []
-    ) as ProviderMetadata[];
+    const result = await stmt.all();
+    const metadata = (result?.results ?? []) as ProviderMetadata[];
 
     // Calculate completeness percentages
     const withPercentages = metadata.map((m) => ({

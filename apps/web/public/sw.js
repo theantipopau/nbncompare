@@ -1,8 +1,8 @@
 // Service Worker for NBN Compare
 // Provides offline support and caching strategies
 
-const CACHE_NAME = 'nbncompare-v1';
-const API_CACHE_NAME = 'nbncompare-api-v1';
+const CACHE_NAME = 'nbncompare-v3';
+const API_CACHE_NAME = 'nbncompare-api-v3';
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 // Assets to cache on install
@@ -45,6 +45,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
+
+  // Only handle requests from our own origin
+  if (url.origin !== location.origin) {
+    // Let external requests (favicons, analytics, etc.) pass through without SW interference
+    return;
+  }
 
   // Skip service worker for admin and internal routes
   if (url.pathname.startsWith('/api/admin/') || 

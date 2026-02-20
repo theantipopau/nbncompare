@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* global process, console */
 
 /**
  * Data Population Script
@@ -10,20 +11,6 @@
  * Or with compiled JS: node scripts/populate-enhanced-data.js
  */
 
-import { DB } from '@cloudflare/workers-types';
-import { findParserForUrl, validatePlan, normalizeExtract, ProviderRow } from '@clearnbn/shared';
-import { fetchWithFallback } from '../apps/worker/src/lib/scraper-api';
-
-// Mock database interface for local execution
-interface LocalDB {
-  prepare: (sql: string) => {
-    bind: (...args: any[]) => {
-      run: () => Promise<any>;
-      first: () => Promise<any>;
-      all: () => Promise<any>;
-    };
-  };
-}
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -58,13 +45,7 @@ async function main() {
       verifiedProviders: 0,
       errors: 0,
       duration: 0,
-      details: [] as Array<{
-        provider: string;
-        plans: number;
-        status: string;
-        error?: string;
-        duration?: number;
-      }>
+      details: []
     };
 
     const startTime = Date.now();

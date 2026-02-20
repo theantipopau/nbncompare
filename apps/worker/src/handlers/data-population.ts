@@ -1,5 +1,5 @@
 import { getDb } from "../lib/db";
-import { findParserForUrl, validatePlan, normalizeExtract, ProviderRow } from "@clearnbn/shared";
+import { findParserForUrl, validatePlan, normalizeExtract, ProviderRow, PlanExtract } from "@clearnbn/shared";
 import { fetchWithFallback } from "../lib/scraper-api";
 
 type SimpleStmt = {
@@ -23,7 +23,7 @@ type SimpleDB = {
  * - modem_included, setup_fee_cents, data_allowance
  * - Marks metadata_verification_status as "Verified"
  */
-export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
+export async function handleDataPopulation(_env?: { SCRAPER_API_KEY?: string }) {
   const db = (await getDb()) as SimpleDB;
   const batchSize = 3; // Process 3 providers at a time (adjust for timeout)
   
@@ -60,8 +60,8 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
     const stmt = db.prepare(
       "SELECT * FROM providers WHERE active = 1 AND metadata_verification_status != 'Verified' ORDER BY id ASC LIMIT ?"
     );
-    const providersRes = typeof (stmt as any).all === 'function' ? await (stmt as any).all() : { results: [] };
-    const providers = (providersRes && (providersRes as any).results ? (providersRes as any).results : []) as ProviderRow[];
+    const providersRes = await stmt.all();
+    const providers = getResults<ProviderRow>(providersRes);
     
     result.batchNumber = Math.ceil((result.totalProviders - result.verifiedOverall) / batchSize);
     console.log(`📊 Processing batch: ${result.batchNumber}/${Math.ceil(result.totalProviders / batchSize)}`);
@@ -92,7 +92,7 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
           throw new Error(`No parser for: ${provider.canonical_url}`);
         }
 
-        let extracts: any[] = [];
+        let extracts: PlanExtract[] = [];
         try {
           const parsed = await parser.parse(html, provider.canonical_url);
           if (!Array.isArray(parsed)) throw new Error('Parser did not return array');
@@ -114,7 +114,7 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
               continue;
             }
 
-            await upsertPlanEnhanced(db as any, provider.id, normalized);
+            await upsertPlanEnhanced(db, provider.id, normalized);
             plansUpdated++;
           } catch (planErr) {
             console.error(`   ❌ Plan error:`, planErr);
@@ -194,11 +194,12 @@ export async function handleDataPopulation(env?: { SCRAPER_API_KEY?: string }) {
 async function upsertPlanEnhanced(
   db: SimpleDB,
   providerId: number,
-  ext: any
+  ext: PlanExtract
 ) {
   const now = new Date().toISOString();
   const technologyType = ext.technologyType || 'standard';
   const planType = ext.planType || 'residential';
+  const serviceType = (ext as { serviceType?: 'nbn' | '5g-home' | 'satellite' }).serviceType || 'nbn';
 
   // Extract all 9 fields
   const speedTier = ext.speedTier ?? null;
@@ -229,6 +230,7 @@ async function upsertPlanEnhanced(
         ongoing_price_cents = ?,
         technology_type = ?,
         plan_type = ?,
+        service_type = ?,
         updated_at = ?,
         is_active = 1
       WHERE id = ?
@@ -243,6 +245,7 @@ async function upsertPlanEnhanced(
       ongoingPriceCents,
       technologyType,
       planType,
+      serviceType,
       now,
       existing.id
     ).run();
@@ -253,8 +256,8 @@ async function upsertPlanEnhanced(
         provider_id, plan_name, speed_tier, upload_speed_mbps, data_allowance,
         contract_months, modem_included, setup_fee_cents, intro_price_cents,
         ongoing_price_cents, source_url, technology_type, plan_type,
-        last_checked_at, is_active, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        service_type, last_checked_at, is_active, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).bind(
       providerId,
       ext.planName,
@@ -269,6 +272,7 @@ async function upsertPlanEnhanced(
       ext.sourceUrl || null,
       technologyType,
       planType,
+      serviceType,
       now,
       1,
       now,
@@ -308,7 +312,14 @@ export async function getDataPopulationStatus() {
       SUM(CASE WHEN setup_fee_cents IS NOT NULL THEN 1 ELSE 0 END) as with_setup_fee
     FROM plans WHERE is_active = 1
   `);
-  const plansStats = (await plansStmt.first()) as any | undefined;
+  const plansStats = (await plansStmt.first()) as {
+    total: number;
+    with_upload_speed: number;
+    with_data_allowance: number;
+    with_contract_months: number;
+    with_modem_included: number;
+    with_setup_fee: number;
+  } | undefined;
 
   return {
     providers: {
@@ -326,4 +337,9 @@ export async function getDataPopulationStatus() {
       with_setup_fee: plansStats?.with_setup_fee || 0
     }
   };
+}
+
+function getResults<T>(rows: { results?: unknown[] } | T[]): T[] {
+  if (Array.isArray(rows)) return rows as T[];
+  return Array.isArray(rows.results) ? (rows.results as T[]) : [];
 }

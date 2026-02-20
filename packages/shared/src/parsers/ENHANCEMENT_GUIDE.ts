@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 /**
  * PARSER ENHANCEMENT GUIDE
  * 
@@ -29,7 +30,7 @@
  * 
  * Example extraction:
  */
-function _extractUploadSpeed(planElement: Element | null, downloadSpeed: number): number | null {
+function _extractUploadSpeed(planElement: globalThis.Element | null, downloadSpeed: number): number | null {
   const planText = planElement?.textContent || "";
   
   // Try to find "X Mbps" upload mentions
@@ -65,7 +66,7 @@ function _extractUploadSpeed(planElement: Element | null, downloadSpeed: number)
  * 
  * Example extraction:
  */
-function _extractDataAllowance(planElement: Element | null): string | null {
+function _extractDataAllowance(planElement: globalThis.Element | null): string | null {
   const planText = (planElement?.textContent || "").toLowerCase();
   
   // Check for unlimited
@@ -94,7 +95,7 @@ function _extractDataAllowance(planElement: Element | null): string | null {
  * 
  * Example extraction:
  */
-function _extractContractTerm(planElement: Element | null): number | null {
+function _extractContractTerm(planElement: globalThis.Element | null): number | null {
   const planText = (planElement?.textContent || "").toLowerCase();
   
   if (planText.includes("no contract") || planText.includes("month-to-month")) {
@@ -126,7 +127,7 @@ function _extractContractTerm(planElement: Element | null): number | null {
  * 
  * Example extraction:
  */
-function _extractModemIncluded(planElement: Element | null): boolean | null {
+function _extractModemIncluded(planElement: globalThis.Element | null): boolean | null {
   const planText = (planElement?.textContent || "").toLowerCase();
   
   if (planText.includes("modem included") || planText.includes("router included")) {
@@ -156,7 +157,7 @@ function _extractModemIncluded(planElement: Element | null): boolean | null {
  * 
  * Example extraction:
  */
-function _extractSetupFee(planElement: Element | null): number | null {
+function _extractSetupFee(planElement: globalThis.Element | null): number | null {
   const planText = planElement?.textContent || "";
   
   if (planText.match(/free\s*(setup|connection|installation)/i)) {

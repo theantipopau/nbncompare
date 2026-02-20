@@ -1,9 +1,10 @@
 import { Router } from "itty-router";
+import type { D1Database, ExecutionContext, KVNamespace } from "@cloudflare/workers-types";
 
 console.log('Worker module evaluation: index.ts loaded');
 
 let initError: Error | null = null;
-let router: any = null;
+let router: ReturnType<typeof Router> | null = null;
 try {
   router = Router();
 
@@ -12,7 +13,7 @@ try {
     return getProviders(req);
   });
 
-  router.get("/api/providers/:slug", async ({ params }: any) => {
+  router.get("/api/providers/:slug", async ({ params }: { params: { slug: string } }) => {
     const { getProvider } = await import("./handlers/providers");
     return getProvider(params.slug);
   });
@@ -22,12 +23,12 @@ try {
     return getPlans(req);
   });
 
-  router.get("/api/plans/:id/history", async ({ params }: any) => {
+  router.get("/api/plans/:id/history", async ({ params }: { params: { id: string } }) => {
     const { getPriceHistory } = await import("./handlers/price-history");
     return getPriceHistory(params.id);
   });
 
-  router.get("/api/price-history/:id", async ({ params }: any) => {
+  router.get("/api/price-history/:id", async ({ params }: { params: { id: string } }) => {
     const { getPriceHistory } = await import("./handlers/price-history");
     return getPriceHistory(params.id);
   });
@@ -57,9 +58,9 @@ try {
     return getProviderVerification(req);
   });
 
-  router.post("/api/admin/review/approve", async (request: Request) => {
+  router.post("/api/admin/review/approve", async (request: Request, env: Env) => {
     const { adminApprove } = await import("./handlers/admin");
-    return adminApprove(request as Request, { ADMIN_TOKEN: (globalThis as any).ADMIN_TOKEN });
+    return adminApprove(request, { ADMIN_TOKEN: env.ADMIN_TOKEN });
   });
 
   // New endpoints for consumer features
@@ -94,6 +95,12 @@ try {
     }
   });
 
+  // Data verification endpoint
+  router.get("/internal/verify-data", async (req: Request) => {
+    const { verifyData } = await import("./handlers/data-verification");
+    return verifyData(req);
+  });
+
   // Data population endpoints
   router.post("/internal/data-population/populate", async (req: Request, env: Env) => {
     try {
@@ -116,21 +123,47 @@ try {
       return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   });
-} catch (err: any) {
+} catch (err: unknown) {
   initError = err instanceof Error ? err : new Error(String(err));
   console.error('Initialization error:', initError);
 }
 // Cron route triggered by worker scheduled handler
-router.get("/internal/cron/run", async () => {
+  router.get("/internal/cron/run", async (req: Request, env: Env) => {
   try {
     const { handleCron } = await import("./handlers/cron");
-    const result = await handleCron();
+      const result = await handleCron(env);
     return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json" } });
   } catch (err: unknown) {
     console.error('Cron run failed:', err);
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
   }
 });
+
+  router.post("/internal/ai/refresh", async (_req: Request, env: Env) => {
+    try {
+      const { refreshAiSummaries } = await import("./handlers/ai-summaries");
+      const result = await refreshAiSummaries(env);
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json" } });
+    } catch (err: unknown) {
+      console.error('AI refresh failed:', err);
+      return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    }
+  });
+
+  router.get("/api/ai/plan-summary", async (req: Request) => {
+    const { getPlanSummary } = await import("./handlers/ai-summaries");
+    return getPlanSummary(req);
+  });
+
+  router.get("/api/ai/provider-summary", async (req: Request) => {
+    const { getProviderSummary } = await import("./handlers/ai-summaries");
+    return getProviderSummary(req);
+  });
+
+  router.get("/api/ai/best-deals", async () => {
+    const { getBestDealsSummary } = await import("./handlers/ai-summaries");
+    return getBestDealsSummary();
+  });
 
 router.get('/internal/debug/:slug', async ({ params }: { params: { slug: string } }) => {
   try {
@@ -156,8 +189,9 @@ router.get('/internal/ping', async () => {
 
 router.get('/internal/env', async () => {
   try {
-    const hasD1 = typeof (globalThis as any).D1 !== 'undefined';
-    const keys: string[] = Object.keys(globalThis as any).filter(k => k.length < 60).slice(0, 200);
+    const globals = globalThis as Record<string, unknown> & { D1?: D1Database };
+    const hasD1 = typeof globals.D1 !== 'undefined';
+    const keys: string[] = Object.keys(globals).filter(k => k.length < 60).slice(0, 200);
     return new Response(JSON.stringify({ ok: true, hasD1, keys }), { status: 200, headers: { 'Content-Type': 'application/json' } });
   } catch (err: unknown) {
     return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
@@ -168,9 +202,10 @@ import { recordRunError } from "./lib/db";
 import { corsHeaders } from "./lib/cors";
 
 interface Env {
-  D1: any;
+  D1: D1Database;
   ADMIN_TOKEN: string;
-  CACHE?: any;
+  CACHE?: KVNamespace;
+  AI?: unknown;
   ENVIRONMENT?: string;
   DEBUG?: string;
 }
@@ -205,11 +240,12 @@ function requireAdmin(request: Request, env: Env): Response | null {
   return null;
 }
 
-async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
+async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
   // Store env.D1 in globalThis for db.ts to access
-  (globalThis as any).D1 = env.D1;
+  const globals = globalThis as { D1?: D1Database; ADMIN_TOKEN?: string };
+  globals.D1 = env.D1;
   // Back-compat for any handlers still reading globalThis
-  (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;
+  globals.ADMIN_TOKEN = env.ADMIN_TOKEN;
   
   console.log('fetch start', request.method, request.url);
   
@@ -282,7 +318,7 @@ async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
       const { handleCron } = await import('./handlers/cron');
       // Allow up to 120 seconds for scraping to complete
       const result = await Promise.race([
-        handleCron(),
+        handleCron(env),
         new Promise((_res, rej) => setTimeout(() => rej(new Error('Scraping timeout - operation took longer than 2 minutes')), 120000))
       ]);
       return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
@@ -311,6 +347,36 @@ async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
       return await getPlans(request, env);
     } catch (err: unknown) {
       console.error('/api/plans direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/ai/plan-summary') {
+    try {
+      const { getPlanSummary } = await import('./handlers/ai-summaries');
+      return await getPlanSummary(request);
+    } catch (err: unknown) {
+      console.error('/api/ai/plan-summary direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/ai/provider-summary') {
+    try {
+      const { getProviderSummary } = await import('./handlers/ai-summaries');
+      return await getProviderSummary(request);
+    } catch (err: unknown) {
+      console.error('/api/ai/provider-summary direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/ai/best-deals') {
+    try {
+      const { getBestDealsSummary } = await import('./handlers/ai-summaries');
+      return await getBestDealsSummary();
+    } catch (err: unknown) {
+      console.error('/api/ai/best-deals direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
@@ -355,6 +421,17 @@ async function fetch(request: Request, env: Env, _ctx: any): Promise<Response> {
       return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
     } catch (err: unknown) {
       console.error('/internal/update-favicons direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/internal/ai/refresh' && request.method === 'POST') {
+    try {
+      const { refreshAiSummaries } = await import('./handlers/ai-summaries');
+      const result = await refreshAiSummaries(env);
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    } catch (err: unknown) {
+      console.error('/internal/ai/refresh direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }
@@ -416,7 +493,7 @@ async function scheduled(event: any, env: Env, _ctx: any): Promise<void> {
   try {
     console.log('scheduled handler starting');
     const { handleCron } = await import("./handlers/cron");
-    event.waitUntil(handleCron());
+    event.waitUntil(handleCron(env));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.stack || err.message : String(err);
     console.error('Scheduled handler error:', msg);

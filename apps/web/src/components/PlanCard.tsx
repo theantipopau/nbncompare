@@ -1,6 +1,9 @@
 import React, { useState } from 'react';
 import { ProviderTooltip } from './ProviderTooltip';
 import { FreshnessIndicator } from './FreshnessIndicator';
+import { getFaviconUrl } from '../lib/favicon';
+import { getApiBaseUrl } from '../lib/api';
+import { useComparison, Plan as ComparisonPlan } from '../context/ComparisonContext';
 
 interface Plan {
   id: number;
@@ -63,6 +66,47 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   isCheapest
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [faviconError, setFaviconError] = useState(false);
+  const [aiSummary, setAiSummary] = useState(null as string | null);
+  const [aiSummaryUpdatedAt, setAiSummaryUpdatedAt] = useState(null as string | null);
+  const [aiSummaryLoading, setAiSummaryLoading] = useState(false);
+  const { addToComparison, isComparing } = useComparison();
+  
+  const isInComparison = isComparing(String(plan.id));
+  
+  // Get the best available favicon URL
+  const faviconUrl = React.useMemo(() => {
+    if (faviconError) return '';
+    return getFaviconUrl(plan.provider_name, plan.favicon_url);
+  }, [plan.provider_name, plan.favicon_url, faviconError]);
+
+  React.useEffect(() => {
+    if (!isExpanded || aiSummary || aiSummaryLoading) return;
+    const controller = new globalThis.AbortController();
+    const loadSummary = async () => {
+      setAiSummaryLoading(true);
+      try {
+        const apiUrl = getApiBaseUrl();
+        const res = await fetch(`${apiUrl}/api/ai/plan-summary?planId=${plan.id}`, { signal: controller.signal });
+        const data = await res.json();
+        if (data?.summary) {
+          setAiSummary(data.summary);
+          setAiSummaryUpdatedAt(data.updated_at ?? null);
+        } else {
+          setAiSummary(null);
+        }
+      } catch (err) {
+        const abortError = (err as { name?: string }).name === 'AbortError';
+        if (!abortError) {
+          console.error('Failed to load AI summary:', err);
+        }
+      } finally {
+        setAiSummaryLoading(false);
+      }
+    };
+    void loadSummary();
+    return () => controller.abort();
+  }, [isExpanded, plan.id, aiSummary, aiSummaryLoading]);
 
   const cardStyle = {
     background: darkMode ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))' : 'white',
@@ -111,17 +155,20 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       {/* Header with Logo and Provider */}
       <div style={{ display: 'flex', gap: '12px', marginBottom: '16px', alignItems: 'flex-start' }}>
         <div style={{ flexShrink: 0 }}>
-          {plan.favicon_url ? (
+          {faviconUrl && !faviconError ? (
             <img
-              src={plan.favicon_url}
+              src={faviconUrl}
               alt={plan.provider_name}
               loading="lazy"
+              width={48}
+              height={48}
+              onError={() => setFaviconError(true)}
               style={{
                 width: '48px',
                 height: '48px',
                 borderRadius: '8px',
                 objectFit: 'contain',
-                background: 'white',
+                background: getProviderColor(plan.provider_name),
                 padding: '4px'
               }}
             />
@@ -139,6 +186,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
                 fontWeight: 'bold',
                 fontSize: '0.9em'
               }}
+              title={plan.provider_name}
             >
               {getProviderInitials(plan.provider_name)}
             </div>
@@ -216,6 +264,31 @@ export const PlanCard: React.FC<PlanCardProps> = ({
         )}
       </div>
 
+      {/* Promotional Offers */}
+      {(plan.promo_code || plan.promo_description) && (
+        <div style={{
+          padding: '12px',
+          borderRadius: '12px',
+          background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(244, 63, 94, 0.1))',
+          marginBottom: '16px',
+          border: '1px solid rgba(239, 68, 68, 0.3)'
+        }}>
+          <div style={{ fontSize: '0.9em', fontWeight: '600', color: '#ef4444', marginBottom: '4px' }}>
+            🎉 Special Offer
+          </div>
+          {plan.promo_description && (
+            <div style={{ fontSize: '0.85em', color: darkMode ? '#fecaca' : '#dc2626', marginBottom: '4px' }}>
+              {plan.promo_description}
+            </div>
+          )}
+          {plan.promo_code && (
+            <div style={{ fontSize: '0.8em', color: darkMode ? '#fca5a5' : '#991b1b' }}>
+              Code: <strong>{plan.promo_code}</strong>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Collapsible Details */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -282,6 +355,22 @@ export const PlanCard: React.FC<PlanCardProps> = ({
               )}
             </div>
           </div>
+
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.15)' : 'rgba(102, 126, 234, 0.1)'}` }}>
+            <div style={{ marginBottom: '8px', fontWeight: '600' }}>AI Summary:</div>
+            {aiSummaryLoading ? (
+              <div style={{ color: darkMode ? '#a0aec0' : '#666' }}>Generating summary...</div>
+            ) : aiSummary ? (
+              <div style={{ color: darkMode ? '#e2e8f0' : '#333', lineHeight: 1.5 }}>{aiSummary}</div>
+            ) : (
+              <div style={{ color: darkMode ? '#a0aec0' : '#666' }}>Summary not available yet.</div>
+            )}
+            {aiSummaryUpdatedAt && (
+              <div style={{ marginTop: '6px', fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#6b7280' }}>
+                Updated {new Date(aiSummaryUpdatedAt).toLocaleDateString('en-AU')}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -305,6 +394,35 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           {isFavorite ? '❤️ Favorited' : '🤍 Favorite'}
         </button>
         <button
+          onClick={() => addToComparison({ 
+            ...plan, 
+            id: String(plan.id),
+            speed_tier: plan.speed_tier || 0,
+            ongoing_price_cents: plan.ongoing_price_cents || 0
+          } as ComparisonPlan)}
+          disabled={isInComparison}
+          style={{
+            flex: 1,
+            padding: '10px 12px',
+            background: isInComparison 
+              ? (darkMode ? 'rgba(34, 197, 94, 0.2)' : 'rgba(34, 197, 94, 0.15)') 
+              : (darkMode ? 'rgba(59, 130, 246, 0.1)' : 'rgba(59, 130, 246, 0.08)'),
+            color: isInComparison
+              ? '#22c55e'
+              : (darkMode ? '#60a5fa' : '#2563eb'),
+            border: `1px solid ${isInComparison ? 'rgba(34, 197, 94, 0.4)' : 'rgba(59, 130, 246, 0.3)'}`,
+            borderRadius: '8px',
+            cursor: isInComparison ? 'not-allowed' : 'pointer',
+            fontWeight: '600',
+            fontSize: '0.85em',
+            transition: 'all 0.2s',
+            opacity: isInComparison ? 0.7 : 1,
+          }}
+          title={isInComparison ? 'Already in comparison' : 'Add to comparison'}
+        >
+          {isInComparison ? '✓ Added' : '+ Compare'}
+        </button>
+        <button
           onClick={() => onCompare(plan.id)}
           style={{
             flex: 1,
@@ -319,7 +437,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
             transition: 'all 0.2s'
           }}
         >
-          📊 Compare
+          📊 Details
         </button>
         <button
           onClick={() => onPriceHistory(plan.id)}
