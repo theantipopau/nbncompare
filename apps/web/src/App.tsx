@@ -16,6 +16,7 @@ export default function App() {
   const [currentPath, setCurrentPath] = useState(location.pathname);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Initialize dark mode from localStorage or user preference
   useEffect(() => {
@@ -41,6 +42,11 @@ export default function App() {
     }
     document.documentElement.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    // Close mobile nav on navigation changes
+    setMobileNavOpen(false);
+  }, [currentPath]);
 
   useEffect(() => {
     // Handle browser back/forward buttons
@@ -71,6 +77,8 @@ export default function App() {
               alt="NBN Compare"
               loading="eager"
               decoding="async"
+              width={180}
+              height={60}
               className="site-logo"
             />
             <div>
@@ -78,7 +86,7 @@ export default function App() {
               <p>Compare NBN plans across providers — updated daily.</p>
             </div>
           </div>
-          <nav className="site-nav" aria-label="Primary">
+          <nav id="primary-nav" className={`site-nav ${mobileNavOpen ? 'site-nav--open' : ''}`} aria-label="Primary">
             <a href="/" onClick={(e) => navigate('/', e)} className={`nav-link ${currentPath === '/' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/' ? 'page' : undefined}>🏠 Home</a>
             <a href="/blog" onClick={(e) => navigate('/blog', e)} className={`nav-link ${currentPath.startsWith('/blog') ? 'nav-link--active' : ''}`} aria-current={currentPath.startsWith('/blog') ? 'page' : undefined}>📝 Blog</a>
             <a href="/about" onClick={(e) => navigate('/about', e)} className={`nav-link ${currentPath === '/about' ? 'nav-link--active' : ''}`} aria-current={currentPath === '/about' ? 'page' : undefined}>ℹ️ About</a>
@@ -87,6 +95,16 @@ export default function App() {
           </nav>
 
           <div className="header-actions">
+            <button
+              className="mobile-nav-toggle"
+              aria-controls="primary-nav"
+              aria-expanded={mobileNavOpen}
+              onClick={() => setMobileNavOpen((s) => !s)}
+              title={mobileNavOpen ? 'Close menu' : 'Open menu'}
+            >
+              {mobileNavOpen ? '✕' : '☰'}
+            </button>
+
             <button
               className="theme-toggle"
               onClick={() => setDarkMode((d) => !d)}

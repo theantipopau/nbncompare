@@ -34,7 +34,74 @@ body {
   padding: 0;
   background: linear-gradient(180deg, #f9fafb 0%, #f3f4f6 100%);
   min-height: 100vh;
-  font-size: 14px;
+  font-size: 15px; /* slightly larger for improved readability */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5 {
+  line-height: 1.1;
+  margin-top: 0;
+}
+
+header h1 {
+  font-size: 2rem;
+}
+
+.hero h2 {
+  font-size: 1.8rem;
+}
+
+/* Mobile navigation styles */
+.mobile-nav-toggle {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--border);
+  padding: 6px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+}
+
+@media (max-width: 768px) {
+  .site-nav {
+    display: none;
+    position: absolute;
+    left: 12px;
+    right: 12px;
+    top: 96px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(2,6,23,0.08);
+    padding: 12px;
+    flex-direction: column;
+    gap: 8px;
+    z-index: 9999;
+  }
+
+  .site-nav.site-nav--open {
+    display: flex;
+  }
+
+  .mobile-nav-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .site-header {
+    padding: 14px;
+  }
+
+  .site-brand { order: 1; }
+  .header-actions { order: 2; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-primary, .btn-secondary, .btn-success {
+    transition: none !important;
+    animation: none !important;
+  }
 }
 
 /* Modern Button Styles */

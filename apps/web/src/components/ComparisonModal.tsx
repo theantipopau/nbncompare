@@ -199,6 +199,9 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({ onClose, darkM
                           <img
                             src={plan.favicon_url}
                             alt={plan.provider_name}
+                            loading="lazy"
+                            width={24}
+                            height={24}
                             style={{ width: '24px', height: '24px', borderRadius: '4px' }}
                             onError={(e) => (e.currentTarget.style.display = 'none')}
                           />

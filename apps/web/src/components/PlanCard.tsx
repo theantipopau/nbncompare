@@ -160,6 +160,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({
               src={faviconUrl}
               alt={plan.provider_name}
               loading="lazy"
+              width={48}
+              height={48}
               onError={() => setFaviconError(true)}
               style={{
                 width: '48px',

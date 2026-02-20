@@ -92,7 +92,7 @@ export default function About() {
           fontSize: '0.95em'
         }}
       >
-        <img src="/logosmall.PNG" alt="" style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
+        <img src="/logosmall.PNG" alt="NBN Compare logo" loading="lazy" width={24} height={24} style={{ width: '24px', height: '24px', borderRadius: '4px' }} />
         matthurley.dev
       </a>
 

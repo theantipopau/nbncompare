@@ -99,7 +99,7 @@ export function ProviderComparisonMatrix() {
                 <th key={provider.slug} style={{ padding: '12px', textAlign: 'center', fontWeight: '600' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
                     {provider.logo_url && (
-                      <img src={provider.logo_url} alt={provider.name} style={{ height: '32px', maxWidth: '80px' }} />
+                      <img src={provider.logo_url} alt={provider.name} loading="lazy" width={80} height={32} style={{ height: '32px', maxWidth: '80px' }} />
                     )}
                     <div style={{ fontSize: '0.85em' }}>{provider.name}</div>
                   </div>
