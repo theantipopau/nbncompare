@@ -13,6 +13,14 @@ type SimpleDB = {
   prepare: (q: string) => SimpleStmt;
 };
 
+type ProviderWithStrategy = ProviderRow & {
+  priority_tier?: number;
+  refresh_interval_minutes?: number;
+  use_browser?: number;
+  timeout_ms?: number;
+  max_retries?: number;
+};
+
 const JS_RENDER_PROVIDERS = new Set([
   'telstra',
   'optus',
@@ -27,10 +35,28 @@ type FetchEnv = { SCRAPER_API_KEY?: string; BROWSER?: unknown };
 
 export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: number = 5) {
   const db = (await getDb()) as SimpleDB;
-  console.log(`fetchProvidersToUpdate: starting (max ${maxProviders} providers, using free User-Agent rotation)`);
-  const stmt = db.prepare("SELECT * FROM providers WHERE active = 1 ORDER BY last_fetch_at ASC NULLS FIRST LIMIT ?").bind(maxProviders);
+  console.log(`fetchProvidersToUpdate: starting (max ${maxProviders} providers, adaptive strategy scheduling enabled)`);
+  const stmt = db.prepare(`
+    SELECT
+      p.*,
+      COALESCE(ps.priority_tier, 2) as priority_tier,
+      COALESCE(ps.refresh_interval_minutes, 360) as refresh_interval_minutes,
+      COALESCE(ps.use_browser, 0) as use_browser,
+      COALESCE(ps.timeout_ms, 20000) as timeout_ms,
+      COALESCE(ps.max_retries, 3) as max_retries
+    FROM providers p
+    LEFT JOIN provider_scrape_strategy ps ON ps.provider_slug = p.slug
+    WHERE p.active = 1
+      AND COALESCE(ps.enabled, 1) = 1
+      AND (
+        p.last_fetch_at IS NULL
+        OR datetime(p.last_fetch_at) <= datetime('now', '-' || COALESCE(ps.refresh_interval_minutes, 360) || ' minutes')
+      )
+    ORDER BY COALESCE(ps.priority_tier, 2) ASC, p.last_fetch_at ASC NULLS FIRST
+    LIMIT ?
+  `).bind(maxProviders);
   const providersRes = await stmt.all();
-  const providers = (providersRes?.results ?? []) as ProviderRow[];
+  const providers = (providersRes?.results ?? []) as ProviderWithStrategy[];
   const result: { checked: number; changed: number; errors: number } = { checked: 0, changed: 0, errors: 0 };
   
   // Process providers in parallel with timeout protection
@@ -48,24 +74,26 @@ export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: numbe
   return result;
 }
 
-async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checked: number; changed: number; errors: number }, env?: FetchEnv) {
+async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result: { checked: number; changed: number; errors: number }, env?: FetchEnv) {
   result.checked++;
   console.log(`Checking provider ${prov.slug} (${prov.canonical_url})`);
   try {
-    const preferBrowser = JS_RENDER_PROVIDERS.has(prov.slug);
+    const preferBrowser = prov.use_browser === 1 || JS_RENDER_PROVIDERS.has(prov.slug);
+    const timeoutMs = typeof prov.timeout_ms === 'number' && prov.timeout_ms >= 5000 ? prov.timeout_ms : 20000;
+    const maxRetries = typeof prov.max_retries === 'number' && prov.max_retries >= 1 ? prov.max_retries : 3;
     let usedBrowser = false;
     let html: string;
 
     if (preferBrowser && env?.BROWSER) {
       try {
-        html = await fetchViaBrowser(prov.canonical_url, env.BROWSER);
+        html = await fetchViaBrowser(prov.canonical_url, env.BROWSER, { timeoutMs });
         usedBrowser = true;
       } catch (err) {
         console.warn(`Browser render failed for ${prov.slug}, falling back to smart fetch`, err);
-        html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER);
+        html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER, { timeoutMs, maxRetries });
       }
     } else {
-      html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER);
+      html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER, { timeoutMs, maxRetries });
     }
     const hash = await computeHash(html);
     if (!preferBrowser && hash === prov.last_hash) {
@@ -97,7 +125,7 @@ async function processProvider(db: SimpleDB, prov: ProviderRow, result: { checke
       const missingPrices = extracts.filter((e) => !e.ongoingPriceCents && !e.introPriceCents).length;
       if (extracts.length === 0 || missingPrices / Math.max(extracts.length, 1) > 0.6) {
         try {
-          const browserHtml = await fetchViaBrowser(prov.canonical_url, env.BROWSER);
+          const browserHtml = await fetchViaBrowser(prov.canonical_url, env.BROWSER, { timeoutMs });
           const parsed = await parser.parse(browserHtml, prov.canonical_url);
           if (Array.isArray(parsed) && parsed.length > 0) {
             extracts = parsed;

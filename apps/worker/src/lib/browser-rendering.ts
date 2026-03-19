@@ -22,27 +22,43 @@ interface Page {
   close(): Promise<void>;
 }
 
+interface FetchSettings {
+  timeoutMs?: number;
+  maxRetries?: number;
+}
+
+const DEFAULT_BROWSER_TIMEOUT_MS = 20000;
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)),
+  ]);
+}
+
 /**
  * Fetch HTML using Cloudflare Browser Rendering
  * Best for JavaScript-heavy sites
  */
 export async function fetchViaBrowser(
   url: string,
-  browserBinding: BrowserBinding
+  browserBinding: BrowserBinding,
+  settings: FetchSettings = {}
 ): Promise<string> {
   let browser: Browser | null = null;
   let page: Page | null = null;
+  const timeoutMs = settings.timeoutMs ?? DEFAULT_BROWSER_TIMEOUT_MS;
 
   try {
     console.log(`Launching browser for ${url}...`);
-    browser = await browserBinding.launch();
-    page = await browser.newPage();
+    browser = await withTimeout(browserBinding.launch(), timeoutMs, 'Browser launch');
+    page = await withTimeout(browser.newPage(), timeoutMs, 'Page creation');
     
     console.log(`Navigating to ${url}...`);
-    await page.goto(url, { waitUntil: 'networkidle' });
+    await withTimeout(page.goto(url, { waitUntil: 'networkidle' }), timeoutMs, 'Page navigation');
     
     console.log(`Extracting content from ${url}...`);
-    const html = await page.content();
+    const html = await withTimeout(page.content(), timeoutMs, 'Page content extraction');
     
     return html;
   } catch (error) {
@@ -74,25 +90,27 @@ export async function fetchViaBrowser(
  */
 export async function fetchWithSmartFallback(
   url: string,
-  browserBinding?: BrowserBinding
+  browserBinding?: BrowserBinding,
+  settings: FetchSettings = {}
 ): Promise<string> {
   // Import user-agent rotation
   const { fetchWithFallback } = await import('./scraper-api');
+  const maxRetries = settings.maxRetries ?? 3;
   
   try {
     // First: Try user-agent rotation (fast)
     console.log(`Attempting user-agent rotation for ${url}...`);
-    return await fetchWithFallback(url);
+    return await fetchWithFallback(url, undefined, 0, { timeoutMs: settings.timeoutMs, maxRetries });
   } catch (error) {
     console.log(`User-agent rotation failed for ${url}, trying browser rendering...`);
     
     // Second: Try browser rendering if available
     if (browserBinding) {
       try {
-        return await fetchViaBrowser(url, browserBinding);
+        return await fetchViaBrowser(url, browserBinding, settings);
       } catch (browserError) {
         console.error(`Browser rendering also failed for ${url}:`, browserError);
-        throw new Error(`All fetch methods failed for ${url}`);
+        throw new Error(`All fetch methods failed for ${url} (maxRetries=${maxRetries})`);
       }
     }
     

@@ -48,6 +48,11 @@ try {
     return getStatus(req, { CACHE: env.CACHE });
   });
 
+  router.get("/api/status/stale", async (req: Request) => {
+    const { getStaleStatus } = await import("./handlers/status");
+    return getStaleStatus(req);
+  });
+
   router.get("/api/admin/issues", async (req: Request) => {
     const { getIssues } = await import("./handlers/admin-issues");
     return getIssues(req);
@@ -347,6 +352,16 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
       return await getPlans(request, env);
     } catch (err: unknown) {
       console.error('/api/plans direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/status/stale') {
+    try {
+      const { getStaleStatus } = await import('./handlers/status');
+      return await getStaleStatus(request);
+    } catch (err: unknown) {
+      console.error('/api/status/stale direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }

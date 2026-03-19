@@ -8,6 +8,15 @@ type StatusEnv = { CACHE?: KVNamespace };
 type CountRow = { count: number };
 type TierRow = { speed_tier: number; count: number };
 type ProviderRow = { name: string; slug: string; last_fetch_at: string | null; last_error?: string | null };
+type StaleRow = {
+  name: string;
+  slug: string;
+  last_fetch_at: string | null;
+  last_error: string | null;
+  priority_tier: number;
+  target_refresh_minutes: number;
+  age_minutes: number | null;
+};
 
 export async function getStatus(_req: Request, env?: StatusEnv) {
   try {
@@ -121,6 +130,77 @@ export async function getStatus(_req: Request, env?: StatusEnv) {
         "Content-Type": "application/json",
         "Access-Control-Allow-Origin": "*"
       }
+    });
+  }
+}
+
+export async function getStaleStatus(_req: Request): Promise<Response> {
+  try {
+    const db = await getDb();
+    const staleRowsRes = (await db.prepare(`
+      SELECT
+        p.name,
+        p.slug,
+        p.last_fetch_at,
+        p.last_error,
+        COALESCE(ps.priority_tier, 2) as priority_tier,
+        COALESCE(ps.refresh_interval_minutes, 360) as target_refresh_minutes,
+        CASE
+          WHEN p.last_fetch_at IS NULL THEN NULL
+          ELSE CAST((julianday('now') - julianday(p.last_fetch_at)) * 24 * 60 AS INTEGER)
+        END as age_minutes
+      FROM providers p
+      LEFT JOIN provider_scrape_strategy ps ON ps.provider_slug = p.slug
+      WHERE p.active = 1
+        AND COALESCE(ps.enabled, 1) = 1
+      ORDER BY priority_tier ASC, age_minutes DESC NULLS FIRST
+    `).all()) as { results?: StaleRow[] };
+
+    const rows = staleRowsRes?.results ?? [];
+    const withSla = rows.map((row) => {
+      const thresholdMinutes = row.priority_tier === 1
+        ? Math.max(60, row.target_refresh_minutes)
+        : row.target_refresh_minutes * 2;
+      const isStale = row.age_minutes === null || row.age_minutes > thresholdMinutes;
+      return {
+        ...row,
+        sla_threshold_minutes: thresholdMinutes,
+        stale: isStale,
+      };
+    });
+
+    const staleProviders = withSla.filter((r) => r.stale);
+    const tier1Stale = staleProviders.filter((r) => r.priority_tier === 1);
+
+    return new Response(JSON.stringify({
+      ok: true,
+      timestamp: new Date().toISOString(),
+      summary: {
+        totalProviders: withSla.length,
+        staleProviders: staleProviders.length,
+        tier1Stale: tier1Stale.length,
+      },
+      stale: staleProviders.slice(0, 50),
+    }), {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+        'Cache-Control': 'public, max-age=120',
+      },
+    });
+  } catch (err: unknown) {
+    console.error('getStaleStatus error:', err);
+    return new Response(JSON.stringify({
+      ok: false,
+      error: 'Failed to build stale-data status',
+      timestamp: new Date().toISOString(),
+    }), {
+      status: 500,
+      headers: {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': '*',
+      },
     });
   }
 }
