@@ -30,11 +30,13 @@ export interface ProviderMetadata {
  */
 export async function getProviderVerification(req: Request) {
   try {
-    // Check for admin authorization (optional - can be enhanced)
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      // Allow for now - in production should verify admin token
-      console.warn("No authorization header provided for provider-verification endpoint");
+    // Require admin token (belt-and-suspenders — router also enforces this)
+    const token = req.headers.get('x-admin-token') || req.headers.get('X-Admin-Token');
+    if (!token) {
+      return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' }
+      });
     }
 
     const db = (await getDb()) as SimpleDB;

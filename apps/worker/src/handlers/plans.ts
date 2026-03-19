@@ -136,6 +136,6 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     return response;
   } catch (err: unknown) {
     console.error('getPlans error:', err);
-    return jsonResponse({ ok: false, error: String(err), stack: err instanceof Error ? err.stack : null }, 500);
+    return jsonResponse({ ok: false, error: 'Failed to retrieve plans' }, 500);
   }
 }

@@ -68,23 +68,8 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
 
     try {
       const db = env.DB;
-      
-      // Create feedback table if it doesn't exist
-      await db.exec(`
-        CREATE TABLE IF NOT EXISTS plan_feedback (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          plan_id INTEGER NOT NULL,
-          issue_type TEXT NOT NULL,
-          description TEXT,
-          user_email TEXT,
-          resolved INTEGER DEFAULT 0,
-          admin_notes TEXT,
-          created_at TEXT,
-          FOREIGN KEY(plan_id) REFERENCES plans(id)
-        );
-      `);
 
-      // Insert feedback
+      // Insert feedback (table created by migration 0024_add_fresh_new_tables.sql)
       const result = await db.prepare(
         `INSERT INTO plan_feedback (plan_id, issue_type, description, user_email, created_at)
          VALUES (?, ?, ?, ?, ?)`

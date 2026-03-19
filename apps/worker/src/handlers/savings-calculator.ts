@@ -130,7 +130,7 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
     const alternatives = ((proposedResult.results as unknown as Plan[]) || []).map((plan: Plan) => {
       const annualCost = (plan.ongoing_price_cents / 100) * months;
       const savings = currentAnnualCost - annualCost;
-      const savingsPercent = (savings / currentAnnualCost) * 100;
+      const savingsPercent = currentAnnualCost > 0 ? (savings / currentAnnualCost) * 100 : 0;
       
       return {
         id: plan.id,
