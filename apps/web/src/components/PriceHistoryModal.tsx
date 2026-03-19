@@ -1,3 +1,4 @@
+/* global CanvasRenderingContext2D */
 import React, { useEffect } from 'react';
 
 declare global {

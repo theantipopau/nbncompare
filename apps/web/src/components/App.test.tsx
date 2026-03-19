@@ -3,6 +3,25 @@ import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import App from '../App';
 
+// Provide a minimal localStorage mock for jsdom
+const localStorageMock = {
+  store: {} as Record<string, string>,
+  getItem(key: string) {
+    return this.store[key] ?? null;
+  },
+  setItem(key: string, value: string) {
+    this.store[key] = value;
+  },
+  removeItem(key: string) {
+    delete this.store[key];
+  },
+};
+
+Object.defineProperty(window, 'localStorage', {
+  value: localStorageMock,
+  configurable: true,
+});
+
 describe('App (dark-mode toggle + mobile nav)', () => {
   it('toggles dark mode and persists preference', () => {
     // Ensure clean state
@@ -27,7 +46,7 @@ describe('App (dark-mode toggle + mobile nav)', () => {
   it('toggles mobile nav and updates aria attributes', () => {
     render(<App />);
 
-    const mobileToggle = screen.getByRole('button', { name: /open menu|close menu/i });
+    const mobileToggle = screen.getByRole('button', { name: /open mobile menu|close mobile menu/i });
     const nav = screen.getByRole('navigation');
 
     // Initially closed

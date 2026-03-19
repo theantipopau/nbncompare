@@ -27,7 +27,43 @@ interface WorkerEnv {
 
 export async function handleFeedback(request: Request, env: WorkerEnv): Promise<Response> {
   if (request.method === 'POST') {
-    const feedback: Feedback = await request.json();
+    // Rate limit: 10 submissions per IP per minute
+    try {
+      const { createRateLimiter } = await import('../lib/rate-limit');
+      const limiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 });
+      const rate = await limiter(request);
+      if (!rate.allowed) {
+        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
+          status: 429,
+          headers: { 'Content-Type': 'application/json', 'Retry-After': '60' }
+        });
+      }
+    } catch (rlErr) {
+      console.error('Rate limiter error:', rlErr);
+    }
+
+    let feedback: Feedback;
+    try {
+      feedback = await request.json() as Feedback;
+    } catch {
+      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
+    // Input validation
+    const ALLOWED_ISSUE_TYPES = ['wrong_price', 'wrong_speed', 'wrong_provider', 'missing_info', 'other'];
+    if (!Number.isInteger(feedback.plan_id) || feedback.plan_id <= 0) {
+      return new Response(JSON.stringify({ error: 'Invalid plan_id' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (!feedback.issue_type || !ALLOWED_ISSUE_TYPES.includes(feedback.issue_type)) {
+      return new Response(JSON.stringify({ error: `issue_type must be one of: ${ALLOWED_ISSUE_TYPES.join(', ')}` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (feedback.description && typeof feedback.description === 'string' && feedback.description.length > 1000) {
+      return new Response(JSON.stringify({ error: 'description must be 1000 characters or fewer' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+    if (feedback.user_email && (typeof feedback.user_email !== 'string' || feedback.user_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(feedback.user_email))) {
+      return new Response(JSON.stringify({ error: 'Invalid user_email' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    }
+
     feedback.created_at = new Date().toISOString();
 
     try {

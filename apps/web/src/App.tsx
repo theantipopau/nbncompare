@@ -18,29 +18,43 @@ export default function App() {
   const [darkMode, setDarkMode] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
+  const canUseLocalStorage = () => {
+    try {
+      return typeof window !== 'undefined' && typeof window.localStorage?.getItem === 'function';
+    } catch {
+      return false;
+    }
+  };
+
   // Initialize dark mode from localStorage or user preference
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('nbncompare:darkMode');
-      if (stored !== null) {
-        setDarkMode(stored === 'true');
-        return;
+    if (canUseLocalStorage()) {
+      try {
+        const stored = window.localStorage.getItem('nbncompare:darkMode');
+        if (stored !== null) {
+          setDarkMode(stored === 'true');
+          return;
+        }
+      } catch {
+        /* ignore */
       }
-    } catch (err) {
-      /* ignore */
     }
+
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     setDarkMode(prefersDark);
   }, []);
 
   // Persist and apply class to document element
   useEffect(() => {
-    try {
-      localStorage.setItem('nbncompare:darkMode', darkMode ? 'true' : 'false');
-    } catch (err) {
-      /* ignore */
+    if (canUseLocalStorage()) {
+      try {
+        window.localStorage.setItem('nbncompare:darkMode', darkMode ? 'true' : 'false');
+      } catch {
+        /* ignore */
+      }
     }
     document.documentElement.classList.toggle('dark-mode', darkMode);
+    document.body.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
 
   useEffect(() => {
@@ -99,6 +113,7 @@ export default function App() {
               className="mobile-nav-toggle"
               aria-controls="primary-nav"
               aria-expanded={mobileNavOpen}
+              aria-label={mobileNavOpen ? 'Close mobile menu' : 'Open mobile menu'}
               onClick={() => setMobileNavOpen((s) => !s)}
               title={mobileNavOpen ? 'Close menu' : 'Open menu'}
             >
