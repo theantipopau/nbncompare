@@ -199,6 +199,9 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
   const introDurationDays = ext.introDurationDays ?? null;
   const promoCode = ext.promoCode ?? null;
   const promoDescription = ext.promoDescription ?? null;
+  const promoExpiresAt = ext.promoExpiresAt ?? null;
+  const confidenceScore = computeConfidenceScore(ext);
+  const effectiveMonthlyCents = computeEffectiveMonthlyCents(ext);
   
   if (existing && typeof existing.id === 'number') {
     await db.prepare(
@@ -214,9 +217,12 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
         intro_duration_days = COALESCE(?, intro_duration_days),
         promo_code = COALESCE(?, promo_code),
         promo_description = COALESCE(?, promo_description),
+        promo_expires_at = COALESCE(?, promo_expires_at),
         technology_type = ?,
         plan_type = ?,
         service_type = COALESCE(?, service_type),
+        confidence_score = ?,
+        effective_monthly_cents = ?,
         updated_at = ?,
         is_active = 1
       WHERE id = ?`
@@ -232,9 +238,12 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       introDurationDays,
       promoCode,
       promoDescription,
+      promoExpiresAt,
       technologyType,
       planType,
       serviceType,
+      confidenceScore,
+      effectiveMonthlyCents,
       now,
       existing.id
     ).run();
@@ -244,10 +253,11 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
         provider_id, plan_name, speed_tier, upload_speed_mbps,
         intro_price_cents, ongoing_price_cents, source_url,
         data_allowance, contract_type, setup_fee_cents, modem_cost_cents,
-        intro_duration_days, promo_code, promo_description,
+        intro_duration_days, promo_code, promo_description, promo_expires_at,
         technology_type, plan_type, service_type,
+        confidence_score, effective_monthly_cents,
         last_checked_at, is_active, created_at, updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       providerId,
       ext.planName,
@@ -263,13 +273,40 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       introDurationDays,
       promoCode,
       promoDescription,
+      promoExpiresAt,
       technologyType,
       planType,
       serviceType,
+      confidenceScore,
+      effectiveMonthlyCents,
       now,
       1,
       now,
       now
     ).run();
   }
+}
+
+function computeConfidenceScore(ext: PlanExtract): number {
+  let score = 0;
+  if (ext.ongoingPriceCents) score += 0.35;
+  if (ext.speedTier) score += 0.25;
+  if (ext.uploadSpeedMbps) score += 0.10;
+  if (ext.typicalEveningSpeedMbps) score += 0.10;
+  if (ext.dataAllowance) score += 0.05;
+  if (ext.contractType) score += 0.05;
+  if (ext.conditionsText) score += 0.05;
+  if (ext.setupFeeCents !== undefined && ext.setupFeeCents !== null) score += 0.05;
+  return Math.round(Math.min(1.0, score) * 100) / 100;
+}
+
+function computeEffectiveMonthlyCents(ext: PlanExtract): number | null {
+  const ongoing = ext.ongoingPriceCents;
+  if (!ongoing) return null;
+  if (ext.introPriceCents && ext.introDurationDays && ext.introDurationDays > 0) {
+    const introMonths = Math.min(ext.introDurationDays / 30, 12);
+    const ongoingMonths = Math.max(0, 12 - introMonths);
+    return Math.round((ext.introPriceCents * introMonths + ongoing * ongoingMonths) / 12);
+  }
+  return ongoing;
 }

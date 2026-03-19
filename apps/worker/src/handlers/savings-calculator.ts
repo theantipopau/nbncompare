@@ -7,6 +7,7 @@ interface Plan {
   id: number;
   plan_name: string;
   ongoing_price_cents: number;
+  effective_monthly_cents?: number | null;
   speed_tier?: number;
   data_allowance?: string;
   provider_name?: string;
@@ -99,7 +100,7 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
     // Get current plan details
     const currentResult = await db.prepare(`
       SELECT 
-        p.id, p.plan_name, p.ongoing_price_cents, p.data_allowance,
+        p.id, p.plan_name, p.ongoing_price_cents, p.effective_monthly_cents, p.data_allowance,
         pr.name as provider_name
       FROM plans p
       JOIN providers pr ON p.provider_id = pr.id
@@ -114,21 +115,24 @@ export async function calculateSavings(request: Request, env: WorkerEnv): Promis
     }
 
     const current = currentResult as Plan;
-    const currentAnnualCost = (current.ongoing_price_cents / 100) * months;
+    // Use effective_monthly_cents (blended intro+ongoing) when available, fall back to ongoing
+    const currentMonthlyPrice = (current.effective_monthly_cents ?? current.ongoing_price_cents) / 100;
+    const currentAnnualCost = currentMonthlyPrice * months;
 
     // Get proposed plans
     const proposedResult = await db.prepare(`
       SELECT 
-        p.id, p.plan_name, p.ongoing_price_cents, p.speed_tier, p.data_allowance,
+        p.id, p.plan_name, p.ongoing_price_cents, p.effective_monthly_cents, p.speed_tier, p.data_allowance,
         pr.name as provider_name
       FROM plans p
       JOIN providers pr ON p.provider_id = pr.id
       WHERE p.id IN (${proposed_plans.map(() => '?').join(',')})
-      ORDER BY p.ongoing_price_cents ASC
+      ORDER BY COALESCE(p.effective_monthly_cents, p.ongoing_price_cents) ASC
     `).bind(...proposed_plans).all();
 
     const alternatives = ((proposedResult.results as unknown as Plan[]) || []).map((plan: Plan) => {
-      const annualCost = (plan.ongoing_price_cents / 100) * months;
+      const planMonthlyPrice = (plan.effective_monthly_cents ?? plan.ongoing_price_cents) / 100;
+      const annualCost = planMonthlyPrice * months;
       const savings = currentAnnualCost - annualCost;
       const savingsPercent = currentAnnualCost > 0 ? (savings / currentAnnualCost) * 100 : 0;
       

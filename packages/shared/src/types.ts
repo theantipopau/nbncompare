@@ -23,6 +23,7 @@ export interface PlanExtract {
   modemCostCents: number | null;
   promoCode?: string | null;
   promoDescription?: string | null;
+  promoExpiresAt?: string | null; // ISO date when promo ends, e.g. "2026-06-30"
   conditionsText: string | null;
   typicalEveningSpeedMbps: number | null;
   sourceUrl: string;

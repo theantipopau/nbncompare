@@ -493,7 +493,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   }
 }
 
-async function scheduled(event: any, env: Env, _ctx: any): Promise<void> {
+async function scheduled(_event: any, env: Env, ctx: any): Promise<void> {
   // Store env.D1 in globalThis for db.ts to access
   (globalThis as any).D1 = env.D1;
   (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;
@@ -508,7 +508,8 @@ async function scheduled(event: any, env: Env, _ctx: any): Promise<void> {
   try {
     console.log('scheduled handler starting');
     const { handleCron } = await import("./handlers/cron");
-    event.waitUntil(handleCron(env));
+    // Use ctx.waitUntil so the scheduled handler can return while work continues
+    ctx.waitUntil(handleCron(env));
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.stack || err.message : String(err);
     console.error('Scheduled handler error:', msg);
