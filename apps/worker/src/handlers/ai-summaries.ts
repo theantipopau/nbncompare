@@ -220,11 +220,16 @@ async function generateProviderSummaries(db: SimpleDB, ai: Ai) {
 async function generateBestDealsSummary(db: SimpleDB, ai: Ai) {
   const dealsRows = await db.prepare(
     `SELECT p.id, p.plan_name, p.speed_tier, p.ongoing_price_cents, p.intro_price_cents,
-            p.intro_duration_days, p.promo_code, p.promo_description, prov.name as provider_name
+            p.intro_duration_days, p.promo_code, p.promo_description,
+            p.effective_monthly_cents, p.confidence_score,
+            prov.name as provider_name
      FROM plans p
      JOIN providers prov ON p.provider_id = prov.id
      WHERE p.is_active = 1
-     ORDER BY (p.intro_price_cents IS NULL), p.intro_price_cents ASC, p.ongoing_price_cents ASC
+       AND (p.promo_expires_at IS NULL OR p.promo_expires_at > datetime('now'))
+       AND COALESCE(p.confidence_score, 0) >= 0.35
+     ORDER BY (COALESCE(p.effective_monthly_cents, p.ongoing_price_cents) IS NULL),
+              COALESCE(p.effective_monthly_cents, p.ongoing_price_cents) ASC
      LIMIT 12`
   ).all();
 

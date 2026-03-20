@@ -23,6 +23,75 @@ export function parsePriceToCents(text: string | null | undefined): number | nul
   return Math.round(val * 100);
 }
 
+const MONTH_NAMES: Record<string, number> = {
+  january: 1, jan: 1, february: 2, feb: 2, march: 3, mar: 3,
+  april: 4, apr: 4, may: 5, june: 6, jun: 6, july: 7, jul: 7,
+  august: 8, aug: 8, september: 9, sep: 9, sept: 9, october: 10, oct: 10,
+  november: 11, nov: 11, december: 12, dec: 12,
+};
+
+/**
+ * Extracts a promo/offer expiry date from free text.
+ * Handles patterns like:
+ *   "offer ends 31 March 2026", "expires 30/06/2026", "valid until March 31, 2026",
+ *   "Ends 30 Jun 26", "until 31-03-2026"
+ * Returns ISO date string "YYYY-MM-DD" or null if not found.
+ */
+export function extractPromoExpiry(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const clean = text.replace(/\s+/g, ' ');
+
+  // Keyword triggers: ends/expires/valid until/offer ends
+  const triggerRe = /(?:offer\s+ends?|expires?|valid\s+(?:till|until)|ends?\s+on|until|till)\s+/i;
+
+  // Pattern A: trigger + day + month-name + year  ("ends 31 March 2026" / "ends 31st Mar 26")
+  const patternA = new RegExp(
+    triggerRe.source +
+    '(\\d{1,2})(?:st|nd|rd|th)?\\s+([a-z]{3,9})\\s+(\\d{2,4})',
+    'i'
+  );
+  // Pattern B: trigger + month-name + day + year  ("until March 31, 2026")
+  const patternB = new RegExp(
+    triggerRe.source +
+    '([a-z]{3,9})\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+(\\d{2,4})',
+    'i'
+  );
+  // Pattern C: trigger + numeric date  ("expires 30/06/2026" / "until 30-03-26" / "until 30.06.26")
+  const patternC = new RegExp(
+    triggerRe.source +
+    '(\\d{1,2})[\\-/.](\\d{1,2})[\\-/.](\\d{2,4})',
+    'i'
+  );
+
+  function toISO(day: number, month: number, year: number): string | null {
+    const y = year < 100 ? 2000 + year : year;
+    if (month < 1 || month > 12 || day < 1 || day > 31 || y < 2020 || y > 2035) return null;
+    return `${y}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+  }
+
+  let m: RegExpMatchArray | null;
+
+  m = clean.match(patternA);
+  if (m) {
+    const monthNum = MONTH_NAMES[m[2].toLowerCase()];
+    if (monthNum) return toISO(parseInt(m[1]), monthNum, parseInt(m[3]));
+  }
+
+  m = clean.match(patternB);
+  if (m) {
+    const monthNum = MONTH_NAMES[m[1].toLowerCase()];
+    if (monthNum) return toISO(parseInt(m[2]), monthNum, parseInt(m[3]));
+  }
+
+  m = clean.match(patternC);
+  if (m) {
+    // Numeric: assume DD/MM/YYYY (Australian convention)
+    return toISO(parseInt(m[1]), parseInt(m[2]), parseInt(m[3]));
+  }
+
+  return null;
+}
+
 export function parseDurationToDays(text: string | null | undefined): number | null {
   if (!text) return null;
   const m = text.match(/(\d+)\s*(month|months)/i);
@@ -103,6 +172,8 @@ export function validatePlan(p: PlanExtract) {
   } else {
     // $1/day / promo fragments frequently get mis-parsed as plan prices
     if (price < 2000) errors.push(`price too low (${price})`);
+    // $500+/month is unrealistic for residential NBN — likely a parse error (e.g., page title mis-parsed)
+    if (price > 50000) errors.push(`price absurdly high (${price}) — likely parse error`);
   }
 
   // Reject common marketing/FAQ paragraphs accidentally captured as plan names.
@@ -160,5 +231,8 @@ export function normalizeExtract(ex: PlanExtract): PlanExtract {
     serviceType,
     promoCode: ex.promoCode ?? extractedPromo.promoCode,
     promoDescription: ex.promoDescription ?? extractedPromo.promoDescription,
+    promoExpiresAt: ex.promoExpiresAt ?? extractPromoExpiry(
+      [ex.conditionsText, ex.promoDescription, ex.planName].filter(Boolean).join(' ')
+    ),
   };
 }

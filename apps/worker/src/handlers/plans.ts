@@ -28,6 +28,7 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     const technologyType = url.searchParams.get("technology");
     const planType = url.searchParams.get("planType");
     const serviceType = url.searchParams.get("serviceType"); // 'nbn', '5g-home', 'satellite'
+    const hideExpiredPromos = url.searchParams.get("hideExpiredPromos") === "1";
     const limitParam = url.searchParams.get("limit") ?? "100";
 
     // Generate cache key from query parameters
@@ -75,7 +76,8 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
       prov.routing_info as provider_routing_info,
       prov.description as provider_description,
       prov.support_hours as provider_support_hours,
-      p.promo_code, p.promo_description,
+      p.promo_code, p.promo_description, p.promo_expires_at,
+      p.confidence_score, p.effective_monthly_cents,
       p.technology_type,
       CASE 
         WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents < ph.price_cents THEN 'down'
@@ -112,13 +114,27 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
         params.push(uploadSpeed);
       }
     }
+    // Exclude plans whose intro/promo offer has already expired
+    if (hideExpiredPromos) {
+      q += ` AND (p.promo_expires_at IS NULL OR p.promo_expires_at > datetime('now'))`;
+    }
 
     // SQLite-friendly NULLS LAST emulation: order by (ongoing_price_cents IS NULL), then value asc
     q += ` ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC LIMIT ?`;
     params.push(limit);
 
     const rowsRes = await db.prepare(q).bind(...params).all();
-    const rows = Array.isArray(rowsRes?.results) ? rowsRes.results : [];
+    const rawRows = Array.isArray(rowsRes?.results) ? rowsRes.results : [];
+
+    // Mark plans whose intro/promo offer has expired so the UI can display accordingly
+    const now2 = new Date().toISOString();
+    const rows = (rawRows as Record<string, unknown>[]).map((row) => {
+      const expiresAt = row.promo_expires_at as string | null;
+      const promoExpired = expiresAt != null && expiresAt < now2;
+      if (!promoExpired) return row;
+      // Strip intro price so expired promos don’t skew comparisons
+      return { ...row, intro_price_cents: null, intro_duration_days: null, promo_expired: true };
+    });
 
     planQueryCache.set(cacheKey, { rows, expires: Date.now() + PLAN_CACHE_TTL_MS });
     const responseData = { ok: true, rows };

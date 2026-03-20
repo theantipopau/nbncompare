@@ -60,84 +60,129 @@ export function canHandle(url: string) {
 
 export async function parse(html: string, url: string): Promise<PlanExtract[]> {
   const plans: PlanExtract[] = [];
-  
-  // Superloop has moved to a React-based site with specific known plans
-  // These are the current plans as of Jan 2026 with 6-month promotional pricing
-  // Prices verified from https://www.superloop.com/internet/nbn on 2026-01-04
-  const planPatterns = [
-    { name: "Everyday", speed: 25, upload: 10, ongoing: 72, intro: 45, introDays: 180 },
-    { name: "Extra Value", speed: 50, upload: 20, ongoing: 85, intro: 65, introDays: 180 },
-    { name: "Family Max", speed: 500, upload: 50, ongoing: 95, intro: 69, introDays: 180 },
-    { name: "Lightspeed", speed: 1000, upload: 100, ongoing: 109, intro: 85, introDays: 180 },
-    { name: "Hyperspeed", speed: 2000, upload: 200, ongoing: 165, intro: 145, introDays: 180 },
+  const doc = parseHTML(html);
+
+  // --- Strategy 1: DOM-based extraction ---
+  // Superloop renders plan cards with various class patterns depending on their React version
+  const cardSelectors = [
+    '[class*="PlanCard"]', '[class*="plan-card"]', '[class*="plan_card"]',
+    '[class*="ProductCard"]', '[class*="product-card"]',
+    '[class*="PricingCard"]', '[class*="pricing-card"]',
+    '[class*="nbn-plan"]', '[class*="NBNPlan"]',
+    '.plan', '.package', '.product',
   ];
-
-  // Check which plans appear in the HTML content
-  for (const pattern of planPatterns) {
-    const planNameInContent = html.includes(pattern.name);
-    const speedInContent = html.includes(`${pattern.speed} Mbps`) || html.includes(`${pattern.speed}Mbps`);
-    const priceInContent = html.includes(`$${pattern.intro}`) || html.includes(`$${pattern.ongoing}`);
-    
-    // If we find evidence of this plan in the HTML, add it
-    if (planNameInContent || (speedInContent && priceInContent)) {
-      plans.push({
-        providerSlug: "superloop",
-        planName: `Superloop NBN ${pattern.speed}`, // Match existing DB format
-        speedTier: normalizeSpeed(pattern.speed),
-        uploadSpeedMbps: pattern.upload,
-        dataAllowance: "Unlimited",
-        contractMonths: 0,
-        modemIncluded: true,
-        introPriceCents: Math.round(pattern.intro * 100),
-        introDurationDays: pattern.introDays,
-        ongoingPriceCents: Math.round(pattern.ongoing * 100),
-        minTermDays: null, // Month-to-month
-        setupFeeCents: null,
-        modemCostCents: null,
-        conditionsText: `${pattern.name} plan - 6 month promotional pricing for new customers. Free modem available on selected plans when staying connected for 36 months.`,
-        typicalEveningSpeedMbps: null,
-        sourceUrl: url,
-        technologyType: 'standard',
-        planType: 'residential',
-      });
-    }
+  let cards: Element[] = [];
+  for (const sel of cardSelectors) {
+    cards = Array.from(doc.querySelectorAll(sel));
+    if (cards.length >= 2) break; // need at least 2 to be meaningful
   }
 
-  // Fallback: Try to parse DOM if no plans were found via pattern matching
-  if (plans.length === 0) {
-    const doc = parseHTML(html);
-    const cards = Array.from(doc.querySelectorAll(".plan, .package, .product"));
-    plans.push(...cards.map((el): PlanExtract => {
-      const planName = (el.querySelector("h3")?.textContent || el.querySelector(".title")?.textContent || "").trim();
-      const priceText = (el.querySelector(".price")?.textContent || "").trim();
-      const planText = el.textContent || "";
-      const introOffer = extractIntroOffer(planText);
-      const speedMatch = (el.textContent || "").match(/NBN\s*(\d{1,4})/i) || (el.textContent || "").match(/(\d{1,4})\s*Mbps/i);
-      const parsedSpeed = speedMatch ? parseInt(speedMatch[1]) : null;
-      const normalizedSpeed = normalizeSpeed(parsedSpeed);
-      return {
-        providerSlug: "superloop",
-        planName: planName || "Not stated",
-        speedTier: normalizedSpeed,
-        uploadSpeedMbps: extractUploadSpeed(el, normalizedSpeed),
-        dataAllowance: extractDataAllowance(el),
-        contractMonths: extractContractMonths(el),
-        modemIncluded: extractModemIncluded(el),
-        introPriceCents: introOffer.introPriceCents ?? parsePriceToCents(priceText),
-        introDurationDays: introOffer.introDurationDays,
-        ongoingPriceCents: introOffer.thenPriceCents ?? parsePriceToCents(priceText),
-        minTermDays: null,
-        setupFeeCents: extractSetupFee(el),
-        modemCostCents: null,
-        conditionsText: (el.querySelector(".terms")?.textContent || el.textContent || "").trim() || null,
-        promoDescription: introOffer.promoDescription,
-        typicalEveningSpeedMbps: null,
-        sourceUrl: url,
-        technologyType: 'standard' as const,
-        planType: 'residential' as const,
-      };
-    }));
+  for (const el of cards) {
+    const text = el.textContent || '';
+    // Must contain a speed indicator to be a plan card
+    const speedMatch = text.match(/\b(\d{3,4})\s*Mbps\b/i) ||
+                       text.match(/NBN\s*(\d{2,4})/i) ||
+                       text.match(/\b(25|50|100|250|500|1000|2000)\b/);
+    if (!speedMatch) continue;
+    const rawSpeed = parseInt(speedMatch[1]);
+    const speed = normalizeSpeed(rawSpeed);
+    if (!speed) continue;
+
+    const planName = `Superloop NBN ${speed}`;
+    const intro = extractIntroOffer(text);
+    const priceText = el.querySelector('[class*="price"], [class*="Price"], .price, .cost')?.textContent || '';
+    const ongoingPrice = intro.thenPriceCents ?? parsePriceToCents(priceText);
+
+    if (!ongoingPrice && !intro.introPriceCents) continue;
+
+    plans.push({
+      providerSlug: 'superloop',
+      planName,
+      speedTier: speed,
+      uploadSpeedMbps: extractUploadSpeed(el, rawSpeed),
+      dataAllowance: extractDataAllowance(el) ?? 'Unlimited',
+      contractMonths: extractContractMonths(el) ?? 0,
+      modemIncluded: extractModemIncluded(el),
+      introPriceCents: intro.introPriceCents,
+      introDurationDays: intro.introDurationDays,
+      ongoingPriceCents: ongoingPrice,
+      minTermDays: null,
+      setupFeeCents: extractSetupFee(el),
+      modemCostCents: null,
+      conditionsText: text.trim().slice(0, 500) || null,
+      promoDescription: intro.promoDescription,
+      typicalEveningSpeedMbps: null,
+      sourceUrl: url,
+      technologyType: 'standard',
+      planType: 'residential',
+    });
   }
 
-  return plans;
+  if (plans.length > 0) return deduplicateSuperloopPlans(plans);
+
+  // --- Strategy 2: Full-page text extraction ---
+  // For React SPAs, `html` may be the raw app shell before hydration.
+  // Extract speed+price pairs from any contiguous text block.
+  const pageText = (doc.body?.textContent || html).replace(/\s+/g, ' ');
+  const speeds: Array<{ speed: number; text: string }> = [];
+
+  // Collect blocks around each speed mention
+  for (const match of pageText.matchAll(/\b(25|50|100|250|500|1000|2000)\s*Mbps\b/gi)) {
+    const idx = match.index ?? 0;
+    speeds.push({ speed: parseInt(match[1]), text: pageText.slice(Math.max(0, idx - 100), idx + 300) });
+  }
+
+  for (const { speed, text } of speeds) {
+    const norm = normalizeSpeed(speed);
+    if (!norm) continue;
+    const intro = extractIntroOffer(text);
+    // Try extracting first $ amount in block as ongoing price
+    const priceMatch = text.match(/\$\s*(\d{2,3}(?:\.\d{1,2})?)/g);
+    const prices = (priceMatch || []).map(p => parsePriceToCents(p)).filter((p): p is number => p !== null && p > 2000);
+    const ongoingPrice = intro.thenPriceCents ?? prices.find(p => p > (intro.introPriceCents ?? 0)) ?? prices[0] ?? null;
+
+    if (!ongoingPrice && !intro.introPriceCents) continue;
+
+    // Avoid duplicate speeds
+    if (plans.find(p => p.speedTier === norm)) continue;
+
+    plans.push({
+      providerSlug: 'superloop',
+      planName: `Superloop NBN ${speed}`,
+      speedTier: norm,
+      uploadSpeedMbps: { 25: 5, 50: 20, 100: 20, 250: 25, 500: 50, 1000: 50, 2000: 100 }[speed] ?? null,
+      dataAllowance: 'Unlimited',
+      contractMonths: 0,
+      modemIncluded: null,
+      introPriceCents: intro.introPriceCents,
+      introDurationDays: intro.introDurationDays,
+      ongoingPriceCents: ongoingPrice,
+      minTermDays: null,
+      setupFeeCents: null,
+      modemCostCents: null,
+      conditionsText: text.trim().slice(0, 500) || null,
+      promoDescription: intro.promoDescription,
+      typicalEveningSpeedMbps: null,
+      sourceUrl: url,
+      technologyType: 'standard',
+      planType: 'residential',
+    });
+  }
+
+  return deduplicateSuperloopPlans(plans);
+}
+
+/** Keep only one entry per speed tier — prefer the one with more fields populated. */
+function deduplicateSuperloopPlans(plans: PlanExtract[]): PlanExtract[] {
+  const bySpeed = new Map<number, PlanExtract>();
+  for (const plan of plans) {
+    const key = plan.speedTier ?? 0;
+    const existing = bySpeed.get(key);
+    if (!existing || score(plan) > score(existing)) bySpeed.set(key, plan);
+  }
+  return Array.from(bySpeed.values()).sort((a, b) => (a.speedTier ?? 0) - (b.speedTier ?? 0));
+}
+
+function score(p: PlanExtract): number {
+  return (p.ongoingPriceCents ? 2 : 0) + (p.introPriceCents ? 1 : 0) + (p.uploadSpeedMbps ? 1 : 0);
 }
