@@ -23,13 +23,16 @@ const PAGE_CACHE_TTL_MS = 30 * 1000; // 30 seconds in-memory
 const pageCountCache = new Map<string, { count: number; expires: number }>();
 
 export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
+  const startTime = Date.now();
   try {
     const url = new URL(req.url);
+    console.log(`[plans-paginated] START:`, url.search);
     
     // Parse pagination parameters
     const page = Math.max(0, parseInt(url.searchParams.get("page") ?? "0"));
     const pageSize = Math.min(Math.max(1, parseInt(url.searchParams.get("pageSize") ?? "20")), 100);
     const offset = page * pageSize;
+    console.log(`[plans-paginated] page=${page} size=${pageSize} offset=${offset}`);
 
     // Build filter parameters from query string (same as /api/plans)
     const speedParam = url.searchParams.get("speed");
@@ -89,7 +92,10 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
 
     // 1. Get total count
     const countQ = `SELECT COUNT(*) as total FROM plans${whereClause}`;
+    console.log(`[plans-paginated] COUNT query starting...`);
+    const t1 = Date.now();
     const countRes = await db.prepare(countQ).bind(...params).first() as any;
+    console.log(`[plans-paginated] COUNT query: ${Date.now() - t1}ms, result=${countRes?.total}`);
     const totalCount = countRes?.total ?? 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
@@ -120,7 +126,10 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
     `;
 
     const pageParams = [...params, pageSize, offset];
+    console.log(`[plans-paginated] SELECT query starting...`);
+    const t2 = Date.now();
     const rowsRes = await db.prepare(plansQ).bind(...pageParams).all();
+    console.log(`[plans-paginated] SELECT query: ${Date.now() - t2}ms, rows=${rowsRes?.results?.length ?? 0}`);
     const rawRows = Array.isArray(rowsRes?.results) ? rowsRes.results : [];
 
     // Mark plans whose promo has expired
@@ -157,7 +166,8 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
     return response;
 
   } catch (err: unknown) {
-    console.error('getPagedPlans error:', err);
-    return jsonResponse({ ok: false, error: 'Failed to retrieve plans' }, 500);
+    const elapsed = Date.now() - startTime;
+    console.error(`[plans-paginated] FAIL after ${elapsed}ms:`, err);
+    return jsonResponse({ ok: false, error: String(err), elapsed }, 500);
   }
 }
