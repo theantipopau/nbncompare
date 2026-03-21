@@ -12,13 +12,17 @@ type D1DatabaseLike = {
   prepare: (q: string) => D1Statement;
 };
 
+type CacheLike = {
+  put: (key: string, value: string, options?: { expirationTtl?: number }) => Promise<void>;
+};
+
 const CACHE_TTL = 300; // 5 minutes in seconds
 const PAGE_CACHE_TTL_MS = 30 * 1000; // 30 seconds in-memory
 
 // Local in-memory cache for page counts
 const pageCountCache = new Map<string, { count: number; expires: number }>();
 
-export async function getPagedPlans(req: Request, env?: { CACHE?: KVNamespace }) {
+export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
   try {
     const url = new URL(req.url);
     
@@ -107,18 +111,9 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: KVNamespace })
         p.promo_code, p.promo_description, p.promo_expires_at,
         p.confidence_score, p.effective_monthly_cents,
         p.technology_type,
-        CASE 
-          WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents < ph.price_cents THEN 'down'
-          WHEN ph.price_cents IS NOT NULL AND p.ongoing_price_cents > ph.price_cents THEN 'up'
-          ELSE NULL
-        END as price_trend
+        NULL as price_trend
         FROM plans p 
         JOIN providers prov ON p.provider_id = prov.id
-        LEFT JOIN (
-          SELECT plan_id, price_cents,
-            ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY recorded_at DESC) as rn
-          FROM price_history
-        ) ph ON p.id = ph.plan_id AND ph.rn = 2
         ${whereClause}
         ORDER BY (p.ongoing_price_cents IS NULL), p.ongoing_price_cents ASC
         LIMIT ? OFFSET ?

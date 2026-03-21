@@ -36,7 +36,7 @@ interface D1Result {
 }
 
 interface WorkerEnv {
-  DB: D1Database;
+  D1: D1Database;
 }
 
 interface _ProviderData {
@@ -56,16 +56,16 @@ interface _ProviderData {
 
 export async function getProviderComparison(request: Request, env: WorkerEnv): Promise<Response> {
   try {
-    const db = env.DB;
+    const db = env.D1;
     
     const providers = await db.prepare(`
       SELECT 
-        id, name, slug, logo_url,
+        id, name, slug, favicon_url,
         ipv6_support, cgnat, cgnat_opt_out,
         static_ip_available, australian_support,
         parent_company, support_hours, description
       FROM providers
-      WHERE is_active = 1
+      WHERE active = 1
       ORDER BY name ASC
     `).all();
 
@@ -74,7 +74,7 @@ export async function getProviderComparison(request: Request, env: WorkerEnv): P
       id: p.id,
       name: p.name,
       slug: p.slug,
-      logo_url: p.logo_url,
+      logo_url: p.favicon_url,
       features: {
         ipv6: {
           label: 'IPv6 Support',
