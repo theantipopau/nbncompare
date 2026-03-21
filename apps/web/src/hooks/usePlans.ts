@@ -1,4 +1,5 @@
 import { useQuery, UseQueryOptions, UseQueryResult } from '@tanstack/react-query';
+import { getApiBaseUrl } from '../lib/api';
 
 export interface Plan {
   id: number;
@@ -30,7 +31,7 @@ export interface PagedPlansResponse extends PlansResponse {
   };
 }
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8787';
+const API_BASE_URL = getApiBaseUrl();
 
 /**
  * Custom hook for fetching plans with React Query caching
