@@ -44,34 +44,45 @@ export function createRateLimiter(options: RateLimitOptions) {
   };
 }
 
+/**
+ * Creates a rate-limit middleware that can be applied to async handlers.
+ * The returned function takes the actual handler and wraps it with rate limiting.
+ * 
+ * Usage:
+ *   const limitedHandler = rateLimit(options)(originalHandler);
+ *   const response = await limitedHandler(request, env);
+ */
 export function rateLimit(options: RateLimitOptions) {
   const limiter = createRateLimiter(options);
 
-  return async (request: Request) => {
-    const result = await limiter(request);
+  return (handler: (request: Request, env?: any) => Promise<Response>) => {
+    return async (request: Request, env?: any): Promise<Response> => {
+      const result = await limiter(request);
 
-    if (!result.allowed) {
-      return new Response(JSON.stringify({
-        error: 'Too many requests',
-        message: 'Rate limit exceeded. Please try again later.',
-        resetTime: result.resetTime
-      }), {
-        status: 429,
-        headers: {
-          'Content-Type': 'application/json',
-          'X-RateLimit-Remaining': result.remaining?.toString() || '0',
-          'X-RateLimit-Reset': result.resetTime?.toString() || '',
-          'Retry-After': Math.ceil(((result.resetTime || Date.now()) - Date.now()) / 1000).toString()
-        }
-      });
-    }
+      if (!result.allowed) {
+        return new Response(JSON.stringify({
+          error: 'Too many requests',
+          message: 'Rate limit exceeded. Please try again later.',
+          resetTime: result.resetTime
+        }), {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Remaining': result.remaining?.toString() || '0',
+            'X-RateLimit-Reset': result.resetTime?.toString() || '',
+            'Retry-After': Math.ceil(((result.resetTime || Date.now()) - Date.now()) / 1000).toString()
+          }
+        });
+      }
 
-    // Add rate limit headers to successful requests
-    const response = await fetch(request);
-    const newResponse = new Response(response.body, response);
-    newResponse.headers.set('X-RateLimit-Remaining', result.remaining?.toString() || '0');
-    newResponse.headers.set('X-RateLimit-Reset', result.resetTime?.toString() || '');
+      // Call the actual handler with rate limit info attached to request
+      const response = await handler(request, env);
+      
+      // Add rate limit headers to successful response
+      response.headers.set('X-RateLimit-Remaining', result.remaining?.toString() || '0');
+      response.headers.set('X-RateLimit-Reset', result.resetTime?.toString() || '');
 
-    return newResponse;
+      return response;
+    };
   };
 }

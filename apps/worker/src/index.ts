@@ -23,6 +23,11 @@ try {
     return getPlans(req);
   });
 
+  router.get("/api/plans/paginated", async (req: Request, env: Env) => {
+    const { getPagedPlans } = await import("./handlers/plans-paginated");
+    return getPagedPlans(req, { CACHE: env.CACHE });
+  });
+
   router.get("/api/plans/:id/history", async ({ params }: { params: { id: string } }) => {
     const { getPriceHistory } = await import("./handlers/price-history");
     return getPriceHistory(params.id);

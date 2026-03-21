@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ComparisonProvider } from "./context/ComparisonContext";
 import { ComparisonBar } from "./components/ComparisonBar";
 import { ComparisonModal } from "./components/ComparisonModal";
+import { createQueryClient } from "./lib/queryClient";
 import Compare from "./pages/Compare";
 import Admin from "./pages/Admin";
 import Provider from "./pages/Provider";
@@ -17,6 +19,9 @@ export default function App() {
   const [showComparisonModal, setShowComparisonModal] = useState(false);
   const [darkMode, setDarkMode] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  // Create QueryClient once for the app lifecycle
+  const queryClient = useMemo(() => createQueryClient(), []);
 
   const canUseLocalStorage = () => {
     try {
@@ -81,8 +86,9 @@ export default function App() {
   };
 
   return (
-    <ComparisonProvider>
-      <div className="container">
+    <QueryClientProvider client={queryClient}>
+      <ComparisonProvider>
+        <div className="container">
         <a className="skip-link" href="#main">Skip to main content</a>
         <header className="site-header">
           <div className="site-brand">
@@ -204,5 +210,6 @@ export default function App() {
       )}
     </div>
     </ComparisonProvider>
+    </QueryClientProvider>
   );
 }
