@@ -14,6 +14,8 @@ import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix
 import { PlanCard } from "../components/PlanCard";
 import { getApiBaseUrl } from "../lib/api";
 import { getFaviconUrl } from "../lib/favicon";
+import { useCompareFilters } from "../hooks/useCompareFilters";
+import { usePagedPlans } from "../hooks/usePlans";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
 function stripHtml(str: string | null | undefined): string {
@@ -82,9 +84,48 @@ interface ServiceQualification {
 }
 
 export default function Compare() {
+  // Use centralized filter hook
+  const { filters, setters, resetFilters } = useCompareFilters();
+  const {
+    selectedSpeeds,
+    contractFilter,
+    dataFilter,
+    technologyFilter,
+    modemFilter,
+    ipv6Filter,
+    noCgnatFilter,
+    auSupportFilter,
+    staticIpFilter,
+    exclude6MonthFilter,
+    uploadSpeedFilter,
+    setupFeeFilter,
+    modemCostFilter,
+    providerFilter,
+    selectedProviders,
+    planTypeFilter,
+  } = filters;
+  const {
+    setSelectedSpeeds,
+    setContractFilter,
+    setDataFilter,
+    setTechnologyFilter,
+    setModemFilter,
+    setIpv6Filter,
+    setNoCgnatFilter,
+    setAuSupportFilter,
+    setStaticIpFilter,
+    setExclude6MonthFilter,
+    setUploadSpeedFilter,
+    setSetupFeeFilter,
+    setModemCostFilter,
+    setProviderFilter,
+    setSelectedProviders,
+    setPlanTypeFilter,
+  } = setters;
+
+  // Non-filter UI states
   const [plans, setPlans] = useState([] as Plan[]);
   const [speed, setSpeed] = useState("all");
-  const [selectedSpeeds, setSelectedSpeeds] = useState(['all']);
   const [address, setAddress] = useState("");
   const [addressSuggestions, setAddressSuggestions] = useState([] as AddressResult[]);
   const [_selectedAddress, setSelectedAddress] = useState(null as AddressResult | null);
@@ -102,23 +143,9 @@ export default function Compare() {
       return [];
     }
   });
-  const [contractFilter, setContractFilter] = useState('');
-  const [dataFilter, setDataFilter] = useState('');
-  const [technologyFilter, setTechnologyFilter] = useState('');
-  const [modemFilter, setModemFilter] = useState('');
-  const [ipv6Filter, setIpv6Filter] = useState(false);
-  const [noCgnatFilter, setNoCgnatFilter] = useState(false);
-  const [auSupportFilter, setAuSupportFilter] = useState(false);
-  const [staticIpFilter, setStaticIpFilter] = useState(false);
-  const [exclude6MonthFilter, setExclude6MonthFilter] = useState(false);
-  const [uploadSpeedFilter, setUploadSpeedFilter] = useState('');
-  const [setupFeeFilter, setSetupFeeFilter] = useState(''); // New: filter for setup fees
-  const [modemCostFilter, setModemCostFilter] = useState(''); // New: filter for modem costs
-  const [providerFilter, setProviderFilter] = useState('');
-  const [selectedProviders, setSelectedProviders] = useState([] as string[]);
   const [viewMode, setViewMode] = useState('standard' as 'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite');
-  const [planTypeFilter, setPlanTypeFilter] = useState('residential' as 'residential' | 'business' | 'all');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('nbn' as 'nbn' | '5g-home' | 'satellite');
+  const [currentPage, setCurrentPage] = useState(0);
   const [compareList, setCompareList] = useState([] as number[]);
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
@@ -296,45 +323,58 @@ export default function Compare() {
   }, [viewMode]);
 
 
-  async function fetchPlans() {
-    setLoading(true);
-    setMessage('Loading plans...');
-    try {
-      const apiUrl = getApiBaseUrl();
-      const params = new URLSearchParams();
-      const speedForApi = selectedSpeeds.length === 1 && selectedSpeeds[0] !== 'all' ? selectedSpeeds[0] : 'all';
-      if (speedForApi !== 'all') params.append('speed', speedForApi);
-      if (contractFilter) params.append('contract', contractFilter);
-      if (dataFilter) params.append('data', dataFilter);
-      if (modemFilter) params.append('modem', modemFilter);
-      if (technologyFilter) params.append('technology', technologyFilter);
-      if (uploadSpeedFilter) params.append('uploadSpeed', uploadSpeedFilter);
-      
-      // Set serviceType and planType based on viewMode
-      if (viewMode === '5g-home') {
-        params.append('serviceType', '5g-home');
-      } else if (viewMode === 'satellite') {
-        params.append('serviceType', 'satellite');
-      } else if (viewMode === 'business') {
-        // Business plans: Show all NBN plans for now (until we have proper business plans seeded)
-        // In future, can add: params.append('planType', 'business');
-        params.append('serviceType', 'nbn');
-      } else {
-        params.append('serviceType', 'nbn');  // standard and fixed-wireless use NBN
-      }
-      
-      if (planTypeFilter !== 'all') params.append('planType', planTypeFilter);
-      const res = await fetch(`${apiUrl}/api/plans?${params}`);
-      const json = await res.json();
-      setPlans(json.rows || json || []);
+  const ITEMS_PER_PAGE = 20;
+
+  // Build filters object for usePagedPlans
+  const pagedFilters = {
+    speed: selectedSpeeds.length === 1 && selectedSpeeds[0] !== 'all' ? selectedSpeeds[0] : undefined,
+    contract: contractFilter || undefined,
+    data: dataFilter || undefined,
+    modem: modemFilter || undefined,
+    technology: technologyFilter || undefined,
+    uploadSpeed: uploadSpeedFilter || undefined,
+    setupFee: setupFeeFilter || undefined,
+    modemCost: modemCostFilter || undefined,
+    provider: selectedProviders.length > 0 ? selectedProviders : undefined,
+    serviceType: serviceTypeFilter,
+    planType: planTypeFilter !== 'all' ? planTypeFilter : undefined,
+  };
+
+  // Use paginated plans hook
+  const { data: pagedData, isLoading: pagedLoading, error: pagedError } = usePagedPlans(
+    currentPage,
+    ITEMS_PER_PAGE,
+    pagedFilters,
+    { staleTime: 5 * 60 * 1000 }
+  );
+
+  // Update local plans state from paginated data
+  useEffect(() => {
+    if (pagedData?.rows) {
+      setPlans(pagedData.rows);
       setMessage(null);
-    } catch (err) {
-      console.error(err);
-      setMessage('Failed to load plans');
-    } finally {
+    }
+  }, [pagedData]);
+
+  useEffect(() => {
+    if (pagedLoading) {
+      setLoading(true);
+      setMessage('Loading plans...');
+    } else {
       setLoading(false);
     }
-  }
+  }, [pagedLoading]);
+
+  useEffect(() => {
+    if (pagedError) {
+      setMessage('Failed to load plans');
+    }
+  }, [pagedError]);
+
+  // Reset to first page when filters change
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, uploadSpeedFilter, setupFeeFilter, modemCostFilter, selectedProviders, serviceTypeFilter, planTypeFilter]);
 
   function toggleFavorite(planId: number) {
     const newFavorites = favorites.includes(planId)
@@ -509,10 +549,6 @@ export default function Compare() {
   useEffect(() => {
     document.body.classList.toggle('dark-mode', darkMode);
   }, [darkMode]);
-
-  useEffect(() => {
-    fetchPlans();
-  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, serviceTypeFilter, planTypeFilter, viewMode, uploadSpeedFilter]);
 
   useEffect(() => {
     let active = true;
@@ -2535,6 +2571,107 @@ export default function Compare() {
                   ))}
               </tbody>
             </table>
+
+            {/* Pagination Controls */}
+            {!loading && plans.length > 0 && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '12px',
+                marginTop: '24px',
+                padding: '16px',
+                background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.05)',
+                borderRadius: '8px',
+              }}>
+                <button
+                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                  disabled={currentPage === 0 || loading}
+                  style={{
+                    padding: '8px 16px',
+                    background: currentPage === 0 ? darkMode ? '#4a5568' : '#cbd5e1' : '#667eea',
+                    color: currentPage === 0 ? darkMode ? '#94a3b8' : '#64748b' : 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    opacity: currentPage === 0 ? 0.5 : 1,
+                  }}
+                  onHover={(e) => {
+                    if (currentPage > 0) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage > 0) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage > 0) {
+                      e.currentTarget.style.background = '#667eea';
+                    }
+                  }}
+                >
+                  ← Previous
+                </button>
+
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  color: darkMode ? '#e2e8f0' : '#475569',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                }}>
+                  <span>Page <strong>{currentPage + 1}</strong></span>
+                  {pagedData?.pagination && (
+                    <span>of <strong>{pagedData.pagination.totalPages || 1}</strong></span>
+                  )}
+                  {pagedData?.pagination?.total && (
+                    <span style={{ color: darkMode ? '#94a3b8' : '#64748b', marginLeft: '8px' }}>
+                      ({pagedData.pagination.total} total {pagedData.pagination.total === 1 ? 'plan' : 'plans'})
+                    </span>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={!pagedData?.pagination?.hasNextPage || loading}
+                  style={{
+                    padding: '8px 16px',
+                    background: !pagedData?.pagination?.hasNextPage ? darkMode ? '#4a5568' : '#cbd5e1' : '#667eea',
+                    color: !pagedData?.pagination?.hasNextPage ? darkMode ? '#94a3b8' : '#64748b' : 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: !pagedData?.pagination?.hasNextPage ? 'not-allowed' : 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    transition: 'all 0.2s ease',
+                    opacity: !pagedData?.pagination?.hasNextPage ? 0.5 : 1,
+                  }}
+                  onHover={(e) => {
+                    if (pagedData?.pagination?.hasNextPage) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseEnter={(e) => {
+                    if (pagedData?.pagination?.hasNextPage) {
+                      e.currentTarget.style.background = '#5568d3';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (pagedData?.pagination?.hasNextPage) {
+                      e.currentTarget.style.background = '#667eea';
+                    }
+                  }}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
           </div>
 
             {/* Mobile Card View */}
