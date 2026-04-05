@@ -29,6 +29,18 @@
   box-sizing: border-box;
 }
 
+/* Global focus-visible ring — keyboard users see a clear indicator */
+:focus-visible {
+  outline: 3px solid var(--primary, #2563eb);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default outline for mouse users only (preserve for keyboard) */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -37,6 +49,15 @@ body {
   font-size: 15px; /* slightly larger for improved readability */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure main page content is never hidden under the comparison bar */
+.main-content {
+  padding-bottom: 0;
+  transition: padding-bottom 0.2s ease;
+}
+.main-content.has-comparison-bar {
+  padding-bottom: 88px;
 }
 
 h1, h2, h3, h4, h5 {
@@ -171,12 +192,11 @@ header h1 {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
-  animation: pulse 2s infinite;
 }
 
 .btn-success:hover {
-  animation: none;
   transform: scale(1.05);
+  box-shadow: var(--shadow-md);
 }
 
 @keyframes slideDown {
@@ -290,12 +310,7 @@ header p {
   border-color: rgba(99,102,241,0.25);
 }
 
-/* Dark mode variables and overrides */
-body.dark-mode {
-  background: linear-gradient(180deg, #071025 0%, #071428 100%);
-  color: #e6eef8;
-}
-
+/* Dark mode header/nav overrides (separate block, does NOT override main body background) */
 body.dark-mode header {
   background: linear-gradient(90deg, #021025, #071428);
   border-color: rgba(255,255,255,0.03);
@@ -647,8 +662,9 @@ textarea:focus-visible {
   box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
 }
 
-.search button,
-button {
+/* Only style buttons explicitly inside .search — avoid applying a broad global button override
+   that conflicts with inline-styled component buttons */
+.search button {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
   border: none;
@@ -662,15 +678,13 @@ button {
   white-space: nowrap;
 }
 
-.search button:hover,
-button:hover {
+.search button:hover {
   background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
   box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
   transform: translateY(-2px);
 }
 
-.search button:active,
-button:active {
+.search button:active {
   transform: translateY(0);
   box-shadow: 0 3px 10px rgba(102, 126, 234, 0.3);
 }
@@ -1172,17 +1186,7 @@ body.dark-mode {
   background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
   background-size: 400% 400%;
   animation: gradientShift 20s ease infinite;
-}
-
-body.dark-mode .container {
   color: #e2e8f0;
-}
-
-body.dark-mode header,
-body.dark-mode .hero,
-body.dark-mode .filters,
-body.dark-mode {
-  background: linear-gradient(180deg, #1f2937 0%, #111827 100%);
 }
 
 body.dark-mode .container {

@@ -1,3 +1,5 @@
+import { jsonResponse } from '../lib/cors';
+
 interface Feedback {
   plan_id: number;
   issue_type: string; // 'wrong_price', 'wrong_speed', 'wrong_provider', 'missing_info', 'other'
@@ -33,10 +35,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
       const limiter = createRateLimiter({ windowMs: 60_000, maxRequests: 10 });
       const rate = await limiter(request);
       if (!rate.allowed) {
-        return new Response(JSON.stringify({ error: 'Too many requests. Please try again later.' }), {
-          status: 429,
-          headers: { 'Content-Type': 'application/json', 'Retry-After': '60' }
-        });
+        return jsonResponse({ error: 'Too many requests. Please try again later.' }, 429);
       }
     } catch (rlErr) {
       console.error('Rate limiter error:', rlErr);
@@ -46,22 +45,25 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
     try {
       feedback = await request.json() as Feedback;
     } catch {
-      return new Response(JSON.stringify({ error: 'Invalid JSON body' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ error: 'Invalid JSON body' }, 400);
     }
 
     // Input validation
     const ALLOWED_ISSUE_TYPES = ['wrong_price', 'wrong_speed', 'wrong_provider', 'missing_info', 'other'];
     if (!Number.isInteger(feedback.plan_id) || feedback.plan_id <= 0) {
-      return new Response(JSON.stringify({ error: 'Invalid plan_id' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ error: 'Invalid plan_id' }, 400);
     }
     if (!feedback.issue_type || !ALLOWED_ISSUE_TYPES.includes(feedback.issue_type)) {
-      return new Response(JSON.stringify({ error: `issue_type must be one of: ${ALLOWED_ISSUE_TYPES.join(', ')}` }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+      return jsonResponse({ error: `issue_type must be one of: ${ALLOWED_ISSUE_TYPES.join(', ')}` }, 400);
     }
-    if (feedback.description && typeof feedback.description === 'string' && feedback.description.length > 1000) {
-      return new Response(JSON.stringify({ error: 'description must be 1000 characters or fewer' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    if (!feedback.description || typeof feedback.description !== 'string' || feedback.description.trim().length === 0) {
+      return jsonResponse({ error: 'description is required' }, 400);
     }
-    if (feedback.user_email && (typeof feedback.user_email !== 'string' || feedback.user_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(feedback.user_email))) {
-      return new Response(JSON.stringify({ error: 'Invalid user_email' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    if (feedback.description.length > 1000) {
+      return jsonResponse({ error: 'description must be 1000 characters or fewer' }, 400);
+    }
+    if (feedback.user_email && (typeof feedback.user_email !== 'string' || feedback.user_email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(feedback.user_email))) {
+      return jsonResponse({ error: 'Invalid user_email' }, 400);
     }
 
     feedback.created_at = new Date().toISOString();
@@ -81,24 +83,18 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
         feedback.created_at
       ).run();
 
-      return new Response(
-        JSON.stringify({ success: true, id: result.meta?.last_row_id }),
-        { status: 201, headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ success: true, id: result.meta?.last_row_id }, 201);
     } catch (err) {
       console.error('Feedback error:', err);
-      return new Response(
-        JSON.stringify({ error: 'Failed to save feedback' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Failed to save feedback' }, 500);
     }
   }
 
   if (request.method === 'GET') {
     // Admin endpoint: get unresolved feedback
     const token = request.headers.get('x-admin-token');
-    if (token !== env.ADMIN_TOKEN) {
-      return new Response('Unauthorized', { status: 401 });
+    if (!token || token !== env.ADMIN_TOKEN) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 
     try {
@@ -113,18 +109,12 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
          LIMIT 50`
       ).all();
 
-      return new Response(
-        JSON.stringify({ feedback: feedback.results }),
-        { headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ feedback: feedback.results });
     } catch (err) {
       console.error('Feedback fetch error:', err);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch feedback' }),
-        { status: 500, headers: { 'Content-Type': 'application/json' } }
-      );
+      return jsonResponse({ error: 'Failed to fetch feedback' }, 500);
     }
   }
 
-  return new Response('Method not allowed', { status: 405 });
+  return jsonResponse({ error: 'Method not allowed' }, 405);
 }

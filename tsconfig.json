@@ -19,5 +19,6 @@
     "resolveJsonModule": true,
     "outDir": "dist"
   },
-  "references": []
+  "references": [],
+  "exclude": ["apps", "packages", "scripts", "node_modules"]
 }

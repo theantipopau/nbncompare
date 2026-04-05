@@ -1,15 +1,19 @@
 -- Migration: Add plan filter fields
 -- Date: 2026-01-01
 -- Description: Add contract_type, data_allowance, modem_included, and favicon_url fields
+-- NOTE: These columns already exist in the schema (they were pre-applied)
+-- This migration is now effectively a no-op to allow subsequent migrations to run
 
--- Add new columns to plans table
-ALTER TABLE plans ADD COLUMN contract_type TEXT DEFAULT 'month-to-month';
-ALTER TABLE plans ADD COLUMN data_allowance TEXT DEFAULT 'unlimited';
-ALTER TABLE plans ADD COLUMN modem_included INTEGER DEFAULT 0;
-ALTER TABLE plans ADD COLUMN price_history TEXT; -- JSON string of price changes
+-- The following were already added to the schema before proper migration tracking:
+-- ALTER TABLE plans ADD COLUMN contract_type TEXT DEFAULT 'month-to-month';
+-- ALTER TABLE plans ADD COLUMN data_allowance TEXT DEFAULT 'unlimited';
+-- ALTER TABLE plans ADD COLUMN modem_included INTEGER DEFAULT 0;
+-- ALTER TABLE plans ADD COLUMN price_history TEXT;
+-- ALTER TABLE providers ADD COLUMN favicon_url TEXT;
 
--- Add favicon_url to providers table
-ALTER TABLE providers ADD COLUMN favicon_url TEXT;
+-- All necessary tables and columns exist - this migration does nothing
+-- This allows the migration chain to continue to 0003+
+SELECT 1;
 
 -- Create price_history table for tracking
 CREATE TABLE IF NOT EXISTS price_history (

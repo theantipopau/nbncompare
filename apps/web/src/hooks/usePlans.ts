@@ -21,6 +21,11 @@ export interface PlansResponse {
 }
 
 export interface PagedPlansResponse extends PlansResponse {
+  stats?: {
+    providers: number;
+    cheapestCents: number | null;
+    topSpeed: number | null;
+  };
   pagination: {
     page: number;
     pageSize: number;

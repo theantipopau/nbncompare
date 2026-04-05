@@ -35,20 +35,21 @@ export class ErrorBoundary extends React.Component<Props, State> {
           padding: '40px',
           maxWidth: '600px',
           margin: '40px auto',
-          background: '#fff',
+          background: 'var(--bg-light, #f9fafb)',
           borderRadius: '12px',
           boxShadow: '0 2px 8px rgba(0,0,0,0.1)',
           textAlign: 'center'
         }}>
-          <h2 style={{ color: '#dc2626', marginBottom: '16px' }}>⚠️ Something went wrong</h2>
-          <p style={{ color: '#666', marginBottom: '24px' }}>
+          <h2 style={{ color: 'var(--danger, #dc2626)', marginBottom: '16px' }}>⚠️ Something went wrong</h2>
+          <p style={{ color: 'var(--text-muted, #6b7280)', marginBottom: '24px' }}>
             An error occurred while loading this page. Please try refreshing.
           </p>
           <button
             onClick={() => window.location.reload()}
+            aria-label="Refresh page to recover from error"
             style={{
               padding: '12px 24px',
-              background: '#667eea',
+              background: 'var(--gradient-primary, #667eea)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

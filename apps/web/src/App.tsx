@@ -137,9 +137,8 @@ export default function App() {
             </button>
           </div>
         </header>
-      {/* @ts-expect-error - ErrorBoundary component type issues in local build */}
       <ErrorBoundary>
-        <main id="main">
+        <main id="main" className="main-content">
           {currentPath === '/admin' ? <Admin /> : 
          currentPath.startsWith('/blog/') ? <BlogPost /> :
          currentPath === '/blog' ? <Blog /> :

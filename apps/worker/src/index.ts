@@ -25,7 +25,7 @@ try {
 
   router.get("/api/plans/paginated", async (req: Request, env: Env) => {
     const { getPagedPlans } = await import("./handlers/plans-paginated");
-    return getPagedPlans(req, { CACHE: env.CACHE });
+    return getPagedPlans(req, { D1: env.D1, CACHE: env.CACHE });
   });
 
   router.get("/api/plans/:id/history", async ({ params }: { params: { id: string } }) => {
@@ -275,8 +275,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
 
   // Protect admin/internal routes.
   // Note: /api/admin/* is used by the in-app Admin page.
-  // Exception: /internal/data-population/populate is allowed without auth for initial setup
-  if ((pathname.startsWith('/internal/') && !pathname.includes('/data-population/')) || pathname.startsWith('/api/admin/')) {
+  if (pathname.startsWith('/internal/') || pathname.startsWith('/api/admin/')) {
     const unauthorized = requireAdmin(request, env);
     if (unauthorized) return unauthorized;
   }
@@ -417,6 +416,26 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
       return await qualifyAddress(request);
     } catch (err: unknown) {
       console.error('/api/address/qualify direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/providers/comparison') {
+    try {
+      const { getProviderComparison } = await import('./handlers/provider-comparison');
+      return await getProviderComparison(request, { D1: env.D1 });
+    } catch (err: unknown) {
+      console.error('/api/providers/comparison direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
+  if (pathname === '/api/plans/paginated') {
+    try {
+      const { getPagedPlans } = await import('./handlers/plans-paginated');
+      return await getPagedPlans(request, { D1: env.D1, CACHE: env.CACHE });
+    } catch (err: unknown) {
+      console.error('/api/plans/paginated direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
   }

@@ -1,6 +1,5 @@
 import React from 'react';
 import { CompareFilters } from '../hooks/useCompareFilters';
-import type { SetStateFn } from '../types'; // Assuming this type exists
 
 interface FilterPanelProps {
   filters: CompareFilters;

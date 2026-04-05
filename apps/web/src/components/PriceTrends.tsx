@@ -15,9 +15,9 @@ interface PriceTrendsProps {
  * Helps consumers see if plans are getting cheaper or more expensive
  */
 export function PriceTrends({ planId, _planName }: PriceTrendsProps) {
-  const [data, setData] = useState([]);
+  const [data, setData] = useState<PriceEntry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchPriceHistory();

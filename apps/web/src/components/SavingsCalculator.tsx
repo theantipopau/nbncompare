@@ -18,22 +18,9 @@ interface Alternative {
   speed_upgrade: boolean;
 }
 
-interface _SavingsResult {
-  current_plan: {
-    id: number;
-    name: string;
-    provider: string;
-    annual_cost: number;
-  };
-  alternatives: Array<{
-    id: number;
-    name: string;
-    provider: string;
-    annual_cost: number;
-    savings: number;
-    savings_percent: number;
-    speed_upgrade: boolean;
-  }>;
+interface SavingsResult {
+  total_potential_savings: number;
+  alternatives: Alternative[];
   best_value_id: number;
 }
 
@@ -49,7 +36,7 @@ interface SavingsCalculatorProps {
 export function SavingsCalculator({ currentPlan, allPlans }: SavingsCalculatorProps) {
   const [showCalculator, setShowCalculator] = useState(false);
   const [usageGbPerMonth, setUsageGbPerMonth] = useState(250);
-  const [result, setResult] = useState(null);
+  const [result, setResult] = useState<SavingsResult | null>(null);
   const [loading, setLoading] = useState(false);
 
   const handleCalculate = async () => {

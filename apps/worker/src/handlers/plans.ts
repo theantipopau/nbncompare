@@ -15,6 +15,7 @@ const CACHE_TTL = 300;
 
 const planQueryCache = new Map<string, { rows: unknown[]; expires: number }>();
 const PLAN_CACHE_TTL_MS = 30 * 1000;
+const PLAN_CACHE_MAX_SIZE = 200;
 
 export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
   try {
@@ -137,6 +138,22 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     });
 
     planQueryCache.set(cacheKey, { rows, expires: Date.now() + PLAN_CACHE_TTL_MS });
+
+    // Evict expired entries and cap cache size to prevent memory leak
+    const now3 = Date.now();
+    for (const [k, v] of planQueryCache.entries()) {
+      if (v.expires <= now3) planQueryCache.delete(k);
+    }
+    if (planQueryCache.size > PLAN_CACHE_MAX_SIZE) {
+      // Delete oldest entries until under limit
+      const toDelete = planQueryCache.size - PLAN_CACHE_MAX_SIZE;
+      let deleted = 0;
+      for (const k of planQueryCache.keys()) {
+        if (deleted >= toDelete) break;
+        planQueryCache.delete(k);
+        deleted++;
+      }
+    }
     const responseData = { ok: true, rows };
     
     // Store in cache

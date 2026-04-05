@@ -24,7 +24,11 @@ export function FreshnessIndicator({ lastCheckedAt, lastScrapedAt }: FreshnessIn
   let color = '#10b981'; // green
   let icon = '✓';
 
-  if (diffDays > 7) {
+  if (diffDays > 14) {
+    display = `${diffDays} days ago`;
+    color = '#ef4444'; // red — critically stale
+    icon = '✗';
+  } else if (diffDays > 7) {
     display = `${diffDays} days ago`;
     color = '#f59e0b'; // amber
     icon = '⚠';
@@ -57,6 +61,7 @@ export function FreshnessIndicator({ lastCheckedAt, lastScrapedAt }: FreshnessIn
         marginTop: '8px'
       }}
       title={`Last verified: ${date.toLocaleString()}`}
+      aria-label={`Data updated ${display}`}
     >
       <span>{icon}</span>
       <span>Updated {display}</span>

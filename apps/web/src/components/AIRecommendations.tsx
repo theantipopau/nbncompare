@@ -113,6 +113,7 @@ export default function AIRecommendations({ darkMode, onRecommendation }: Props)
           <button
             type="submit"
             disabled={isLoading || !userInput.trim()}
+            aria-label={isLoading ? 'Getting AI recommendation, please wait' : 'Get AI recommendation'}
             style={{
               padding: '12px 20px',
               background: isLoading ? '#6b7280' : '#667eea',
@@ -146,14 +147,18 @@ export default function AIRecommendations({ darkMode, onRecommendation }: Props)
       </form>
 
       {recommendation && (
-        <div style={{
-          background: darkMode ? '#2a2a2a' : 'white',
-          border: `1px solid ${darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
-          borderRadius: '8px',
-          padding: '16px',
-          whiteSpace: 'pre-line',
-          lineHeight: '1.6'
-        }}>
+        <div
+          aria-live="polite"
+          aria-atomic="true"
+          style={{
+            background: darkMode ? '#2a2a2a' : 'white',
+            border: `1px solid ${darkMode ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.1)'}`,
+            borderRadius: '8px',
+            padding: '16px',
+            whiteSpace: 'pre-line',
+            lineHeight: '1.6'
+          }}
+        >
           {recommendation}
         </div>
       )}

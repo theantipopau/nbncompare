@@ -53,6 +53,7 @@ export async function searchAddress(request: Request): Promise<Response> {
     const nbnUrl = `https://places.nbnco.net.au/places/v1/autocomplete?query=${encodeURIComponent(query)}`;
 
     const nbnResponse = await fetch(nbnUrl, {
+      signal: AbortSignal.timeout(8000),
       headers: {
         'Referer': 'https://www.nbnco.com.au/residential/learn/network-technology/fttp-upgrade',
         'User-Agent': 'NBNCompare/1.0'
@@ -131,6 +132,7 @@ export async function qualifyAddress(request: Request): Promise<Response> {
     const nbnUrl = `https://places.nbnco.net.au/places/v2/details/${locationId}`;
     
     const nbnResponse = await fetch(nbnUrl, {
+      signal: AbortSignal.timeout(8000),
       headers: {
         'Referer': 'https://www.nbnco.com.au/residential/learn/network-technology/fttp-upgrade',
         'User-Agent': 'NBNCompare/1.0'

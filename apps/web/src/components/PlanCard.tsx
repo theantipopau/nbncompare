@@ -195,7 +195,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
 
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <h3 style={{ margin: 0, fontSize: '1.1em', fontWeight: '600' }}>
+            <h3 style={{ margin: 0, fontSize: '1.1em', fontWeight: '600', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '180px' }}>
               {plan.provider_name}
             </h3>
             <ProviderTooltip 
@@ -241,8 +241,15 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           <div>
             <div style={{ fontSize: '1.4em', fontWeight: 'bold', color: '#10b981' }}>
               ${(plan.intro_price_cents/100).toFixed(2)}/mo
-              {plan.price_trend && <span style={{ fontSize: '0.6em', marginLeft: '4px' }}>{plan.price_trend === 'down' ? '↓' : '↑'}</span>}
-            </div>
+            {plan.price_trend && (
+              <span
+                aria-label={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                title={plan.price_trend === 'down' ? 'Price has gone down' : 'Price has gone up'}
+                style={{ fontSize: '0.75em', marginLeft: '6px', color: plan.price_trend === 'down' ? '#10b981' : '#ef4444' }}
+              >
+                {plan.price_trend === 'down' ? '↓' : '↑'}
+              </span>
+            )}            </div>
             <div style={{ fontSize: '0.9em', color: darkMode ? '#a0aec0' : '#666', marginTop: '4px' }}>
               then ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
             </div>
@@ -253,9 +260,17 @@ export const PlanCard: React.FC<PlanCardProps> = ({
             )}
           </div>
         ) : plan.ongoing_price_cents ? (
-          <div style={{ fontSize: '1.4em', fontWeight: 'bold' }}>
+          <div style={{ fontSize: '1.4em', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
             ${(plan.ongoing_price_cents/100).toFixed(2)}/mo
-            {plan.price_trend && <span style={{ fontSize: '0.6em', marginLeft: '4px' }}>{plan.price_trend === 'down' ? '↓' : '↑'}</span>}
+            {plan.price_trend && (
+              <span
+                aria-label={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
+                title={plan.price_trend === 'down' ? 'Price has gone down' : 'Price has gone up'}
+                style={{ fontSize: '0.75em', color: plan.price_trend === 'down' ? '#10b981' : '#ef4444' }}
+              >
+                {plan.price_trend === 'down' ? '↓' : '↑'}
+              </span>
+            )}
           </div>
         ) : (
           <div style={{ fontSize: '0.95em', color: darkMode ? '#a0aec0' : '#666' }}>

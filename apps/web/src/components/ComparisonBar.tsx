@@ -9,6 +9,21 @@ interface ComparisonBarProps {
 export const ComparisonBar: React.FC<ComparisonBarProps> = ({ onOpenModal, darkMode }) => {
   const { comparedPlans, removeFromComparison, clearComparison } = useComparison();
 
+  // Add/remove padding-bottom on document body so content isn't hidden behind the bar
+  React.useEffect(() => {
+    const mainEl = document.getElementById('main');
+    if (mainEl) {
+      if (comparedPlans.length > 0) {
+        mainEl.classList.add('has-comparison-bar');
+      } else {
+        mainEl.classList.remove('has-comparison-bar');
+      }
+    }
+    return () => {
+      document.getElementById('main')?.classList.remove('has-comparison-bar');
+    };
+  }, [comparedPlans.length]);
+
   if (comparedPlans.length === 0) {
     return null;
   }
@@ -103,6 +118,7 @@ export const ComparisonBar: React.FC<ComparisonBarProps> = ({ onOpenModal, darkM
             <button
               onClick={() => removeFromComparison(plan.id)}
               style={removeButtonStyle}
+              aria-label={`Remove ${plan.provider_name} NBN ${plan.speed_tier} from comparison`}
               title="Remove from comparison"
               onMouseEnter={(e) => (e.currentTarget.style.background = darkMode ? '#475569' : '#e2e8f0')}
               onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}

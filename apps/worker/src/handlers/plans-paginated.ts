@@ -16,13 +16,18 @@ type CacheLike = {
   put: (key: string, value: string, options?: { expirationTtl?: number }) => Promise<void>;
 };
 
+type PaginatedEnv = {
+  D1?: D1DatabaseLike;
+  CACHE?: CacheLike;
+};
+
 const CACHE_TTL = 300; // 5 minutes in seconds
 const PAGE_CACHE_TTL_MS = 30 * 1000; // 30 seconds in-memory
 
 // Local in-memory cache for page counts
 const pageCountCache = new Map<string, { count: number; expires: number }>();
 
-export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
+export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
   const startTime = Date.now();
   try {
     const url = new URL(req.url);
@@ -57,7 +62,7 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
       // Use cached total count for pagination
     }
 
-    const db = (await getDb()) as D1DatabaseLike;
+    const db = (env?.D1 || (await getDb())) as D1DatabaseLike;
 
     // Build WHERE clause
     let whereClause = " WHERE is_active = 1";
@@ -99,12 +104,35 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
     const totalCount = countRes?.total ?? 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
+    // 1b. Get aggregate stats for current filter set (across all pages)
+    const statsQ = `
+      SELECT
+        COUNT(DISTINCT prov.id) as total_providers,
+        MIN(p.ongoing_price_cents) as cheapest_cents,
+        MAX(p.speed_tier) as top_speed
+      FROM plans p
+      JOIN providers prov ON p.provider_id = prov.id
+      ${whereClause}
+    `;
+    const statsRes = await db.prepare(statsQ).bind(...params).first() as {
+      total_providers?: number | null;
+      cheapest_cents?: number | null;
+      top_speed?: number | null;
+    } | null;
+
     // Cache the count
     pageCountCache.set(cacheKey, { count: totalCount, expires: now + PAGE_CACHE_TTL_MS });
 
-    // 2. Get paginated results
+    // 2. Get paginated results (explicit columns only to avoid timeout on large result serialization)
     const plansQ = `
-      SELECT p.*, prov.name as provider_name, prov.favicon_url,
+      SELECT 
+        p.id, p.plan_name, p.speed_tier, p.intro_price_cents, p.intro_duration_days,
+        p.ongoing_price_cents, p.setup_fee_cents, p.modem_cost_cents, p.source_url,
+        p.last_checked_at, p.contract_type, p.data_allowance, p.modem_included,
+        p.technology_type, p.upload_speed_mbps, p.promo_code, p.promo_description,
+        p.promo_expires_at, p.confidence_score, p.effective_monthly_cents,
+        p.plan_type, p.service_type,
+        prov.id as provider_id, prov.name as provider_name, prov.favicon_url,
         prov.ipv6_support as provider_ipv6_support,
         prov.cgnat as provider_cgnat,
         prov.cgnat_opt_out as provider_cgnat_opt_out,
@@ -114,9 +142,6 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
         prov.routing_info as provider_routing_info,
         prov.description as provider_description,
         prov.support_hours as provider_support_hours,
-        p.promo_code, p.promo_description, p.promo_expires_at,
-        p.confidence_score, p.effective_monthly_cents,
-        p.technology_type,
         NULL as price_trend
         FROM plans p 
         JOIN providers prov ON p.provider_id = prov.id
@@ -144,6 +169,11 @@ export async function getPagedPlans(req: Request, env?: { CACHE?: CacheLike }) {
     const responseData = {
       ok: true,
       rows,
+      stats: {
+        providers: statsRes?.total_providers ?? 0,
+        cheapestCents: statsRes?.cheapest_cents ?? null,
+        topSpeed: statsRes?.top_speed ?? null,
+      },
       pagination: {
         page,
         pageSize,

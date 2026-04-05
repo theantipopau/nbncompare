@@ -52,6 +52,7 @@ interface Plan {
   promo_code?: string | null;
   promo_description?: string | null;
   service_type?: string;  // 'nbn', '5g-home', 'satellite', etc.
+  setup_fee_cents?: number | null;
   // Provider metadata
   provider_ipv6_support?: number;  // 0 = no, 1 = yes
   provider_cgnat?: number;  // 0 = no CGNAT, 1 = uses CGNAT
@@ -135,7 +136,7 @@ export default function Compare() {
   const [sortBy, setSortBy] = useState('price');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
+  const [darkMode, setDarkMode] = useState(localStorage.getItem('nbncompare:darkMode') === 'true');
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('favorites') || '[]') as number[];
@@ -223,23 +224,6 @@ export default function Compare() {
     if (!plan.speed_tier) return false;
     return numericSelectedSpeeds.includes(plan.speed_tier);
   };
-
-  const heroStats = useMemo(() => {
-    const providerSet = new Set<string>();
-    let cheapest = Infinity;
-    let highestSpeed = 0;
-    plans.forEach((plan: Plan) => {
-      if (plan.provider_name) providerSet.add(plan.provider_name);
-      if (plan.ongoing_price_cents && plan.ongoing_price_cents < cheapest) cheapest = plan.ongoing_price_cents;
-      if (plan.speed_tier && plan.speed_tier > highestSpeed) highestSpeed = plan.speed_tier;
-    });
-    return {
-      plans: plans.length,
-      providers: providerSet.size,
-      cheapest: isFinite(cheapest) ? (cheapest / 100).toFixed(2) : null,
-      topSpeed: highestSpeed || null,
-    };
-  }, [plans]);
 
   const _bestPlan = useMemo(() => {
     return plans.reduce((best: Plan | null, candidate: Plan) => {
@@ -370,6 +354,29 @@ export default function Compare() {
       setMessage('Failed to load plans');
     }
   }, [pagedError]);
+
+  const heroStats = useMemo(() => {
+    const providerSet = new Set<string>();
+    let cheapest = Infinity;
+    let highestSpeed = 0;
+    plans.forEach((plan: Plan) => {
+      if (plan.provider_name) providerSet.add(plan.provider_name);
+      if (plan.ongoing_price_cents && plan.ongoing_price_cents < cheapest) cheapest = plan.ongoing_price_cents;
+      if (plan.speed_tier && plan.speed_tier > highestSpeed) highestSpeed = plan.speed_tier;
+    });
+    const statsFromApi = pagedData?.stats;
+    const totalPlans = pagedData?.pagination?.total ?? plans.length;
+    const totalProviders = statsFromApi?.providers ?? providerSet.size;
+    const cheapestCents = statsFromApi?.cheapestCents ?? (isFinite(cheapest) ? cheapest : null);
+    const topSpeed = statsFromApi?.topSpeed ?? (highestSpeed || null);
+
+    return {
+      plans: totalPlans,
+      providers: totalProviders,
+      cheapest: cheapestCents !== null ? (cheapestCents / 100).toFixed(2) : null,
+      topSpeed,
+    };
+  }, [plans, pagedData]);
 
   // Reset to first page when filters change
   useEffect(() => {
@@ -919,11 +926,12 @@ export default function Compare() {
           }
         }
         if (setupFeeFilter) {
-          if (setupFeeFilter === '0' && (p.setup_fee_cents === null || p.setup_fee_cents > 0)) {
+          const fee = p.setup_fee_cents ?? null;
+          if (setupFeeFilter === '0' && (fee === null || fee > 0)) {
             return false;
-          } else if (setupFeeFilter === '1-100' && (p.setup_fee_cents === null || p.setup_fee_cents < 100 || p.setup_fee_cents > 10000)) {
+          } else if (setupFeeFilter === '1-100' && (fee === null || fee < 100 || fee > 10000)) {
             return false;
-          } else if (setupFeeFilter === '100-200' && (p.setup_fee_cents === null || p.setup_fee_cents < 10000)) {
+          } else if (setupFeeFilter === '100-200' && (fee === null || fee < 10000)) {
             return false;
           }
         }
