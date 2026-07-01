@@ -1,4 +1,5 @@
 import { jsonResponse } from '../lib/cors';
+import { isAdminTokenValid } from '../lib/admin-auth';
 
 interface Feedback {
   plan_id: number;
@@ -93,7 +94,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
   if (request.method === 'GET') {
     // Admin endpoint: get unresolved feedback
     const token = request.headers.get('x-admin-token');
-    if (!token || token !== env.ADMIN_TOKEN) {
+    if (!(await isAdminTokenValid(token, env.ADMIN_TOKEN))) {
       return jsonResponse({ error: 'Unauthorized' }, 401);
     }
 

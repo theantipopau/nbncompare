@@ -1,16 +1,33 @@
 import { getDb } from "../lib/db";
+import { isAdminTokenValid } from "../lib/admin-auth";
 
 export async function adminApprove(request: Request, env: { ADMIN_TOKEN: string }) {
   const token = request.headers.get("x-admin-token");
-  if (!token || token !== env.ADMIN_TOKEN) {
+  if (!(await isAdminTokenValid(token, env.ADMIN_TOKEN))) {
     return new Response(JSON.stringify({ ok: false, error: "Unauthorized" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
-  const body = await request.json();
+  let body: unknown;
+  try {
+    body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (!body || typeof body !== "object" || Array.isArray(body)) {
+    return new Response(JSON.stringify({ ok: false, error: "Invalid JSON body" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   const { provider_slug } = body;
-  if (!provider_slug) {
+  if (typeof provider_slug !== "string" || provider_slug.trim().length === 0) {
     return new Response(JSON.stringify({ ok: false, error: "provider_slug required" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },

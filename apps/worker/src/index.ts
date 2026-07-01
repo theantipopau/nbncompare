@@ -1,6 +1,7 @@
 import { Router } from "itty-router";
 import type { D1Database, ExecutionContext, KVNamespace } from "@cloudflare/workers-types";
 import { createRateLimiter } from "./lib/rate-limit";
+import { isAdminTokenValid } from "./lib/admin-auth";
 
 console.log('Worker module evaluation: index.ts loaded');
 
@@ -264,9 +265,9 @@ function errorJson(err: unknown, env: Env | undefined) {
   };
 }
 
-function requireAdmin(request: Request, env: Env): Response | null {
+async function requireAdmin(request: Request, env: Env): Promise<Response | null> {
   const token = request.headers.get('x-admin-token');
-  if (!token || token !== env.ADMIN_TOKEN) {
+  if (!(await isAdminTokenValid(token, env.ADMIN_TOKEN))) {
     return new Response(JSON.stringify({ ok: false, error: 'Unauthorized' }), {
       status: 401,
       headers: { 'Content-Type': 'application/json' },
@@ -318,7 +319,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   // Protect admin/internal routes.
   // Note: /api/admin/* is used by the in-app Admin page.
   if (pathname.startsWith('/internal/') || pathname.startsWith('/api/admin/')) {
-    const unauthorized = requireAdmin(request, env);
+    const unauthorized = await requireAdmin(request, env);
     if (unauthorized) return unauthorized;
   }
 
