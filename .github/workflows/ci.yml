@@ -32,6 +32,9 @@ jobs:
     - name: Run tests
       run: pnpm --filter @clearnbn/web test:run
 
+    - name: Run parser smoke tests
+      run: pnpm --filter @clearnbn/shared test:parsers
+
     - name: Build web app
       run: pnpm --filter @clearnbn/web build
 

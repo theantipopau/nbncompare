@@ -21,14 +21,36 @@ import * as netspace from "./providers/netspace";
 import * as generic from "./generic";
 
 // Order matters: prefer specialized providers first
-const PROVIDER_PARSERS = [telstra, optus, tpg, vodafone, superloop, kogan, foxtel, aussie, spintel, dodo, exetel, arctel, launtel, leaptel, myrepublic, iinet, internode, westnet, localbroadband, netspace];
+const PROVIDER_PARSERS = [
+  { name: "telstra", parser: telstra },
+  { name: "optus", parser: optus },
+  { name: "tpg", parser: tpg },
+  { name: "vodafone", parser: vodafone },
+  { name: "superloop", parser: superloop },
+  { name: "kogan", parser: kogan },
+  { name: "foxtel", parser: foxtel },
+  { name: "aussie", parser: aussie },
+  { name: "spintel", parser: spintel },
+  { name: "dodo", parser: dodo },
+  { name: "exetel", parser: exetel },
+  { name: "arctel", parser: arctel },
+  { name: "launtel", parser: launtel },
+  { name: "leaptel", parser: leaptel },
+  { name: "myrepublic", parser: myrepublic },
+  { name: "iinet", parser: iinet },
+  { name: "internode", parser: internode },
+  { name: "westnet", parser: westnet },
+  { name: "localbroadband", parser: localbroadband },
+  { name: "netspace", parser: netspace },
+];
 
 export function findParserForUrl(url: string) {
-  for (const p of PROVIDER_PARSERS) {
+  for (const entry of PROVIDER_PARSERS) {
+    const { name, parser } = entry;
     try {
-      if (p.canHandle && p.canHandle(url)) return p;
-    } catch {
-      // ignore
+      if (parser.canHandle && parser.canHandle(url)) return parser;
+    } catch (error) {
+      console.error("Parser canHandle failed", { parser: name, provider: name, url, error });
     }
   }
   return generic;

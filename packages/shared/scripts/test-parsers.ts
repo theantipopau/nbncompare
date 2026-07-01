@@ -21,6 +21,16 @@ async function run() {
     aussie: 'https://www.aussiebroadband.com.au/broadband/nbn',
     spintel: 'https://www.spintel.net.au/nbn',
     dodo: 'https://www.dodo.com/m/nbn',
+    exetel: 'https://www.exetel.com.au/broadband/nbn',
+    iinet: 'https://www.iinet.net.au/internet/nbn',
+    internode: 'https://www.internode.on.net/broadband/nbn',
+    launtel: 'https://www.launtel.net.au/nbn',
+    leaptel: 'https://www.leaptel.com.au/nbn',
+    localbroadband: 'https://www.localbroadband.com.au/nbn',
+    myrepublic: 'https://www.myrepublic.com.au/nbn',
+    netspace: 'https://www.netspace.net.au/nbn',
+    westnet: 'https://www.westnet.com.au/nbn',
+    arctel: 'https://www.arctel.com.au/nbn',
   };
 
   const sampleDir = new URL('../test-samples', import.meta.url);
