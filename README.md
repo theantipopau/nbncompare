@@ -50,8 +50,9 @@ Built on Cloudflare's edge platform for maximum performance and zero hosting cos
 3. **Set up database:**
    ```bash
    # Create D1 database in Cloudflare dashboard, then run migrations:
-   wrangler d1 execute nbncompare --remote --file migrations/0001_create_tables.sql
-   wrangler d1 execute nbncompare --remote --file migrations/0002_add_plan_filters.sql
+   wrangler d1 execute nbncompare --remote --file migrations/create_tables.sql
+   wrangler d1 execute nbncompare --remote --file migrations/seed_providers.sql
+   wrangler d1 execute nbncompare --remote --file migrations/update_provider_urls.sql
    ```
 
 4. **Run development servers:**
@@ -77,7 +78,7 @@ wrangler deploy
 ### Deploy Frontend
 ```bash
 cd apps/web
-npm run build
+pnpm build
 wrangler pages deploy dist
 ```
 
@@ -105,18 +106,6 @@ Or connect your GitHub repo to Cloudflare Pages for automatic deployments.
 - **Automation:** Cloudflare Cron Triggers (daily updates)
 - **Hosting:** Cloudflare Pages + Workers (100% free)
 
-## 📊 Current Coverage
-
-- **Providers:** 37 configured
-- **Plans:** 30+ active plans across 9 providers
-- **Speed Tiers:** 25, 50, 100, 250, 1000, 2000 Mbps
-
-Providers with active plans:
-- Telstra (6 plans)
-- Optus (5 plans)
-- TPG (5 plans)
-- Aussie Broadband (5 plans)
-- iiNet (3 plans)
 ## 📊 Current Coverage (January 2026)
 
 - **153 active plans** across **30 providers** (83% of target)
