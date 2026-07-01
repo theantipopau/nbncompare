@@ -20,6 +20,23 @@ export interface PlansResponse {
   rows: Plan[];
 }
 
+type QueryValue = string | number | string[] | number[];
+
+function appendQueryParam(params: URLSearchParams, key: string, value: QueryValue) {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (item !== null && item !== undefined && item !== '') {
+        params.append(key, String(item));
+      }
+    }
+    return;
+  }
+
+  if (value !== null && value !== undefined && value !== '') {
+    params.append(key, String(value));
+  }
+}
+
 export interface PagedPlansResponse extends PlansResponse {
   stats?: {
     providers: number;
@@ -46,7 +63,7 @@ const API_BASE_URL = getApiBaseUrl();
  *   const { data, isLoading, error } = usePlans({ speed: '100' });
  */
 export function usePlans(
-  filters?: Record<string, string | number>,
+  filters?: Record<string, QueryValue>,
   options?: UseQueryOptions<PlansResponse>
 ): UseQueryResult<PlansResponse> {
   const queryKey = ['plans', filters];
@@ -56,9 +73,7 @@ export function usePlans(
     
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
-          params.append(key, String(value));
-        }
+        appendQueryParam(params, key, value);
       });
     }
 
@@ -90,7 +105,7 @@ export function usePlans(
 export function usePagedPlans(
   page: number = 0,
   pageSize: number = 20,
-  filters?: Record<string, string | number>,
+  filters?: Record<string, QueryValue>,
   options?: UseQueryOptions<PagedPlansResponse>
 ): UseQueryResult<PagedPlansResponse> {
   const queryKey = ['plans-paged', page, pageSize, filters];
@@ -103,9 +118,7 @@ export function usePagedPlans(
     
     if (filters) {
       Object.entries(filters).forEach(([key, value]) => {
-        if (value !== null && value !== undefined && value !== '') {
-          params.append(key, String(value));
-        }
+        appendQueryParam(params, key, value);
       });
     }
 

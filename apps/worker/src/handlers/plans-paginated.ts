@@ -42,6 +42,7 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
     // Build filter parameters from query string (same as /api/plans)
     const speedParam = url.searchParams.get("speed");
     const provider = url.searchParams.get("provider");
+    const providerParams = url.searchParams.getAll("provider");
     const discount = url.searchParams.get("discount");
     const contractType = url.searchParams.get("contract");
     const dataAllowance = url.searchParams.get("data");
@@ -74,7 +75,18 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
       if (!isNaN(parsed)) speed = parsed;
     }
     if (speed !== null) { whereClause += ` AND speed_tier = ?`; params.push(speed); }
-    if (provider) { whereClause += ` AND provider_id = (SELECT id FROM providers WHERE slug = ?)`; params.push(provider); }
+    if (providerParams.length > 0) {
+      if (providerParams.length === 1) {
+        whereClause += ` AND provider_id = (SELECT id FROM providers WHERE slug = ?)`;
+        params.push(providerParams[0]);
+      } else {
+        whereClause += ` AND provider_id IN (SELECT id FROM providers WHERE slug IN (${providerParams.map(() => "?").join(",")}))`;
+        params.push(...providerParams);
+      }
+    } else if (provider) {
+      whereClause += ` AND provider_id = (SELECT id FROM providers WHERE slug = ?)`;
+      params.push(provider);
+    }
     if (discount === "1") {
       whereClause += ` AND (intro_price_cents IS NOT NULL OR promo_code IS NOT NULL OR promo_description IS NOT NULL)`;
     }

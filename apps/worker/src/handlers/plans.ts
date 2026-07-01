@@ -22,6 +22,7 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
     const url = new URL(req.url);
     const speedParam = url.searchParams.get("speed");
     const provider = url.searchParams.get("provider");
+    const providerParams = url.searchParams.getAll("provider");
     const discount = url.searchParams.get("discount");
     const contractType = url.searchParams.get("contract");
     const dataAllowance = url.searchParams.get("data");
@@ -95,7 +96,18 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
       WHERE is_active = 1`;
     const params: unknown[] = [];
     if (speed !== null) { q += ` AND p.speed_tier = ?`; params.push(speed); }
-    if (provider) { q += ` AND prov.slug = ?`; params.push(provider); }
+    if (providerParams.length > 0) {
+      if (providerParams.length === 1) {
+        q += ` AND prov.slug = ?`;
+        params.push(providerParams[0]);
+      } else {
+        q += ` AND prov.slug IN (${providerParams.map(() => "?").join(",")})`;
+        params.push(...providerParams);
+      }
+    } else if (provider) {
+      q += ` AND prov.slug = ?`;
+      params.push(provider);
+    }
     if (discount === "1") {
       q += ` AND (p.intro_price_cents IS NOT NULL OR p.promo_code IS NOT NULL OR p.promo_description IS NOT NULL)`;
     }
