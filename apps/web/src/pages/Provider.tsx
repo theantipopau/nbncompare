@@ -75,11 +75,14 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
       fetch(`${apiUrl}/api/plans?provider=${encodeURIComponent(slug)}&limit=50`).then(r => r.json())
     ])
       .then(([providerData, plansData]) => {
-        setProvider(providerData);
+        setProvider(providerData?.row || providerData || null);
         setPlans(plansData.rows || plansData || []);
         // Set mock review data for now (would come from API)
         if (providerData) {
-          setReview(getProviderReview(providerData.name));
+          const providerName = providerData?.row?.name || providerData?.name;
+          if (providerName) {
+            setReview(getProviderReview(providerName));
+          }
         }
         setLoading(false);
       })
