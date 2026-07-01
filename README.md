@@ -49,10 +49,9 @@ Built on Cloudflare's edge platform for maximum performance and zero hosting cos
 
 3. **Set up database:**
    ```bash
-   # Create D1 database in Cloudflare dashboard, then run migrations:
-   wrangler d1 execute nbncompare --remote --file migrations/create_tables.sql
-   wrangler d1 execute nbncompare --remote --file migrations/seed_providers.sql
-   wrangler d1 execute nbncompare --remote --file migrations/update_provider_urls.sql
+   # Apply the canonical numbered migrations from the worker package:
+   cd apps/worker
+   wrangler d1 migrations apply nbncompare --remote
    ```
 
 4. **Run development servers:**

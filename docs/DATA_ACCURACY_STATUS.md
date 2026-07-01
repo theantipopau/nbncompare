@@ -173,7 +173,7 @@ All 10 primary parsers tested successfully:
 
 ### Database Schema
 - **Tables:** `providers`, `plans`, `cron_runs`, `plan_updates`
-- **Migrations:** Schema defined in `migrations/create_tables.sql`
+- **Migrations:** Schema defined in `apps/worker/migrations/`
 - **Normalization:** See `0002_add_plan_filters.sql` onwards
 - **Backup:** Daily sync to ensure data freshness
 
