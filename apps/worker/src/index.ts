@@ -1,10 +1,35 @@
 import { Router } from "itty-router";
 import type { D1Database, ExecutionContext, KVNamespace } from "@cloudflare/workers-types";
+import { createRateLimiter } from "./lib/rate-limit";
 
 console.log('Worker module evaluation: index.ts loaded');
 
 let initError: Error | null = null;
 let router: ReturnType<typeof Router> | null = null;
+const publicRouteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
+const addressRouteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
+
+async function enforceRateLimit(request: Request, limiter: ReturnType<typeof createRateLimiter>) {
+  const result = await limiter(request);
+  if (result.allowed) return null;
+
+  const response = new Response(JSON.stringify({
+    ok: false,
+    error: 'Too many requests. Please try again later.',
+    resetTime: result.resetTime,
+  }), {
+    status: 429,
+    headers: {
+      'Content-Type': 'application/json',
+      ...corsHeaders(),
+      'Retry-After': Math.ceil(((result.resetTime || Date.now()) - Date.now()) / 1000).toString(),
+      'X-RateLimit-Remaining': result.remaining?.toString() || '0',
+      'X-RateLimit-Reset': result.resetTime?.toString() || '',
+    },
+  });
+
+  return response;
+}
 try {
   router = Router();
 
@@ -25,7 +50,7 @@ try {
 
   router.get("/api/plans/paginated", async (req: Request, env: Env) => {
     const { getPagedPlans } = await import("./handlers/plans-paginated");
-    return getPagedPlans(req, { D1: env.D1, CACHE: env.CACHE });
+    return getPagedPlans(req, { D1: env.D1 });
   });
 
   router.get("/api/plans/:id/history", async ({ params }: { params: { id: string } }) => {
@@ -273,6 +298,23 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
 
   const pathname = new URL(request.url).pathname;
 
+  if (pathname === '/api/address/search') {
+    const limited = await enforceRateLimit(request, addressRouteLimiter);
+    if (limited) return limited;
+  }
+
+  if (
+    pathname === '/api/plans' ||
+    pathname === '/api/providers' ||
+    pathname === '/api/status' ||
+    pathname === '/api/status/stale' ||
+    pathname === '/api/providers/comparison' ||
+    pathname.startsWith('/api/providers/')
+  ) {
+    const limited = await enforceRateLimit(request, publicRouteLimiter);
+    if (limited) return limited;
+  }
+
   // Protect admin/internal routes.
   // Note: /api/admin/* is used by the in-app Admin page.
   if (pathname.startsWith('/internal/') || pathname.startsWith('/api/admin/')) {
@@ -433,7 +475,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   if (pathname === '/api/plans/paginated') {
     try {
       const { getPagedPlans } = await import('./handlers/plans-paginated');
-      return await getPagedPlans(request, { D1: env.D1, CACHE: env.CACHE });
+      return await getPagedPlans(request, { D1: env.D1 });
     } catch (err: unknown) {
       console.error('/api/plans/paginated direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });

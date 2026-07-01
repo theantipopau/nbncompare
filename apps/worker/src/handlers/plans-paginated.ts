@@ -12,20 +12,11 @@ type D1DatabaseLike = {
   prepare: (q: string) => D1Statement;
 };
 
-type CacheLike = {
-  put: (key: string, value: string, options?: { expirationTtl?: number }) => Promise<void>;
-};
-
 type PaginatedEnv = {
   D1?: D1DatabaseLike;
-  CACHE?: CacheLike;
 };
 
 const CACHE_TTL = 300; // 5 minutes in seconds
-const PAGE_CACHE_TTL_MS = 30 * 1000; // 30 seconds in-memory
-
-// Local in-memory cache for page counts
-const pageCountCache = new Map<string, { count: number; expires: number }>();
 
 export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
   const startTime = Date.now();
@@ -52,16 +43,6 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
     const serviceType = url.searchParams.get("serviceType");
     const uploadSpeedParam = url.searchParams.get("uploadSpeed");
     const hideExpiredPromos = url.searchParams.get("hideExpiredPromos") === "1";
-
-    // Generate cache key
-    const cacheKey = `plans_paged:${url.searchParams.toString()}`;
-    const now = Date.now();
-
-    // Try in-memory cache first
-    const cached = pageCountCache.get(cacheKey);
-    if (cached && cached.expires > now) {
-      // Use cached total count for pagination
-    }
 
     const db = (env?.D1 || (await getDb())) as D1DatabaseLike;
 
@@ -132,9 +113,6 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
       top_speed?: number | null;
     } | null;
 
-    // Cache the count
-    pageCountCache.set(cacheKey, { count: totalCount, expires: now + PAGE_CACHE_TTL_MS });
-
     // 2. Get paginated results (explicit columns only to avoid timeout on large result serialization)
     const plansQ = `
       SELECT 
@@ -195,13 +173,6 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
         hasPrevPage: page > 0,
       },
     };
-
-    // Cache response
-    if (env?.CACHE) {
-      await env.CACHE.put(cacheKey + `:page${page}`, JSON.stringify(responseData), {
-        expirationTtl: CACHE_TTL
-      });
-    }
 
     const response = jsonResponse(responseData);
     response.headers.set('Cache-Control', `public, max-age=${CACHE_TTL}`);
