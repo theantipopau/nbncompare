@@ -1,22 +1,26 @@
 import React from "react";
-const { useEffect, useMemo, useState } = React;
+const { useEffect, useMemo, useState, Suspense } = React;
 // Type aliases for React events
 type ChangeEvent<T> = React.ChangeEvent<T>;
 type MouseEvent<T> = React.MouseEvent<T>;
 type KeyboardEvent<T> = React.KeyboardEvent<T>;
 type FormEvent<T> = React.FormEvent<T>;
-import PriceHistoryModal from "../components/PriceHistoryModal";
-import SpeedCalculator from "../components/SpeedCalculator";
-import BillComparison from "../components/BillComparison";
-import AIRecommendations from "../components/AIRecommendations";
+const PriceHistoryModal = React.lazy(() => import("../components/PriceHistoryModal"));
+const SpeedCalculator = React.lazy(() => import("../components/SpeedCalculator"));
+const BillComparison = React.lazy(() => import("../components/BillComparison"));
+const AIRecommendations = React.lazy(() => import("../components/AIRecommendations"));
 import { ProviderTooltip } from "../components/ProviderTooltip";
-import { ProviderComparisonMatrix } from "../components/ProviderComparisonMatrix";
+const ProviderComparisonMatrix = React.lazy(async () => {
+  const module = await import("../components/ProviderComparisonMatrix");
+  return { default: module.ProviderComparisonMatrix };
+});
 import { PlanCard } from "../components/PlanCard";
 import { getApiBaseUrl } from "../lib/api";
 import { getFaviconUrl } from "../lib/favicon";
 import { useCompareFilters } from "../hooks/useCompareFilters";
 import { usePagedPlans } from "../hooks/usePlans";
 import { useTheme } from "../context/ThemeContext";
+import { MAX_COMPARISON_PLANS } from "../constants/comparison";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
 function stripHtml(str: string | null | undefined): string {
@@ -422,12 +426,57 @@ export default function Compare() {
     return initials || 'N/A';
   }
 
+  function ProviderLogo({ providerName, faviconUrl }: { providerName: string | null | undefined; faviconUrl: string | null | undefined }) {
+    const [hasFallback, setHasFallback] = useState(false);
+    const resolvedFavicon = getFaviconUrl(providerName, faviconUrl);
+
+    if (!resolvedFavicon || hasFallback) {
+      return (
+        <div
+          className="provider-logo"
+          style={{
+            background: getProviderColor(providerName),
+            color: 'white',
+            width: '48px',
+            height: '48px',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold',
+            fontSize: '1em'
+          }}
+        >
+          {getProviderInitials(providerName)}
+        </div>
+      );
+    }
+
+    return (
+      <img
+        src={resolvedFavicon}
+        alt={providerName || 'Provider logo'}
+        loading="lazy"
+        decoding="async"
+        style={{
+          width: '48px',
+          height: '48px',
+          borderRadius: '8px',
+          objectFit: 'contain',
+          background: 'white',
+          padding: '4px'
+        }}
+        onError={() => setHasFallback(true)}
+      />
+    );
+  }
+
   function toggleCompare(planId: number) {
     if (compareList.includes(planId)) {
       setCompareList(compareList.filter((id: number) => id !== planId));
     } else {
-      if (compareList.length >= 3) {
-        alert('You can only compare up to 3 plans at once');
+      if (compareList.length >= MAX_COMPARISON_PLANS) {
+        alert(`You can only compare up to ${MAX_COMPARISON_PLANS} plans at once`);
         return;
       }
       setCompareList([...compareList, planId]);
@@ -1170,31 +1219,35 @@ export default function Compare() {
         justifyContent: 'center',
         flexWrap: 'wrap'
       }}>
-        <SpeedCalculator 
-          darkMode={darkMode} 
-          onSpeedRecommended={handleSpeedRecommendation} 
-        />
-        <BillComparison 
-          darkMode={darkMode} 
-          currentPlans={plans} 
-        />
+        <Suspense fallback={<div style={{ padding: '12px' }}>Loading tools...</div>}>
+          <SpeedCalculator 
+            darkMode={darkMode} 
+            onSpeedRecommended={handleSpeedRecommendation} 
+          />
+          <BillComparison 
+            darkMode={darkMode} 
+            currentPlans={plans} 
+          />
+        </Suspense>
       </section>
 
       {/* AI Recommendations */}
-      <AIRecommendations
-        darkMode={darkMode}
-        onRecommendation={(filters) => {
-          // Apply the recommended filters
-          if (filters.speed) setSelectedSpeeds([String(filters.speed)]);
-          if (filters.ipv6Filter) setIpv6Filter(filters.ipv6Filter as boolean);
-          if (filters.noCgnatFilter) setNoCgnatFilter(filters.noCgnatFilter as boolean);
-          if (filters.auSupportFilter) setAuSupportFilter(filters.auSupportFilter as boolean);
-          if (filters.staticIpFilter) setStaticIpFilter(filters.staticIpFilter as boolean);
-          if (filters.contractFilter) setContractFilter(filters.contractFilter as string);
-          if (filters.dataFilter) setDataFilter(filters.dataFilter as string);
-          if (filters.selectedProviders) setSelectedProviders(filters.selectedProviders as string[]);
-        }}
-      />
+      <Suspense fallback={<div style={{ padding: '12px' }}>Loading recommendations...</div>}>
+        <AIRecommendations
+          darkMode={darkMode}
+          onRecommendation={(filters) => {
+            // Apply the recommended filters
+            if (filters.speed) setSelectedSpeeds([String(filters.speed)]);
+            if (filters.ipv6Filter) setIpv6Filter(filters.ipv6Filter as boolean);
+            if (filters.noCgnatFilter) setNoCgnatFilter(filters.noCgnatFilter as boolean);
+            if (filters.auSupportFilter) setAuSupportFilter(filters.auSupportFilter as boolean);
+            if (filters.staticIpFilter) setStaticIpFilter(filters.staticIpFilter as boolean);
+            if (filters.contractFilter) setContractFilter(filters.contractFilter as string);
+            if (filters.dataFilter) setDataFilter(filters.dataFilter as string);
+            if (filters.selectedProviders) setSelectedProviders(filters.selectedProviders as string[]);
+          }}
+        />
+      </Suspense>
 
       <section style={{
         marginTop: '16px',
@@ -1847,7 +1900,9 @@ export default function Compare() {
       <section className="plan-list">
         {/* Provider Comparison Matrix */}
         <div style={{ marginBottom: '24px' }}>
-          <ProviderComparisonMatrix />
+          <Suspense fallback={<div style={{ padding: '12px' }}>Loading comparison matrix...</div>}>
+            <ProviderComparisonMatrix />
+          </Suspense>
         </div>
 
         <h3>📊 {viewMode === 'fixed-wireless' ? 'Fixed Wireless NBN Plans' : viewMode === 'business' ? 'Business NBN Plans' : viewMode === 'satellite' ? 'Satellite Internet Plans' : viewMode === '5g-home' ? '5G Home Internet Plans' : 'Standard NBN Plans'} ({plans.filter((p: Plan) => {
@@ -2125,48 +2180,7 @@ export default function Compare() {
                       e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
                     }}>
                       <td style={{ padding: '20px 16px', borderRadius: '12px 0 0 12px' }}>
-                        {getFaviconUrl(p.provider_name, p.favicon_url) ? (
-                          <img
-                            src={getFaviconUrl(p.provider_name, p.favicon_url)}
-                            alt={p.provider_name}
-                            loading="lazy"
-                            decoding="async"
-                            style={{
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '8px',
-                              objectFit: 'contain',
-                              background: 'white',
-                              padding: '4px'
-                            }}
-                            onError={(e) => {
-                              // Fallback to letter logo if favicon fails
-                              (e.target as HTMLImageElement).style.display = 'none';
-                              const parent = (e.target as HTMLElement).parentElement;
-                              if (parent) {
-                                parent.innerHTML = `<div style="background:${getProviderColor(p.provider_name)};color:white;width:48px;height:48px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:1em">${getProviderInitials(p.provider_name)}</div>`;
-                              }
-                            }}
-                          />
-                        ) : (
-                          <div 
-                            className="provider-logo"
-                            style={{
-                              background: getProviderColor(p.provider_name),
-                              color: 'white',
-                              width: '48px',
-                              height: '48px',
-                              borderRadius: '8px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontWeight: 'bold',
-                              fontSize: '1em'
-                            }}
-                          >
-                            {getProviderInitials(p.provider_name)}
-                          </div>
-                        )}
+                        <ProviderLogo providerName={p.provider_name} faviconUrl={p.favicon_url} />
                       </td>
                       <td className="provider-name" style={{ padding: '20px 16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -2939,13 +2953,15 @@ export default function Compare() {
       )}
 
       {showPriceHistory && selectedPlanForHistory && (
-        <PriceHistoryModal
-          plan={selectedPlanForHistory}
-          history={priceHistoryData}
-          loading={loadingHistory}
-          onClose={() => setShowPriceHistory(false)}
-          darkMode={darkMode}
-        />
+        <Suspense fallback={<div style={{ padding: '12px' }}>Loading price history...</div>}>
+          <PriceHistoryModal
+            plan={selectedPlanForHistory}
+            history={priceHistoryData}
+            loading={loadingHistory}
+            onClose={() => setShowPriceHistory(false)}
+            darkMode={darkMode}
+          />
+        </Suspense>
       )}
     </div>
   );

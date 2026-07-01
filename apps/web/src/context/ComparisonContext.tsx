@@ -1,4 +1,5 @@
 import React from 'react';
+import { MAX_COMPARISON_PLANS } from '../constants/comparison';
 
 const { createContext, useContext, useState } = React;
 
@@ -54,9 +55,8 @@ export const ComparisonProvider: React.FC<ComparisonProviderProps> = ({ children
 
   const addToComparison = (plan: Plan) => {
     setComparedPlans((prev: Plan[]) => {
-      // Max 4 plans
-      if (prev.length >= 4) {
-        alert('You can compare up to 4 plans at once. Remove one to add another.');
+      if (prev.length >= MAX_COMPARISON_PLANS) {
+        alert(`You can compare up to ${MAX_COMPARISON_PLANS} plans at once. Remove one to add another.`);
         return prev;
       }
       // Don't add duplicates
