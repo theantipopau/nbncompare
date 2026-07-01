@@ -16,6 +16,7 @@ import { getApiBaseUrl } from "../lib/api";
 import { getFaviconUrl } from "../lib/favicon";
 import { useCompareFilters } from "../hooks/useCompareFilters";
 import { usePagedPlans } from "../hooks/usePlans";
+import { useTheme } from "../context/ThemeContext";
 
 // Helper to strip HTML tags and decode entities from plan names/descriptions
 function stripHtml(str: string | null | undefined): string {
@@ -136,7 +137,6 @@ export default function Compare() {
   const [sortBy, setSortBy] = useState('price');
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
-  const [darkMode, setDarkMode] = useState(localStorage.getItem('nbncompare:darkMode') === 'true');
   const [favorites, setFavorites] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('favorites') || '[]') as number[];
@@ -160,6 +160,7 @@ export default function Compare() {
   const [bestDealsSummary, setBestDealsSummary] = useState(null as string | null);
   const [bestDealsUpdatedAt, setBestDealsUpdatedAt] = useState(null as string | null);
   const [bestDealsLoading, setBestDealsLoading] = useState(false);
+  const { darkMode, toggleDarkMode } = useTheme();
   type SavedFilterPreset = { name: string; filters: Record<string, unknown> };
   const [savedPresets, setSavedPresets] = useState(() => {
     if (typeof window === 'undefined') return [];
@@ -393,13 +394,8 @@ export default function Compare() {
     }
   }
 
-  function toggleDarkMode() {
-    const newMode = !darkMode;
-    setDarkMode(newMode);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('darkMode', String(newMode));
-      document.body.classList.toggle('dark-mode', newMode);
-    }
+  function handleThemeToggle() {
+    toggleDarkMode();
   }
 
   function getProviderColor(providerName: string | null | undefined): string {
@@ -1681,7 +1677,7 @@ export default function Compare() {
           />
         </label>
         <button onClick={() => fetchPlans()}>🔄 Refresh</button>
-        <button onClick={toggleDarkMode} style={{ background: darkMode ? '#FDB813' : '#2C3E50' }}>
+        <button onClick={handleThemeToggle} style={{ background: darkMode ? '#FDB813' : '#2C3E50' }}>
           {darkMode ? '☀️' : '🌙'} {darkMode ? 'Light' : 'Dark'}
         </button>
         {favorites.length > 0 && (

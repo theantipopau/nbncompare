@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ComparisonProvider } from "./context/ComparisonContext";
+import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { ComparisonBar } from "./components/ComparisonBar";
 import { ComparisonModal } from "./components/ComparisonModal";
 import { createQueryClient } from "./lib/queryClient";
@@ -17,64 +18,57 @@ import BlogPost from "./pages/BlogPost";
 export default function App() {
   const [currentPath, setCurrentPath] = useState(location.pathname);
   const [showComparisonModal, setShowComparisonModal] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   // Create QueryClient once for the app lifecycle
   const queryClient = useMemo(() => createQueryClient(), []);
 
-  const canUseLocalStorage = () => {
-    try {
-      return typeof window !== 'undefined' && typeof window.localStorage?.getItem === 'function';
-    } catch {
-      return false;
-    }
-  };
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider>
+        <ComparisonProvider>
+          <AppShell
+            currentPath={currentPath}
+            setCurrentPath={setCurrentPath}
+            showComparisonModal={showComparisonModal}
+            setShowComparisonModal={setShowComparisonModal}
+            mobileNavOpen={mobileNavOpen}
+            setMobileNavOpen={setMobileNavOpen}
+          />
+        </ComparisonProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
 
-  // Initialize dark mode from localStorage or user preference
-  useEffect(() => {
-    if (canUseLocalStorage()) {
-      try {
-        const stored = window.localStorage.getItem('nbncompare:darkMode');
-        if (stored !== null) {
-          setDarkMode(stored === 'true');
-          return;
-        }
-      } catch {
-        /* ignore */
-      }
-    }
-
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    setDarkMode(prefersDark);
-  }, []);
-
-  // Persist and apply class to document element
-  useEffect(() => {
-    if (canUseLocalStorage()) {
-      try {
-        window.localStorage.setItem('nbncompare:darkMode', darkMode ? 'true' : 'false');
-      } catch {
-        /* ignore */
-      }
-    }
-    document.documentElement.classList.toggle('dark-mode', darkMode);
-    document.body.classList.toggle('dark-mode', darkMode);
-  }, [darkMode]);
+function AppShell({
+  currentPath,
+  setCurrentPath,
+  showComparisonModal,
+  setShowComparisonModal,
+  mobileNavOpen,
+  setMobileNavOpen,
+}: {
+  currentPath: string;
+  setCurrentPath: React.Dispatch<React.SetStateAction<string>>;
+  showComparisonModal: boolean;
+  setShowComparisonModal: React.Dispatch<React.SetStateAction<boolean>>;
+  mobileNavOpen: boolean;
+  setMobileNavOpen: React.Dispatch<React.SetStateAction<boolean>>;
+}) {
+  const { darkMode, toggleDarkMode } = useTheme();
 
   useEffect(() => {
-    // Close mobile nav on navigation changes
     setMobileNavOpen(false);
-  }, [currentPath]);
+  }, [currentPath, setMobileNavOpen]);
 
   useEffect(() => {
-    // Handle browser back/forward buttons
     const handlePopState = () => {
       setCurrentPath(location.pathname);
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
+  }, [setCurrentPath]);
 
   const navigate = (path: string, e?: React.MouseEvent) => {
     if (e) {
@@ -86,9 +80,7 @@ export default function App() {
   };
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ComparisonProvider>
-        <div className="container">
+    <div className="container">
         <a className="skip-link" href="#main">Skip to main content</a>
         <header className="site-header">
           <div className="site-brand">
@@ -128,7 +120,7 @@ export default function App() {
 
             <button
               className="theme-toggle"
-              onClick={() => setDarkMode((d) => !d)}
+              onClick={toggleDarkMode}
               aria-pressed={darkMode}
               aria-label="Toggle dark mode"
               title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
@@ -208,7 +200,5 @@ export default function App() {
         />
       )}
     </div>
-    </ComparisonProvider>
-    </QueryClientProvider>
   );
 }
