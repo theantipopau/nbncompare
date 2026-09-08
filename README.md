@@ -1,207 +1,145 @@
 # NBN Compare
 
-**Live Site:** [https://nbncompare.info](https://nbncompare.info)
+[![Live site](https://img.shields.io/badge/live-nbncompare.info-0f766e)](https://nbncompare.info)
+[![Frontend tests](https://img.shields.io/badge/tests-8%20passing-16a34a)](apps/web/src)
 
-An open-source NBN plan comparison tool for Australia. Compare internet plans from 30+ providers with real-time pricing, promotional offers, and official NBN availability checks.
+NBN Compare is an open-source Australian broadband comparison tool. It brings provider plans, promotional pricing, technical metadata, address qualification, and freshness signals into one no-sign-up interface.
 
-## ✨ Features
+Live site: [nbncompare.info](https://nbncompare.info)
+Repository: [github.com/theantipopau/nbncompare](https://github.com/theantipopau/nbncompare)
 
-- 🔍 **NBN Address Check** - Verify service availability using official NBN Co API
-- 📊 **153 Plans from 30 Providers** - Compare plans from Telstra, Optus, TPG, Aussie Broadband, iiNet, and more
-- 🎯 **Smart Filters** - Filter by speed tier (25-2000 Mbps), contract type, data allowance, modem, and technology type
-- 🏷️ **Promotional Pricing** - See intro offers with duration (e.g., "$85/mo for 6 months")
-- ⚖️ **Plan Comparison** - Compare up to 3 plans side-by-side in detailed modal
-- ⭐ **Favorites System** - Star your preferred plans for easy comparison
-- 🔎 **Search** - Find plans by provider or plan name
-- 📡 **Fixed Wireless NBN** - Special support for regional/rural Fixed Wireless plans
-- 🌙 **Dark Mode** - Toggle between light and dark themes
-- 📱 **Mobile Responsive** - Optimized for all devices
-- 💰 **Always Free** - No sign-ups, no hidden fees, no affiliate links
+Current production status: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
-## 🏗️ Architecture
+## Features
 
-Built on Cloudflare's edge platform for maximum performance and zero hosting costs:
-- **Frontend:** React + Vite, deployed on Cloudflare Pages
-- **Backend:** Cloudflare Workers with D1 (SQLite) database
-- **Scraping:** Automated daily updates via scheduled Cloudflare Workers
-- **Cost:** $0/month (all services on free tier)
+- Address search and NBN technology qualification
+- Paginated plan search across active providers
+- Filters for speed, upload speed, contract, data, modem, setup fees, service type, IPv6, CGNAT, static IP, and Australian support
+- Promotional and ongoing pricing shown separately
+- Side-by-side comparison for up to three plans
+- Favorites, saved filter presets, price history, and provider detail pages
+- Standard NBN, Fixed Wireless, 5G Home, satellite, and business views
+- Provider freshness indicators and public system status
+- Responsive mobile card layout, dark mode, keyboard navigation, and reduced-motion support
 
-## 🚀 Quick Start
+## Architecture
+
+This is a pnpm workspace:
+
+- `apps/web`: React + TypeScript + Vite frontend, deployed to Cloudflare Pages
+- `apps/worker`: Cloudflare Worker API, scheduled scraper, admin endpoints, and D1 access
+- `packages/shared`: shared plan types, validation, normalization, generic parser, and provider parsers
+- `apps/worker/migrations`: numbered D1 migrations
+
+The provider refresh queue runs every two hours. It prioritizes providers using `provider_scrape_strategy`, limits scrape concurrency, supports Browser Rendering for JavaScript-heavy sites, updates current plan fields, and retires plans no longer present in a successful provider scrape.
+
+Data is sourced from provider websites and should be verified against the provider before ordering. Scraping success and coverage vary by provider because of redirects, JavaScript rendering, bot protection, and changing site layouts.
+
+## Local Development
 
 ### Prerequisites
+
 - Node.js 18+
-- [pnpm](https://pnpm.io/) package manager
-- [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/) (`npm i -g wrangler`)
-- Cloudflare account (free tier works)
+- pnpm
+- Cloudflare Wrangler for Worker/D1 development and deployment
+- A Cloudflare account for remote D1, Pages, and Worker operations
 
-### Local Development
+### Install and run
 
-1. **Install dependencies:**
-   ```bash
-   pnpm install
-   ```
+```bash
+git clone https://github.com/theantipopau/nbncompare.git
+cd nbncompare
+pnpm install
+pnpm dev
+```
 
-2. **Configure environment:**
-   ```bash
-   cp .env.example .env
-   # Edit .env and set ADMIN_TOKEN, CF_ACCOUNT_ID, CF_API_TOKEN
-   ```
+The combined command starts the Vite frontend and Worker development server. You can also run them separately:
 
-3. **Set up database:**
-   ```bash
-   # Apply the canonical numbered migrations from the worker package:
-   cd apps/worker
-   wrangler d1 migrations apply nbncompare --remote
-   ```
+```bash
+pnpm --filter @clearnbn/web dev
+pnpm --filter @clearnbn/worker dev
+```
 
-4. **Run development servers:**
-   ```bash
-   # Frontend (http://localhost:5173):
-   pnpm --filter @clearnbn/web dev
-   
-   # Worker (local):
-   pnpm --filter @clearnbn/worker dev
-   
-   # Or run both:
-   pnpm dev
-   ```
+For remote D1 migrations:
 
-## 📦 Deployment
-
-### Deploy Worker
 ```bash
 cd apps/worker
-wrangler deploy
+wrangler d1 migrations apply nbncompare --remote
 ```
 
-### Deploy Frontend
+Keep secrets such as `ADMIN_TOKEN` outside Git. Use Wrangler secrets or local `.dev.vars`/environment configuration; do not commit credentials.
+
+## Quality Checks
+
 ```bash
-cd apps/web
-pnpm build
-wrangler pages deploy dist
+pnpm lint
+pnpm --filter @clearnbn/web test:run
+pnpm --filter @clearnbn/shared test:parsers
+pnpm --filter @clearnbn/web build
 ```
 
-Or connect your GitHub repo to Cloudflare Pages for automatic deployments.
+The Worker TypeScript boundary excludes the Node-only provider URL verification utility. To typecheck the deployed Worker source:
 
-## 🔌 API Endpoints
+```bash
+cd apps/worker
+npx tsc --noEmit -p tsconfig.json
+```
 
-### Public
-- `GET /api/plans` - List all plans
-  - Query params: `?speed=100&contract=month-to-month&data=unlimited&modem=1&technology=standard`
-  - Technology types: `standard`, `fixed-wireless`
-- `GET /api/providers` - List all providers
-- `GET /api/providers/:slug` - Get provider details
-- `GET /api/status` - System status and last cron run
+## Deployment
 
-### Internal
-- `POST /internal/update-favicons` - Update provider favicons
-- `GET /internal/cron/run` - Trigger manual scrape (requires ADMIN_TOKEN)
+Build the frontend before deploying the Worker because the Worker configuration serves the frontend distribution as assets:
 
-## 🛠️ Tech Stack
+```bash
+pnpm --filter @clearnbn/web build
+npx wrangler pages deploy apps/web/dist --project-name=nbncompare-web
+npx wrangler deploy --config apps/worker/wrangler.toml
+```
 
-- **Frontend:** React, TypeScript, Vite, CSS3
-- **Backend:** Cloudflare Workers, TypeScript
-- **Database:** Cloudflare D1 (SQLite)
-- **Automation:** Cloudflare Cron Triggers (daily updates)
-- **Hosting:** Cloudflare Pages + Workers (100% free)
+The Worker is configured for:
 
-## 📊 Current Coverage (January 2026)
+- `nbncompare.info/*`
+- `www.nbncompare.info/*`
+- D1 database binding `D1`
+- KV binding `CACHE`
+- Browser Rendering binding `BROWSER`
+- AI binding `AI`
+- Cron schedule `0 */2 * * *`
 
-- **153 active plans** across **30 providers** (83% of target)
-- **Speed tiers:** 25, 50, 100, 250, 1000, 2000 Mbps
-- **Technology types:** Standard NBN + Fixed Wireless
-- **30 promotional offers** with intro pricing
+## Public API
 
-### Major Providers (10+ plans)
-- Telstra, Optus, TPG, Aussie Broadband (10 plans each)
-- Carbon Communications (12 plans)
+- `GET /api/plans` - non-paginated plan queries
+- `GET /api/plans/paginated` - paginated plans, aggregate stats, search, provider filters, and freshness-aware filtering
+- `GET /api/providers` - active provider list
+- `GET /api/providers/:slug` - provider details
+- `GET /api/price-history/:id` - plan price history
+- `GET /api/address/search` - address suggestions
+- `GET /api/address/qualify` - service qualification
+- `GET /api/status` - database, provider, plan, and scraper health
+- `GET /api/status/stale` - providers outside their refresh target
 
-### Medium Providers (4-9 plans)
-- Exetel, Mate, Superloop, Tangerine, iiNet, Vodafone (4-9 plans)
-- Internode, Kogan, MyRepublic, Belong, Amaysim (4 plans each)
+Administrative and internal routes require `x-admin-token`, including manual scraping, data verification, provider review, feedback management, and scraper-run history.
 
-### Growing Coverage
-- 20+ additional providers with 1-4 plans
-- Includes regional specialists: Skymesh, Leaptel, Launtel
-- Budget providers: Dodo, SpinTel, Moose Mobile, Buddy
+## Adding a Provider
 
-## 🤝 Contributing
+1. Add or update provider seed data in a numbered migration.
+2. Add a specialized parser under `packages/shared/src/parsers/providers/` when the provider needs custom extraction.
+3. Register the parser in `packages/shared/src/parsers/index.ts`.
+4. Add or update parser fixtures and run `pnpm --filter @clearnbn/shared test:parsers`.
+5. Add provider scrape strategy settings when Browser Rendering, priority, timeout, or retry behavior needs tuning.
+6. Verify the provider URL, pricing, promotional duration, source URL, and extracted plan count before deployment.
 
-Contributions welcome! Areas for improvement:
-- Add more provider parsers (see `packages/shared/src/parsers/providers/`)
-- Improve plan detection and price extraction
-- Add more filters and comparison features
-- Enhance mobile UI
+## Contributing
 
-## 📄 License
+Pull requests are welcome. Keep changes focused, include tests for behavior changes, update documentation when commands or public contracts change, and do not commit secrets or generated `.wrangler` output.
 
-Open source - feel free to use and modify.
+## License
 
-## 🤝 Contributing
+Open source. See the repository history and contribution guidance before redistributing provider content.
 
-We welcome contributions! Here's how to get started:
+## Credits
 
-### Development Setup
+Built for Australian internet users. Thanks to NBN Co for public availability information and Cloudflare for the edge platform.
 
-1. **Prerequisites**
-   - Node.js 18+
-   - pnpm package manager
-   - Wrangler CLI for Cloudflare Workers
-
-2. **Clone and Install**
-   ```bash
-   git clone https://github.com/theantipopau/nbncompare.git
-   cd nbncompare
-   pnpm install
-   ```
-
-3. **Environment Setup**
-   ```bash
-   cp .env.example .env
-   # Edit .env with your Cloudflare credentials
-   ```
-
-4. **Development**
-   ```bash
-   pnpm dev  # Runs both frontend and worker in development
-   ```
-
-### Code Quality
-
-- **Linting**: `pnpm lint`
-- **Testing**: `pnpm --filter @clearnbn/web test`
-- **Type Checking**: TypeScript is configured with strict mode
-
-### Architecture
-
-- **Frontend**: React + Vite, TypeScript, responsive design
-- **Backend**: Cloudflare Workers + D1 database
-- **Data**: Automated scraping with quality monitoring
-
-### Adding a New Provider
-
-1. Add parser in `packages/shared/src/parsers/providers/`
-2. Update test samples in `packages/shared/test-samples/`
-3. Add provider metadata in worker migrations
-4. Test with `pnpm --filter @clearnbn/shared test:parsers`
-
-### Pull Requests
-
-- Follow conventional commit format
-- Include tests for new features
-- Update documentation as needed
-- Ensure CI passes
-
-## 🙏 Credits
-
-- NBN Co for their public API
-- Cloudflare for free hosting infrastructure
-- All contributors
-
----
-
-**Website:** [https://nbncompare.info](https://nbncompare.info)  
-**Built with ❤️ for Australian internet users**
 
 
 

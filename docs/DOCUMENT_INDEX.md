@@ -1,12 +1,17 @@
 # 📚 COMPREHENSIVE WEBSITE ROADMAP - DOCUMENT INDEX
 
 **Created:** January 11, 2026  
-**Status:** ✅ COMPLETE - Ready to Execute Phase 1  
-**Total Planning Time:** From "How do we improve?" to "Here's how to build #1 NBN site"
+**Status:** Historical planning archive
+**Current status:** See [CURRENT_STATUS.md](CURRENT_STATUS.md) for live deployment, validation, and data-pipeline state.
+
+> Dated deployment, phase, and session documents below preserve project history. Their counts, schedules, and deployment IDs are not guaranteed to describe the current production system.
 
 ---
 
 ## 🎯 Read This First (3 minutes)
+
+### **[CURRENT_STATUS.md](CURRENT_STATUS.md)** ← CURRENT PRODUCTION STATUS
+Live URLs, latest release, smoke checks, current refresh schedule, and known data-quality work.
 
 ### **[COMPREHENSIVE_SUMMARY.md](COMPREHENSIVE_SUMMARY.md)** ← START HERE
 Visual overview of everything created. Use this to understand the scope and next steps.
