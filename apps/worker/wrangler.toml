@@ -11,7 +11,7 @@ routes = [
 ]
 
 [triggers]
-crons = [ "0 */6 * * *" ]
+crons = [ "0 */2 * * *" ]
 
 [ai]
 binding = "AI"

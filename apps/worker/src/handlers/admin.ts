@@ -26,7 +26,7 @@ export async function adminApprove(request: Request, env: { ADMIN_TOKEN: string 
     });
   }
 
-  const { provider_slug } = body;
+  const { provider_slug } = body as { provider_slug?: unknown };
   if (typeof provider_slug !== "string" || provider_slug.trim().length === 0) {
     return new Response(JSON.stringify({ ok: false, error: "provider_slug required" }), {
       status: 400,

@@ -37,7 +37,7 @@ describe('ComparisonBar', () => {
       </ComparisonProvider>
     );
 
-    expect(screen.getByText(/Comparing 2\/4/)).toBeInTheDocument();
+    expect(screen.getByText(/Comparing 2\/3/)).toBeInTheDocument();
 
     // Open modal
     fireEvent.click(screen.getByRole('button', { name: /Compare Plans/i }));

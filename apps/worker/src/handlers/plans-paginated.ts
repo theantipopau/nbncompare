@@ -32,6 +32,7 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
 
     // Build filter parameters from query string (same as /api/plans)
     const speedParam = url.searchParams.get("speed");
+    const search = url.searchParams.get("search")?.trim().toLowerCase();
     const provider = url.searchParams.get("provider");
     const providerParams = url.searchParams.getAll("provider");
     const discount = url.searchParams.get("discount");
@@ -42,6 +43,13 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
     const planType = url.searchParams.get("planType");
     const serviceType = url.searchParams.get("serviceType");
     const uploadSpeedParam = url.searchParams.get("uploadSpeed");
+    const ipv6 = url.searchParams.get("ipv6") === "1";
+    const noCgnat = url.searchParams.get("noCgnat") === "1";
+    const auSupport = url.searchParams.get("auSupport") === "1";
+    const staticIp = url.searchParams.get("staticIp") === "1";
+    const setupFee = url.searchParams.get("setupFee");
+    const modemCost = url.searchParams.get("modemCost");
+    const excludeSixMonth = url.searchParams.get("exclude6Month") === "1";
     const hideExpiredPromos = url.searchParams.get("hideExpiredPromos") === "1";
 
     const db = (env?.D1 || (await getDb())) as D1DatabaseLike;
@@ -56,6 +64,11 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
       if (!isNaN(parsed)) speed = parsed;
     }
     if (speed !== null) { whereClause += ` AND speed_tier = ?`; params.push(speed); }
+    if (search) {
+      whereClause += ` AND (LOWER(plan_name) LIKE ? OR provider_id IN (SELECT id FROM providers WHERE LOWER(name) LIKE ?))`;
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern);
+    }
     if (providerParams.length > 0) {
       if (providerParams.length === 1) {
         whereClause += ` AND provider_id = (SELECT id FROM providers WHERE slug = ?)`;
@@ -83,6 +96,18 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
         whereClause += ` AND upload_speed_mbps >= ?`;
         params.push(uploadSpeed);
       }
+    }
+    if (ipv6) whereClause += ` AND provider_id IN (SELECT id FROM providers WHERE ipv6_support >= 1)`;
+    if (noCgnat) whereClause += ` AND provider_id IN (SELECT id FROM providers WHERE cgnat = 0 OR cgnat_opt_out >= 1)`;
+    if (auSupport) whereClause += ` AND provider_id IN (SELECT id FROM providers WHERE australian_support >= 1)`;
+    if (staticIp) whereClause += ` AND provider_id IN (SELECT id FROM providers WHERE static_ip_available >= 1)`;
+    if (setupFee === "0") whereClause += ` AND setup_fee_cents = 0`;
+    if (setupFee === "1-100") whereClause += ` AND setup_fee_cents BETWEEN 100 AND 10000`;
+    if (setupFee === "100-200") whereClause += ` AND setup_fee_cents BETWEEN 10000 AND 20000`;
+    if (modemCost === "0") whereClause += ` AND modem_cost_cents = 0`;
+    if (modemCost === "paid") whereClause += ` AND modem_cost_cents > 0`;
+    if (excludeSixMonth) {
+      whereClause += ` AND (contract_type IS NULL OR contract_type != '6-month') AND NOT (intro_duration_days BETWEEN 175 AND 185)`;
     }
     if (hideExpiredPromos) {
       whereClause += ` AND (promo_expires_at IS NULL OR promo_expires_at > datetime('now'))`;

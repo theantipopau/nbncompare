@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { useComparison, Plan } from '../context/ComparisonContext';
+import { MAX_COMPARISON_PLANS } from '../constants/comparison';
 
 interface ComparisonModalProps {
   onClose: () => void;
@@ -152,7 +153,7 @@ export const ComparisonModal: React.FC<ComparisonModalProps> = ({ onClose, darkM
         <div style={headerStyle}>
           <div>
             <h2 id="comparison-modal-title" style={{ margin: 0, fontSize: '24px', fontWeight: 700 }}>
-              Compare Plans ({comparedPlans.length}/4)
+              Compare Plans ({comparedPlans.length}/{MAX_COMPARISON_PLANS})
             </h2>
             <p style={{ margin: '5px 0 0', color: darkMode ? '#94a3b8' : '#64748b', fontSize: '14px' }}>
               Side-by-side comparison of selected NBN plans

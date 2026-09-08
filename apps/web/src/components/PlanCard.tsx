@@ -41,7 +41,6 @@ interface PlanCardProps {
   darkMode: boolean;
   isFavorite: boolean;
   onToggleFavorite: (planId: number) => void;
-  onCompare: (planId: number) => void;
   onPriceHistory: (planId: number) => void;
   getProviderColor: (name: string) => string;
   getProviderInitials: (name: string) => string;
@@ -56,7 +55,6 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   darkMode,
   isFavorite,
   onToggleFavorite,
-  onCompare,
   onPriceHistory,
   getProviderColor,
   getProviderInitials,
@@ -132,7 +130,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   };
 
   return (
-    <div style={cardStyle}>
+    <div className="plan-card" style={cardStyle}>
       {/* Badges */}
       <div style={{ marginBottom: '12px', minHeight: '20px' }}>
         {isBestValue && (
@@ -250,9 +248,15 @@ export const PlanCard: React.FC<PlanCardProps> = ({
                 {plan.price_trend === 'down' ? '↓' : '↑'}
               </span>
             )}            </div>
-            <div style={{ fontSize: '0.9em', color: darkMode ? '#a0aec0' : '#666', marginTop: '4px' }}>
-              then ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
-            </div>
+            {plan.ongoing_price_cents ? (
+              <div style={{ fontSize: '0.9em', color: darkMode ? '#a0aec0' : '#666', marginTop: '4px' }}>
+                then ${(plan.ongoing_price_cents / 100).toFixed(2)}/mo
+              </div>
+            ) : (
+              <div style={{ fontSize: '0.9em', color: darkMode ? '#a0aec0' : '#666', marginTop: '4px' }}>
+                Ongoing price unavailable
+              </div>
+            )}
             {plan.intro_duration_days && (
               <div style={{ fontSize: '0.85em', color: '#E91E63', marginTop: '4px', fontWeight: '600' }}>
                 for {Math.round(plan.intro_duration_days/30)} months
@@ -341,7 +345,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
               <strong>Data:</strong> {plan.data_allowance}
             </div>
           )}
-          {plan.modem_included && (
+          {plan.modem_included !== undefined && (
             <div style={{ marginBottom: '8px' }}>
               <strong>Modem:</strong> {plan.modem_included ? 'Included' : 'Not included'}
             </div>
@@ -390,7 +394,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       )}
 
       {/* Actions */}
-      <div style={{ display: 'flex', gap: '8px' }}>
+      <div className="plan-card__actions" style={{ display: 'flex', gap: '8px' }}>
         <button
           onClick={() => onToggleFavorite(plan.id)}
           style={{
@@ -436,23 +440,6 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           title={isInComparison ? 'Already in comparison' : 'Add to comparison'}
         >
           {isInComparison ? '✓ Added' : '+ Compare'}
-        </button>
-        <button
-          onClick={() => onCompare(plan.id)}
-          style={{
-            flex: 1,
-            padding: '10px 12px',
-            background: darkMode ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.05)',
-            color: darkMode ? '#a0aec0' : '#667eea',
-            border: '1px solid rgba(102, 126, 234, 0.3)',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: '600',
-            fontSize: '0.85em',
-            transition: 'all 0.2s'
-          }}
-        >
-          📊 Details
         </button>
         <button
           onClick={() => onPriceHistory(plan.id)}

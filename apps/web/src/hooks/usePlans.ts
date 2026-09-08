@@ -20,7 +20,7 @@ export interface PlansResponse {
   rows: Plan[];
 }
 
-type QueryValue = string | number | string[] | number[];
+type QueryValue = string | number | string[] | number[] | undefined;
 
 function appendQueryParam(params: URLSearchParams, key: string, value: QueryValue) {
   if (Array.isArray(value)) {
@@ -106,7 +106,7 @@ export function usePagedPlans(
   page: number = 0,
   pageSize: number = 20,
   filters?: Record<string, QueryValue>,
-  options?: UseQueryOptions<PagedPlansResponse>
+  options?: Omit<UseQueryOptions<PagedPlansResponse>, 'queryKey' | 'queryFn'>
 ): UseQueryResult<PagedPlansResponse> {
   const queryKey = ['plans-paged', page, pageSize, filters];
   

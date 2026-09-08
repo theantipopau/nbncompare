@@ -1,4 +1,5 @@
 import { getDb } from "../lib/db";
+import type { KVNamespace } from "@cloudflare/workers-types";
 
 // Cache TTL for status: 5 minutes (300 seconds)
 const STATUS_CACHE_TTL = 300;

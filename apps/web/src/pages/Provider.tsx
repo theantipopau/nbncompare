@@ -41,15 +41,21 @@ interface ProviderData {
   routing_info: string | null;
   ipv6_support: number;
   cgnat: number;
+  cgnat_opt_out?: number;
+  australian_support?: number;
+  parent_company?: string | null;
 }
 
 interface _Plan {
   id: number;
   plan_name: string;
   speed_tier: number | null;
+  upload_speed_mbps?: number | null;
   ongoing_price_cents: number | null;
   intro_price_cents: number | null;
   intro_duration_days: number | null;
+  contract_type?: string | null;
+  data_allowance?: string | null;
   source_url: string | null;
 }
 
@@ -58,11 +64,11 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
     return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>Invalid provider</div>;
   }
 
-  const [provider, setProvider] = (useState as unknown)<ProviderData | null>(null);
-  const [plans, setPlans] = (useState as unknown)<_Plan[]>([]);
-  const [review, setReview] = (useState as unknown)(null);
+  const [provider, setProvider] = useState<ProviderData | null>(null);
+  const [plans, setPlans] = useState<_Plan[]>([]);
+  const [review, setReview] = useState<ProviderReview | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = (useState as unknown)(null);
+  const [error, setError] = useState<string | null>(null);
   const [darkMode, _setDarkMode] = useState(localStorage.getItem('darkMode') === 'true');
 
   useEffect(() => {
@@ -158,11 +164,9 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
   if (error) return <div style={{ padding: '40px', textAlign: 'center', color: 'red' }}>{error}</div>;
   if (!provider) return <div style={{ padding: '40px', textAlign: 'center' }}>Provider not found</div>;
 
-  const speedTiers = Array.from(new Set(plans.map((p: unknown) => (p as _Plan).speed_tier).filter((t: unknown): t is number => t !== null))).sort((a: unknown, b: unknown) => (a as number) - (b as number));
-  const cheapestPlan = plans.reduce((min: unknown, p: unknown) => {
-    const pPlan = p as _Plan;
-    const minPlan = min as _Plan | null;
-    return (!minPlan || (pPlan.ongoing_price_cents !== null && (minPlan.ongoing_price_cents === null || pPlan.ongoing_price_cents < minPlan.ongoing_price_cents))) ? p : min;
+  const speedTiers = Array.from(new Set(plans.map((plan) => plan.speed_tier).filter((tier): tier is number => tier !== null))).sort((a, b) => a - b);
+  const cheapestPlan = plans.reduce<_Plan | null>((min, plan) => {
+    return !min || (plan.ongoing_price_cents !== null && (min.ongoing_price_cents === null || plan.ongoing_price_cents < min.ongoing_price_cents)) ? plan : min;
   }, null);
 
   return (
@@ -211,7 +215,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
           <div>
             <div style={{ fontSize: '0.9em', opacity: 0.8 }}>Starting From</div>
             <div style={{ fontSize: '1.8em', fontWeight: 'bold' }}>
-              {cheapestPlan ? `$${(cheapestPlan.ongoing_price_cents / 100).toFixed(0)}/mo` : 'N/A'}
+              {cheapestPlan?.ongoing_price_cents != null ? `$${(cheapestPlan.ongoing_price_cents / 100).toFixed(0)}/mo` : 'N/A'}
             </div>
           </div>
           <div>
@@ -237,7 +241,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
             All {provider.name} NBN Plans
           </h2>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {plans.map((p: unknown) => (
+            {plans.map((p: _Plan) => (
               <article 
                 key={p.id}
                 style={{
@@ -265,13 +269,13 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
                   <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#667eea' }}>
                     ${p.ongoing_price_cents ? (p.ongoing_price_cents / 100).toFixed(0) : '?'}/mo
                   </div>
-                  {p.intro_price_cents && p.intro_price_cents < p.ongoing_price_cents && (
+                  {p.intro_price_cents && p.ongoing_price_cents !== null && p.intro_price_cents < p.ongoing_price_cents && (
                     <div style={{ fontSize: '0.85em', color: '#10b981' }}>
                       First {p.intro_duration_days ? Math.round(p.intro_duration_days / 30) : '?'} months: ${(p.intro_price_cents / 100).toFixed(0)}/mo
                     </div>
                   )}
                   <a 
-                    href={p.source_url} 
+                    href={p.source_url ?? undefined}
                     target="_blank" 
                     rel="noopener noreferrer"
                     style={{
@@ -410,8 +414,8 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
               {provider.australian_support !== null && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', color: darkMode ? '#e2e8f0' : '#333' }}>
                   <span>Australian Support</span>
-                  <span style={{ color: provider.australian_support >= 2 ? '#10b981' : (provider.australian_support === 1 ? '#f59e0b' : '#ef4444') }}>
-                    {provider.australian_support >= 2 ? '✓ 100% AU' : (provider.australian_support === 1 ? '⚠️ Mixed' : '✗ Offshore')}
+                  <span style={{ color: (provider.australian_support ?? 0) >= 2 ? '#10b981' : (provider.australian_support === 1 ? '#f59e0b' : '#ef4444') }}>
+                    {(provider.australian_support ?? 0) >= 2 ? '✓ 100% AU' : (provider.australian_support === 1 ? '⚠️ Mixed' : '✗ Offshore')}
                   </span>
                 </div>
               )}

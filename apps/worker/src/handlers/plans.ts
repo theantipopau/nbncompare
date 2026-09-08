@@ -1,5 +1,6 @@
 import { getDb } from "../lib/db";
 import { jsonResponse } from "../lib/cors";
+import type { KVNamespace } from "@cloudflare/workers-types";
 
 type D1Statement = {
   bind: (...args: unknown[]) => D1Statement;

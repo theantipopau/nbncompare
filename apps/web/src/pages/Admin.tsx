@@ -53,6 +53,11 @@ interface ProviderMetadata {
   has_modem_included: number;
 }
 
+interface ScrapeResult {
+  ok?: boolean;
+  [key: string]: unknown;
+}
+
 export default function Admin() {
   usePageTitle('Admin - NBN Compare');
   const [issues, setIssues] = useState([] as ProviderIssue[]);
@@ -61,7 +66,7 @@ export default function Admin() {
   const [providerMetadata, setProviderMetadata] = useState([] as ProviderMetadata[]);
   const [token, setToken] = useState("" as string);
   const [scraping, setScraping] = useState(false);
-  const [scrapeResult, setScrapeResult] = useState<unknown | null>(null);
+  const [scrapeResult, setScrapeResult] = useState<ScrapeResult | null>(null);
   const [selectedTab, setSelectedTab] = useState('issues');
 
   useEffect(() => {
@@ -96,7 +101,7 @@ export default function Admin() {
     // Fetch provider metadata verification status
     fetch(`${apiUrl}/api/admin/provider-verification`, { headers: { 'x-admin-token': token } })
       .then(r => r.json())
-      .then((data) => setProviderMetadata(Array.isArray(data) ? data : data.providers || []))
+      .then((data) => setProviderMetadata(Array.isArray(data) ? data : data.data || data.providers || []))
       .catch(() => setProviderMetadata([])); // Silently fail if endpoint not available
   }, [token]);
 
@@ -284,7 +289,7 @@ export default function Admin() {
           <ul>
             {!token && <li>Enter admin token to load issues</li>}
             {token && issues.length === 0 && <li>✅ No provider issues</li>}
-            {issues.map((i: unknown) => (
+            {issues.map((i: ProviderIssue) => (
               <li key={i.id} style={{ marginBottom: '8px', padding: '12px', background: '#f5f5f5', borderRadius: '6px' }}>
                 <strong>{i.name}</strong> ({i.slug}) - {i.last_error ?? (i.needs_review ? 'Needs review' : '✓ OK')}
                 <button 
@@ -384,7 +389,7 @@ export default function Admin() {
             <p>Enter admin token to load scraper runs</p>
           ) : scraperRuns.length === 0 ? (
             <div style={{ padding: '20px', background: '#f5f5f5', borderRadius: '6px', textAlign: 'center', color: '#666' }}>
-              ⏳ No scraper runs logged yet (runs happen daily at 3 AM UTC)
+              ⏳ No scraper runs logged yet (refreshes run automatically throughout the day)
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>

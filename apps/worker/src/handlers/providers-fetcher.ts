@@ -1,6 +1,7 @@
 import { getDb } from "../lib/db";
 import { findParserForUrl, validatePlan, normalizeExtract, ProviderRow } from "@clearnbn/shared";
 import { fetchWithSmartFallback, fetchViaBrowser } from "../lib/browser-rendering";
+import type { BrowserBinding } from "../lib/browser-rendering";
 
 type SimpleStmt = {
   bind: (...args: unknown[]) => SimpleStmt;
@@ -31,7 +32,7 @@ const JS_RENDER_PROVIDERS = new Set([
   'kogan'
 ]);
 
-type FetchEnv = { SCRAPER_API_KEY?: string; BROWSER?: unknown };
+type FetchEnv = { SCRAPER_API_KEY?: string; BROWSER?: BrowserBinding };
 
 export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: number = 5) {
   const db = (await getDb()) as SimpleDB;
@@ -59,17 +60,19 @@ export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: numbe
   const providers = (providersRes?.results ?? []) as ProviderWithStrategy[];
   const result: { checked: number; changed: number; errors: number } = { checked: 0, changed: 0, errors: 0 };
   
-  // Process providers in parallel with timeout protection
-  const providerPromises = providers.map(prov => processProvider(db, prov, result, env));
-  const results = await Promise.allSettled(providerPromises);
-  
-  // Count results
-  results.forEach((res, idx) => {
-    if (res.status === 'rejected') {
-      console.error(`Provider ${providers[idx].slug} failed:`, res.reason);
-      result.errors++;
-    }
-  });
+  // Keep browser sessions and outbound requests bounded to avoid exhausting
+  // Cloudflare subrequests while still refreshing the full provider queue.
+  const concurrency = 3;
+  for (let start = 0; start < providers.length; start += concurrency) {
+    const batch = providers.slice(start, start + concurrency);
+    const results = await Promise.allSettled(batch.map((provider) => processProvider(db, provider, result, env)));
+    results.forEach((res, index) => {
+      if (res.status === 'rejected') {
+        console.error(`Provider ${batch[index].slug} failed:`, res.reason);
+        result.errors++;
+      }
+    });
+  }
   
   return result;
 }
@@ -137,8 +140,15 @@ async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result:
       }
     }
 
-    // validate and upsert plans (simple approach)
+    if (extracts.length === 0) {
+      throw new Error(`No plans extracted for provider ${prov.slug}`);
+    }
+
+    // Validate and upsert plans. A successful non-empty scrape is also the
+    // source of truth for retiring plans that the provider no longer lists.
     let providerNeedsReview = false;
+    let validPlanCount = 0;
+    const seenPlanNames = new Set<string>();
     for (const e of extracts) {
       try {
         const normalized = normalizeExtract(e);
@@ -153,10 +163,22 @@ async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result:
           console.warn(`Plan warnings for provider ${prov.slug}: ${normalized.planName}`, v.warnings);
         }
         await upsertPlan(db, prov.id, normalized);
+        validPlanCount++;
+        seenPlanNames.add(normalized.planName);
       } catch (err) {
         console.error(`Failed processing plan for provider ${prov.slug}:`, err);
         providerNeedsReview = true;
       }
+    }
+    if (validPlanCount > 0) {
+      const names = [...seenPlanNames];
+      const placeholders = names.map(() => '?').join(', ');
+      await db.prepare(
+        `UPDATE plans SET is_active = 0, updated_at = ?
+         WHERE provider_id = ? AND is_active = 1 AND plan_name NOT IN (${placeholders})`
+      ).bind(new Date().toISOString(), prov.id, ...names).run();
+    } else {
+      throw new Error(`No valid plans extracted for provider ${prov.slug}`);
     }
     await db.prepare("UPDATE providers SET last_hash = ?, last_fetch_at = ?, last_error = NULL, needs_review = ? WHERE id = ?").bind(hash, new Date().toISOString(), providerNeedsReview ? 1 : 0, prov.id).run();
     result.changed++;
@@ -199,7 +221,7 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
   const introDurationDays = ext.introDurationDays ?? null;
   const promoCode = ext.promoCode ?? null;
   const promoDescription = ext.promoDescription ?? null;
-  const promoExpiresAt = ext.promoExpiresAt ?? null;
+  const promoExpiresAt = (ext as PlanExtract & { promoExpiresAt?: string | null }).promoExpiresAt ?? null;
   const confidenceScore = computeConfidenceScore(ext);
   const effectiveMonthlyCents = computeEffectiveMonthlyCents(ext);
   
@@ -210,19 +232,23 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
         upload_speed_mbps = ?,
         intro_price_cents = ?,
         ongoing_price_cents = ?,
-        data_allowance = COALESCE(?, data_allowance),
-        contract_type = COALESCE(?, contract_type),
-        setup_fee_cents = COALESCE(?, setup_fee_cents),
-        modem_cost_cents = COALESCE(?, modem_cost_cents),
-        intro_duration_days = COALESCE(?, intro_duration_days),
-        promo_code = COALESCE(?, promo_code),
-        promo_description = COALESCE(?, promo_description),
-        promo_expires_at = COALESCE(?, promo_expires_at),
+        source_url = ?,
+        data_allowance = ?,
+        contract_type = ?,
+        modem_included = ?,
+        setup_fee_cents = ?,
+        modem_cost_cents = ?,
+        intro_duration_days = ?,
+        promo_code = ?,
+        promo_description = ?,
+        promo_expires_at = ?,
         technology_type = ?,
         plan_type = ?,
         service_type = COALESCE(?, service_type),
         confidence_score = ?,
         effective_monthly_cents = ?,
+        last_checked_at = ?,
+        is_stale = 0,
         updated_at = ?,
         is_active = 1
       WHERE id = ?`
@@ -231,8 +257,10 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       ext.uploadSpeedMbps ?? null,
       ext.introPriceCents ?? null,
       ext.ongoingPriceCents ?? null,
+      ext.sourceUrl,
       dataAllowance,
       contractType,
+      ext.modemIncluded == null ? null : (ext.modemIncluded ? 1 : 0),
       setupFeeCents,
       modemCostCents,
       introDurationDays,
@@ -245,6 +273,7 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       confidenceScore,
       effectiveMonthlyCents,
       now,
+      now,
       existing.id
     ).run();
   } else {
@@ -252,12 +281,12 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       `INSERT INTO plans (
         provider_id, plan_name, speed_tier, upload_speed_mbps,
         intro_price_cents, ongoing_price_cents, source_url,
-        data_allowance, contract_type, setup_fee_cents, modem_cost_cents,
+        data_allowance, contract_type, modem_included, setup_fee_cents, modem_cost_cents,
         intro_duration_days, promo_code, promo_description, promo_expires_at,
         technology_type, plan_type, service_type,
         confidence_score, effective_monthly_cents,
         last_checked_at, is_active, created_at, updated_at
-      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+      ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       providerId,
       ext.planName,
@@ -268,6 +297,7 @@ async function upsertPlan(db: SimpleDB, providerId: number, ext: PlanExtract) {
       ext.sourceUrl,
       dataAllowance,
       contractType,
+      ext.modemIncluded == null ? null : (ext.modemIncluded ? 1 : 0),
       setupFeeCents,
       modemCostCents,
       introDurationDays,

@@ -9,7 +9,6 @@ const PriceHistoryModal = React.lazy(() => import("../components/PriceHistoryMod
 const SpeedCalculator = React.lazy(() => import("../components/SpeedCalculator"));
 const BillComparison = React.lazy(() => import("../components/BillComparison"));
 const AIRecommendations = React.lazy(() => import("../components/AIRecommendations"));
-import { ProviderTooltip } from "../components/ProviderTooltip";
 const ProviderComparisonMatrix = React.lazy(async () => {
   const module = await import("../components/ProviderComparisonMatrix");
   return { default: module.ProviderComparisonMatrix };
@@ -20,22 +19,13 @@ import { getFaviconUrl } from "../lib/favicon";
 import { useCompareFilters } from "../hooks/useCompareFilters";
 import { usePagedPlans } from "../hooks/usePlans";
 import { useTheme } from "../context/ThemeContext";
-import { MAX_COMPARISON_PLANS } from "../constants/comparison";
-
-// Helper to strip HTML tags and decode entities from plan names/descriptions
-function stripHtml(str: string | null | undefined): string {
-  if (!str) return '';
-  return str
-    .replace(/<[^>]*>/g, '') // Remove HTML tags
-    .replace(/&nbsp;/g, ' ') // Replace &nbsp; with space
-    .replace(/&lt;/g, '<')   // Decode &lt;
-    .replace(/&gt;/g, '>')   // Decode &gt;
-    .replace(/&amp;/g, '&')  // Decode &amp;
-    .replace(/&quot;/g, '"') // Decode &quot;
-    .replace(/&#39;/g, "'")  // Decode &#39;
-    .replace(/<[^>]*>/g, '') // Remove any remaining tags after decode
-    .trim();
-}
+import { useComparison } from "../context/ComparisonContext";
+import { CompareHero } from "../components/compare/CompareHero";
+import { QualificationPanel } from "../components/compare/QualificationPanel";
+import { AddressSuggestionsList } from "../components/compare/AddressSuggestionsList";
+import { PlanTableRow } from "../components/compare/PlanTableRow";
+import { PaginationControls } from "../components/compare/PaginationControls";
+import { stripHtml, getSpeedTierColor, getSpeedTierLabel } from "../lib/planDisplay";
 
 interface Plan {
   id: number;
@@ -50,6 +40,7 @@ interface Plan {
   contract_type?: string;
   data_allowance?: string;
   modem_included?: number;
+  modem_cost_cents?: number | null;
   favicon_url?: string | null;
   technology_type?: string;
   upload_speed_mbps?: number | null;
@@ -57,6 +48,7 @@ interface Plan {
   promo_code?: string | null;
   promo_description?: string | null;
   service_type?: string;  // 'nbn', '5g-home', 'satellite', etc.
+  plan_type?: string;
   setup_fee_cents?: number | null;
   // Provider metadata
   provider_ipv6_support?: number;  // 0 = no, 1 = yes
@@ -89,9 +81,27 @@ interface ServiceQualification {
   available: boolean;
 }
 
+interface SavedFilterValues {
+  selectedSpeeds: string[];
+  contractFilter: string;
+  dataFilter: string;
+  technologyFilter: string;
+  modemFilter: string;
+  ipv6Filter: boolean;
+  noCgnatFilter: boolean;
+  auSupportFilter: boolean;
+  staticIpFilter: boolean;
+  exclude6MonthFilter: boolean;
+  uploadSpeedFilter: string;
+  providerFilter: string;
+  selectedProviders: string[];
+  viewMode: 'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite';
+  sortBy: string;
+}
+
 export default function Compare() {
   // Use centralized filter hook
-  const { filters, setters, resetFilters } = useCompareFilters();
+  const { filters, setters, resetFilters: _resetFilters } = useCompareFilters();
   const {
     selectedSpeeds,
     contractFilter,
@@ -151,8 +161,6 @@ export default function Compare() {
   const [viewMode, setViewMode] = useState('standard' as 'standard' | 'fixed-wireless' | 'business' | '5g-home' | 'satellite');
   const [serviceTypeFilter, setServiceTypeFilter] = useState('nbn' as 'nbn' | '5g-home' | 'satellite');
   const [currentPage, setCurrentPage] = useState(0);
-  const [compareList, setCompareList] = useState([] as number[]);
-  const [showCompareModal, setShowCompareModal] = useState(false);
   const [showPriceHistory, setShowPriceHistory] = useState(false);
   const [selectedPlanForHistory, setSelectedPlanForHistory] = useState(null as Plan | null);
   const [priceHistoryData, setPriceHistoryData] = useState([] as PriceHistory[]);
@@ -165,7 +173,8 @@ export default function Compare() {
   const [bestDealsUpdatedAt, setBestDealsUpdatedAt] = useState(null as string | null);
   const [bestDealsLoading, setBestDealsLoading] = useState(false);
   const { darkMode, toggleDarkMode } = useTheme();
-  type SavedFilterPreset = { name: string; filters: Record<string, unknown> };
+  const { comparedPlans } = useComparison();
+  type SavedFilterPreset = { name: string; filters: SavedFilterValues };
   const [savedPresets, setSavedPresets] = useState(() => {
     if (typeof window === 'undefined') return [];
     try {
@@ -283,6 +292,19 @@ export default function Compare() {
     setSelectedProviders([]);
   };
 
+  const heroPresetOptions = useMemo(() => {
+    return heroPresets.map((preset: HeroPreset) => ({
+      name: preset.name,
+      description: preset.description,
+    }));
+  }, [heroPresets]);
+
+  const handlePresetSelect = (presetName: string) => {
+    const preset = heroPresets.find((item: HeroPreset) => item.name === presetName);
+    if (!preset) return;
+    applyPreset(preset);
+  };
+
   useEffect(() => {
     setSpeed(selectedSpeeds[0] ?? 'all');
   }, [selectedSpeeds]);
@@ -324,13 +346,19 @@ export default function Compare() {
     uploadSpeed: uploadSpeedFilter || undefined,
     setupFee: setupFeeFilter || undefined,
     modemCost: modemCostFilter || undefined,
+    search: searchTerm.trim() || undefined,
+    ipv6: ipv6Filter ? '1' : undefined,
+    noCgnat: noCgnatFilter ? '1' : undefined,
+    auSupport: auSupportFilter ? '1' : undefined,
+    staticIp: staticIpFilter ? '1' : undefined,
+    exclude6Month: exclude6MonthFilter ? '1' : undefined,
     provider: selectedProviders.length > 0 ? selectedProviders : undefined,
     serviceType: serviceTypeFilter,
     planType: planTypeFilter !== 'all' ? planTypeFilter : undefined,
   };
 
   // Use paginated plans hook
-  const { data: pagedData, isLoading: pagedLoading, error: pagedError } = usePagedPlans(
+  const { data: pagedData, isLoading: pagedLoading, error: pagedError, refetch: refetchPlans } = usePagedPlans(
     currentPage,
     ITEMS_PER_PAGE,
     pagedFilters,
@@ -383,10 +411,75 @@ export default function Compare() {
     };
   }, [plans, pagedData]);
 
+  const activeFilterCount = useMemo(() => {
+    let count = 0;
+    if (!selectedSpeeds.includes('all')) count += selectedSpeeds.length;
+    if (contractFilter) count++;
+    if (dataFilter) count++;
+    if (technologyFilter) count++;
+    if (modemFilter) count++;
+    if (ipv6Filter) count++;
+    if (noCgnatFilter) count++;
+    if (auSupportFilter) count++;
+    if (staticIpFilter) count++;
+    if (exclude6MonthFilter) count++;
+    if (uploadSpeedFilter) count++;
+    if (setupFeeFilter) count++;
+    if (modemCostFilter) count++;
+    if (selectedProviders.length > 0) count += selectedProviders.length;
+    if (planTypeFilter !== 'all') count++;
+    if (searchTerm.trim()) count++;
+    return count;
+  }, [
+    selectedSpeeds,
+    contractFilter,
+    dataFilter,
+    technologyFilter,
+    modemFilter,
+    ipv6Filter,
+    noCgnatFilter,
+    auSupportFilter,
+    staticIpFilter,
+    exclude6MonthFilter,
+    uploadSpeedFilter,
+    setupFeeFilter,
+    modemCostFilter,
+    selectedProviders,
+    planTypeFilter,
+    searchTerm,
+  ]);
+
+  const activeHeroNotes = useMemo(() => {
+    const notes: string[] = [];
+    if (heroStats.cheapest) notes.push(`From $${heroStats.cheapest}/mo`);
+    if (activeFilterCount > 0) notes.push(`${activeFilterCount} live filter${activeFilterCount === 1 ? '' : 's'}`);
+    if (comparedPlans.length > 0) notes.push(`${comparedPlans.length} selected to compare`);
+    if (selectedProviders.length > 0) notes.push(`${selectedProviders.length} provider${selectedProviders.length === 1 ? '' : 's'} pinned`);
+    return notes.slice(0, 4);
+  }, [heroStats.cheapest, activeFilterCount, comparedPlans.length, selectedProviders.length]);
+
   // Reset to first page when filters change
   useEffect(() => {
     setCurrentPage(0);
-  }, [selectedSpeeds, contractFilter, dataFilter, modemFilter, technologyFilter, uploadSpeedFilter, setupFeeFilter, modemCostFilter, selectedProviders, serviceTypeFilter, planTypeFilter]);
+  }, [
+    selectedSpeeds,
+    contractFilter,
+    dataFilter,
+    modemFilter,
+    technologyFilter,
+    uploadSpeedFilter,
+    setupFeeFilter,
+    modemCostFilter,
+    searchTerm,
+    ipv6Filter,
+    noCgnatFilter,
+    auSupportFilter,
+    staticIpFilter,
+    exclude6MonthFilter,
+    selectedProviders,
+    serviceTypeFilter,
+    planTypeFilter,
+  ]);
 
   function toggleFavorite(planId: number) {
     const newFavorites = favorites.includes(planId)
@@ -400,6 +493,12 @@ export default function Compare() {
 
   function handleThemeToggle() {
     toggleDarkMode();
+  }
+
+  function scrollToSection(id: string) {
+    const target = document.getElementById(id);
+    if (!target) return;
+    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function getProviderColor(providerName: string | null | undefined): string {
@@ -428,7 +527,7 @@ export default function Compare() {
 
   function ProviderLogo({ providerName, faviconUrl }: { providerName: string | null | undefined; faviconUrl: string | null | undefined }) {
     const [hasFallback, setHasFallback] = useState(false);
-    const resolvedFavicon = getFaviconUrl(providerName, faviconUrl);
+    const resolvedFavicon = getFaviconUrl(providerName ?? '', faviconUrl);
 
     if (!resolvedFavicon || hasFallback) {
       return (
@@ -471,47 +570,9 @@ export default function Compare() {
     );
   }
 
-  function toggleCompare(planId: number) {
-    if (compareList.includes(planId)) {
-      setCompareList(compareList.filter((id: number) => id !== planId));
-    } else {
-      if (compareList.length >= MAX_COMPARISON_PLANS) {
-        alert(`You can only compare up to ${MAX_COMPARISON_PLANS} plans at once`);
-        return;
-      }
-      setCompareList([...compareList, planId]);
-    }
-  }
-
   const handleSpeedRecommendation = (recommended: number) => {
     setSelectedSpeeds([String(recommended)]);
   };
-
-  function getComparePlans(): Plan[] {
-    return plans.filter((p: Plan) => compareList.includes(p.id));
-  }
-
-  function getProviderTrustBadges(plan: Plan): Array<{icon: string, label: string, color: string}> {
-    const badges = [];
-    
-    if (plan.provider_ipv6_support === 1) {
-      badges.push({ icon: '🌐', label: 'IPv6 Support', color: '#10b981' });
-    }
-    
-    if (plan.provider_cgnat === 0 || plan.provider_cgnat_opt_out === 1) {
-      badges.push({ icon: '🔓', label: 'No CGNAT', color: '#3b82f6' });
-    }
-    
-    if (plan.provider_australian_support === 1) {
-      badges.push({ icon: '🇦🇺', label: 'AU Support', color: '#f59e0b' });
-    }
-    
-    if (plan.provider_static_ip_available === 1) {
-      badges.push({ icon: '📍', label: 'Static IP', color: '#8b5cf6' });
-    }
-    
-    return badges;
-  }
 
   // Calculate best value badges for plans
   function calculateBestValueBadges(plans: Plan[]) {
@@ -627,31 +688,6 @@ export default function Compare() {
       active = false;
     };
   }, []);
-
-  // Speed tier color function
-  const getSpeedTierColor = (tier: number | null): string => {
-    if (!tier) return '#6b7280';
-    if (tier <= 12) return '#94a3b8'; // Gray for basic
-    if (tier <= 25) return '#22c55e'; // Green for standard
-    if (tier <= 50) return '#3b82f6'; // Blue for standard plus
-    if (tier <= 100) return '#8b5cf6'; // Purple for fast
-    if (tier <= 250) return '#f59e0b'; // Amber for superfast
-    if (tier <= 500) return '#ef4444'; // Red for ultrafast
-    if (tier <= 1000) return '#ec4899'; // Pink for home ultrafast
-    return '#06b6d4'; // Cyan for 2 gigabit
-  };
-
-  const getSpeedTierLabel = (tier: number | null): string => {
-    if (!tier) return '—';
-    if (tier <= 12) return 'Basic';
-    if (tier <= 25) return 'Standard';
-    if (tier <= 50) return 'Standard Plus';
-    if (tier <= 100) return 'Fast';
-    if (tier <= 250) return 'Superfast';
-    if (tier <= 500) return 'Ultrafast';
-    if (tier <= 1000) return 'Home Ultrafast';
-    return '2 Gigabit';
-  };
 
   // Calculate best value plans - considers price AND quality factors
   const bestValuePlanIds = React.useMemo(() => {
@@ -981,7 +1017,7 @@ export default function Compare() {
           }
         }
         if (modemCostFilter) {
-          if (modemCostFilter === '0' && (p.modem_cost_cents === null || p.modem_cost_cents > 0)) {
+          if (modemCostFilter === '0' && (p.modem_cost_cents == null || p.modem_cost_cents > 0)) {
             return false;
           } else if (modemCostFilter === 'paid' && (p.modem_cost_cents === null || p.modem_cost_cents === 0)) {
             return false;
@@ -1012,7 +1048,6 @@ export default function Compare() {
           darkMode={darkMode}
           isFavorite={favorites.includes(p.id)}
           onToggleFavorite={toggleFavorite}
-          onCompare={toggleCompare}
           onPriceHistory={(planId: number) => {
             const plan = plans.find((pl: Plan) => pl.id === planId);
             if (plan) fetchPriceHistory(plan);
@@ -1029,63 +1064,24 @@ export default function Compare() {
 
   return (
     <div>
-      {/* Modern Hero Section */}
-      <section className="hero-section">
-        <h1>🚀 Find Your Perfect NBN Plan</h1>
-        <p>Compare 200+ plans from 30+ providers with AI-powered recommendations and advanced filtering</p>
-      </section>
+      <CompareHero
+        heroStats={heroStats}
+        activeHeroNotes={activeHeroNotes}
+        heroPresets={heroPresetOptions}
+        activePreset={activePreset}
+        onPresetSelect={handlePresetSelect}
+        onScrollToAddress={() => scrollToSection('address-check')}
+        onTuneFilters={() => {
+          setShowMobileFilters(true);
+          scrollToSection('filters-panel');
+        }}
+        onBrowsePlans={() => scrollToSection('plan-results')}
+      />
 
-      {/* Stats Grid */}
-      <div className="stats-grid">
-        <div className="stat-card">
-          <h3>{heroStats.plans}</h3>
-          <p>Active Plans</p>
-        </div>
-        <div className="stat-card">
-          <h3>{heroStats.providers}</h3>
-          <p>Providers</p>
-        </div>
-        <div className="stat-card">
-          <h3>${heroStats.cheapest}</h3>
-          <p>Cheapest Plan</p>
-        </div>
-        <div className="stat-card">
-          <h3>{heroStats.topSpeed}Mbps</h3>
-          <p>Fastest Speed</p>
-        </div>
-      </div>
-
-      {/* Hero Presets */}
-      <div style={{ marginBottom: '24px', display: 'flex', gap: '12px', flexWrap: 'wrap', justifyContent: 'center' }}>
-        {heroPresets.map((preset) => (
-          <button
-            key={preset.name}
-            onClick={() => applyPreset(preset)}
-            className={activePreset === preset.name ? 'btn-success' : 'btn-secondary'}
-            style={{
-              padding: '12px 20px',
-              borderRadius: '12px',
-              fontWeight: '600',
-              cursor: 'pointer',
-              transition: 'all 0.3s ease',
-              border: 'none',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              gap: '4px',
-              minWidth: '120px'
-            }}
-          >
-            <span style={{ fontSize: '1.1em' }}>{preset.name}</span>
-            <span style={{ fontSize: '0.8em', opacity: 0.8 }}>{preset.description}</span>
-          </button>
-        ))}
-      </div>
-
-      <section className="hero">
+      <section className="hero" id="address-check">
         <h2>🏠 Find NBN plans for your home</h2>
         <p>Enter your address to check NBN availability and compare plans from 30+ Australian providers.</p>
-        <form onSubmit={onCheckAddress} className="search" style={{ position: 'relative' }}>
+        <form onSubmit={onCheckAddress} className="search search--address">
           <input 
             placeholder="Enter your address or suburb (e.g., '123 Main St, Brisbane QLD')" 
             value={address} 
@@ -1119,96 +1115,17 @@ export default function Compare() {
           <button type="submit">🔍 Check Address</button>
           
           {showSuggestions && addressSuggestions.length > 0 && (
-            <div 
-              id="address-suggestions"
-              role="listbox"
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                backgroundColor: 'white',
-                border: '1px solid #ddd',
-                borderRadius: '8px',
-                marginTop: '4px',
-                maxHeight: '200px',
-                overflowY: 'auto',
-                boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
-                zIndex: 1000
-              }}>
-              {addressSuggestions.map((addr: AddressResult, index: number) => (
-                <div
-                  key={addr.id}
-                  onClick={() => onSelectAddress(addr)}
-                  onMouseEnter={() => setHighlightedIndex(index)}
-                  role="option"
-                  aria-selected={highlightedIndex === index}
-                  style={{
-                    padding: '12px 16px',
-                    cursor: 'pointer',
-                    borderBottom: '1px solid #eee',
-                    transition: 'background 0.2s',
-                    backgroundColor: highlightedIndex === index ? '#f5f5f5' : 'white'
-                  }}
-                >
-                  📍 {addr.formattedAddress}
-                </div>
-              ))}
-            </div>
+            <AddressSuggestionsList
+              suggestions={addressSuggestions}
+              highlightedIndex={highlightedIndex}
+              onSelectAddress={onSelectAddress}
+              onHighlightIndex={setHighlightedIndex}
+            />
           )}
         </form>
         {message && <p className={message.includes('failed') || message.includes('Please') || message.includes('❌') ? 'error' : 'muted'}>{message}</p>}
         
-        {qualification && (
-          <div style={{ 
-            marginTop: '1rem', 
-            padding: '1.5rem', 
-            backgroundColor: 'rgba(255,255,255,0.1)', 
-            borderRadius: '8px',
-            border: '1px solid rgba(255,255,255,0.2)',
-            backdropFilter: 'blur(10px)'
-          }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div>
-                <div style={{ fontSize: '0.9em', opacity: '0.8', marginBottom: '4px' }}>Technology Type</div>
-                <div style={{ fontSize: '1.3em', fontWeight: '600' }}>
-                  {qualification.techType === 'FTTP' && '🚀 FTTP'}
-                  {qualification.techType === 'FTTC' && '📶 FTTC'}
-                  {qualification.techType === 'FTTN' && '📡 FTTN'}
-                  {qualification.techType === 'HFC' && '📺 HFC'}
-                  {qualification.techType === 'Fixed Wireless' && '📡 Fixed Wireless'}
-                  {qualification.techType === 'Satellite' && '🛰️ Satellite'}
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: '0.9em', opacity: '0.8', marginBottom: '4px' }}>Max Speed Available</div>
-                <div style={{ fontSize: '1.3em', fontWeight: '600' }}>
-                  {qualification.maxSpeed}Mbps
-                </div>
-              </div>
-            </div>
-            
-            {/* Technology-specific recommendations */}
-            {qualification.techType === 'FTTP' && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(74, 222, 128, 0.1)', borderRadius: '6px', border: '1px solid #4ade80' }}>
-                <div style={{ fontSize: '0.9em', color: '#4ade80', marginBottom: '4px' }}>💡 FTTP (Fiber to the Premises)</div>
-                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Your premises can achieve speeds up to 2 Gigabit. You may need a free NBN NTD upgrade to reach gigabit speeds.</div>
-              </div>
-            )}
-            {qualification.techType === 'Fixed Wireless' && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(252, 165, 11, 0.1)', borderRadius: '6px', border: '1px solid #fca50b' }}>
-                <div style={{ fontSize: '0.9em', color: '#fca50b', marginBottom: '4px' }}>📡 Fixed Wireless Service</div>
-                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Plans are optimized for your location. Check Fixed Wireless and satellite filters for all available options.</div>
-              </div>
-            )}
-            {qualification.techType === 'Satellite' && (
-              <div style={{ marginTop: '1rem', padding: '1rem', backgroundColor: 'rgba(99, 102, 241, 0.1)', borderRadius: '6px', border: '1px solid #6366f1' }}>
-                <div style={{ fontSize: '0.9em', color: '#6366f1', marginBottom: '4px' }}>🛰️ Satellite Service</div>
-                <div style={{ fontSize: '0.85em', opacity: '0.9' }}>Your area is serviced by satellite NBN. Latency is higher but speeds are available to remote areas.</div>
-              </div>
-            )}
-          </div>
-        )}
+        {qualification && <QualificationPanel qualification={qualification} />}
       </section>
 
       {/* Tools Row - Speed Calculator and Bill Comparison */}
@@ -1549,15 +1466,18 @@ export default function Compare() {
         <button
           onClick={() => setShowMobileFilters(!showMobileFilters)}
           className="mobile-filters-toggle"
+          aria-controls="filters-panel"
+          aria-expanded={showMobileFilters}
+          aria-label={showMobileFilters ? 'Hide filters' : 'Show filters'}
         >
           {showMobileFilters ? '▼ Hide Filters' : '▶ Show Filters'}
         </button>
       </div>
 
-      <section className={`filters ${showMobileFilters ? 'visible' : 'hidden'}`}>
-        <label style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <section className={`filters ${showMobileFilters ? 'visible' : 'hidden'}`} id="filters-panel">
+        <label className="filters-group">
           <strong>Speed tier:</strong>
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'wrap' }}>
+          <div className="speed-chip-group">
             {speedChips.map(option => {
               const isSelected = option === 'all' ? selectedSpeeds.includes('all') : selectedSpeeds.includes(option);
               return (
@@ -1565,27 +1485,14 @@ export default function Compare() {
                   key={option}
                   type="button"
                   onClick={() => toggleSpeedTier(option)}
-                  style={{
-                    padding: '4px 10px',
-                    borderRadius: '999px',
-                    border: `1px solid ${isSelected ? 'transparent' : (darkMode ? '#4a5568' : '#cbd5e0')}`,
-                    background: isSelected
-                      ? 'linear-gradient(135deg, #667eea 0%, #8b5cf6 100%)'
-                      : 'transparent',
-                    color: isSelected ? 'white' : (darkMode ? '#e2e8f0' : '#1f2937'),
-                    cursor: 'pointer',
-                    fontSize: '0.80em',
-                    fontWeight: 600,
-                    transition: 'all 0.2s ease',
-                    boxShadow: isSelected ? '0 8px 20px rgba(66, 165, 245, 0.2)' : 'none'
-                  }}
+                  className={`speed-chip ${isSelected ? 'speed-chip--selected' : ''} ${darkMode ? 'speed-chip--dark' : ''}`}
                 >
                   {formatSpeedLabel(option)}
                 </button>
               );
             })}
           </div>
-          <small style={{ color: darkMode ? '#cbd5e0' : '#475569', fontSize: '0.80em' }}>
+          <small className={`filters-hint ${darkMode ? 'filters-hint--dark' : ''}`}>
             {selectedSpeeds.includes('all')
               ? 'Showing plans across every tier'
               : `Showing ${selectedSpeeds.map((value: string) => formatSpeedLabel(value)).join(', ')}`}
@@ -1649,57 +1556,46 @@ export default function Compare() {
             placeholder="Filter by ISP..."
             value={providerFilter}
             onChange={(e) => setProviderFilter(e.target.value)}
-            style={{
-              padding: '14px 18px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '10px',
-              fontSize: '15px',
-              width: '180px'
-            }}
+            className="filter-text-input filter-text-input--compact"
           />
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={ipv6Filter}
             onChange={(e) => setIpv6Filter(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <span>IPv6 Support</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={noCgnatFilter}
             onChange={(e) => setNoCgnatFilter(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <span>No CGNAT</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={auSupportFilter}
             onChange={(e) => setAuSupportFilter(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <span>AU Support</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={staticIpFilter}
             onChange={(e) => setStaticIpFilter(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <span>Static IP Available</span>
         </label>
-        <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+        <label className="filter-checkbox">
           <input
             type="checkbox"
             checked={exclude6MonthFilter}
             onChange={(e) => setExclude6MonthFilter(e.target.checked)}
-            style={{ width: '18px', height: '18px', cursor: 'pointer' }}
           />
           <span>Exclude 6-Month Deals</span>
         </label>
@@ -1712,25 +1608,18 @@ export default function Compare() {
             <option value="speed">⚡ Speed Tier</option>
           </select>
         </label>
-        <label style={{ flex: 1, minWidth: '200px' }}>
+        <label className="filter-search-group">
           <strong>Search:</strong>
           <input
             type="text"
             placeholder="Search provider or plan..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '14px 18px',
-              border: '2px solid #e0e0e0',
-              borderRadius: '10px',
-              fontSize: '15px',
-              marginTop: '4px'
-            }}
+            className="filter-text-input"
           />
         </label>
-        <button onClick={() => fetchPlans()}>🔄 Refresh</button>
-        <button onClick={handleThemeToggle} style={{ background: darkMode ? '#FDB813' : '#2C3E50' }}>
+        <button onClick={() => refetchPlans()}>🔄 Refresh</button>
+        <button onClick={handleThemeToggle} className="filter-theme-toggle">
           {darkMode ? '☀️' : '🌙'} {darkMode ? 'Light' : 'Dark'}
         </button>
         {favorites.length > 0 && (
@@ -1858,7 +1747,7 @@ export default function Compare() {
             <div className="hero-stat-card">
               <span className="hero-stat-value">{heroStats.plans}</span>
               <span className="hero-stat-label">Plans covered</span>
-              <span className="hero-stat-note">all tiers refreshed daily</span>
+              <span className="hero-stat-note">refreshed throughout the day</span>
             </div>
             <div className="hero-stat-card">
               <span className="hero-stat-value">{heroStats.providers}</span>
@@ -1897,7 +1786,7 @@ export default function Compare() {
         </>
       )}
 
-      <section className="plan-list">
+      <section className="plan-list" id="plan-results">
         {/* Provider Comparison Matrix */}
         <div style={{ marginBottom: '24px' }}>
           <Suspense fallback={<div style={{ padding: '12px' }}>Loading comparison matrix...</div>}>
@@ -2058,30 +1947,22 @@ export default function Compare() {
             </div>
           
           <div className="table-wrapper">
-                    <table style={{
-                      borderCollapse: 'separate',
-                      borderSpacing: '0 12px',
-                      width: '100%'
-                    }}>
-                      <thead>
-                        <tr style={{
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: 'white',
-                          boxShadow: '0 4px 12px rgba(102, 126, 234, 0.3)'
-                        }}>
-                          <th style={{ padding: '16px 12px', borderRadius: '12px 0 0 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Logo</th>
-                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Provider</th>
-                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Plan Details</th>
-                          <th style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Price</th>
-                          <th className="hide-mobile" style={{ padding: '16px 12px', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Speed</th>
-                          <th style={{ padding: '16px 12px', borderRadius: '0 12px 12px 0', fontWeight: '600', fontSize: '0.9em', letterSpacing: '0.5px' }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...plans]
-                          .filter(p => {
-                            if (!matchesSelectedSpeeds(p)) return false;
-                            // Technology type filter based on viewMode (skip for business - handled by API)
+            <table className="plan-table">
+              <thead>
+                <tr>
+                  <th>Logo</th>
+                  <th>Provider</th>
+                  <th>Plan Details</th>
+                  <th>Price</th>
+                  <th className="hide-mobile">Speed</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[...plans]
+                  .filter(p => {
+                    if (!matchesSelectedSpeeds(p)) return false;
+                    // Technology type filter based on viewMode (skip for business - handled by API)
                     if (viewMode === 'business') {
                       // Business plans filtered by API, no frontend technology_type filter needed
                     } else if (viewMode === 'fixed-wireless' && p.technology_type !== 'fixed-wireless') {
@@ -2164,531 +2045,32 @@ export default function Compare() {
                     return 0;
                   })
                   .map((p: Plan) => (
-                    <tr key={p.id} className={favorites.includes(p.id) ? 'favorite-row' : ''} style={{
-                      background: darkMode ? '#2d3748' : 'white',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.08)',
-                      borderRadius: '12px',
-                      transition: 'all 0.2s ease',
-                      cursor: 'pointer'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.transform = 'translateY(-2px)';
-                      e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.transform = 'translateY(0)';
-                      e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
-                    }}>
-                      <td style={{ padding: '20px 16px', borderRadius: '12px 0 0 12px' }}>
-                        <ProviderLogo providerName={p.provider_name} faviconUrl={p.favicon_url} />
-                      </td>
-                      <td className="provider-name" style={{ padding: '20px 16px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <a 
-                              href={`/provider/${(p.provider_name || '').toLowerCase().replace(/\s+/g, '-')}`}
-                              style={{
-                                color: 'inherit',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px'
-                              }}
-                              onMouseEnter={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = '#667eea'; }}
-                              onMouseLeave={(e: MouseEvent<HTMLAnchorElement>) => { (e.target as HTMLAnchorElement).style.color = 'inherit'; }}
-                            >
-                              {p.provider_name}
-                            </a>
-                            <ProviderTooltip 
-                              provider={{
-                                name: p.provider_name,
-                                description: p.provider_description,
-                                ipv6_support: p.provider_ipv6_support ?? 0,
-                                cgnat: p.provider_cgnat ?? 0,
-                                cgnat_opt_out: p.provider_cgnat_opt_out ?? 0,
-                                static_ip_available: p.provider_static_ip_available ?? 0,
-                                australian_support: p.provider_australian_support ?? 0,
-                                parent_company: p.provider_parent_company,
-                                routing_info: p.provider_routing_info,
-                                support_hours: p.provider_support_hours
-                              }}
-                              darkMode={darkMode}
-                            />
-                          </div>
-                          {getProviderTrustBadges(p).length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                              {getProviderTrustBadges(p).map((badge, idx) => (
-                                <span
-                                  key={idx}
-                                  title={badge.label}
-                                  style={{
-                                    fontSize: '0.7em',
-                                    padding: '2px 6px',
-                                    borderRadius: '4px',
-                                    background: `${badge.color}15`,
-                                    color: badge.color,
-                                    border: `1px solid ${badge.color}40`,
-                                    fontWeight: '600',
-                                    display: 'inline-flex',
-                                    alignItems: 'center',
-                                    gap: '2px',
-                                    whiteSpace: 'nowrap'
-                                  }}
-                                >
-                                  {badge.icon}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </td>
-                      <td style={{ padding: '20px 16px', maxWidth: '280px' }}>
-                        <div style={{ fontWeight: '600', marginBottom: '4px', color: darkMode ? '#e2e8f0' : '#1a202c' }}>
-                          {stripHtml(p.plan_name)}
-                        </div>
-                        {bestValuePlanIds.has(p.id) && (
-                          <span 
-                            style={{ 
-                              marginLeft: '0',
-                              marginTop: '6px',
-                              display: 'inline-block',
-                              fontSize: '0.75em', 
-                              background: 'linear-gradient(135deg, #FFD700 0%, #FFA500 100%)', 
-                              color: '#000', 
-                              padding: '5px 14px', 
-                              borderRadius: '10px', 
-                              fontWeight: '800', 
-                              boxShadow: '0 3px 10px rgba(255, 215, 0, 0.4)',
-                              cursor: 'help',
-                              letterSpacing: '0.5px',
-                              border: '2px solid #FFD700',
-                              textTransform: 'uppercase'
-                            }}
-                            title={`Best Value = Price + Quality Score\n\nThis plan offers the optimal balance of:\n• Competitive pricing\n${p.provider_australian_support && p.provider_australian_support >= 1 ? '• Australian support team\n' : ''}${p.provider_cgnat === 0 || (p.provider_cgnat_opt_out && p.provider_cgnat_opt_out >= 1) ? '• No CGNAT (or opt-out available)\n' : ''}${p.provider_ipv6_support && p.provider_ipv6_support >= 1 ? '• IPv6 support\n' : ''}${p.provider_static_ip_available && p.provider_static_ip_available >= 1 ? '• Static IP available\n' : ''}${p.provider_routing_info && (p.provider_routing_info || '').toLowerCase().includes('direct') ? '• Direct routing/good network POIs\n' : ''}${p.modem_included === 1 ? '• Modem included\n' : ''}\nNot just the cheapest, but the best overall value for this speed tier.`}
-                          >
-                            ⭐ Best Value
-                          </span>
-                        )}
-                        <div style={{ display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' }}>
-                        {p.promo_code && (
-                          <span style={{ 
-                            fontSize: '0.75em', 
-                            background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                            color: 'white', 
-                            padding: '4px 12px', 
-                            borderRadius: '8px', 
-                            cursor: 'help', 
-                            fontWeight: '700',
-                            boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
-                          }} title={`Use code: ${p.promo_code}${p.promo_description ? ` - ${p.promo_description}` : ''}`}>
-                            🎟️ {p.promo_code}
-                          </span>
-                        )}
-                        {p.modem_included === 1 && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #3b82f6 0%, #2563eb 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(59, 130, 246, 0.3)'
-                        }}>📡 Modem</span>}
-                        {p.contract_type && p.contract_type !== 'month-to-month' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
-                        }}>🏷️ {p.contract_type}</span>}
-                        {p.technology_type === 'fixed-wireless' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #06b6d4 0%, #0891b2 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(6, 182, 212, 0.3)'
-                        }}>📡 Fixed Wireless</span>}
-                        {p.technology_type === 'satellite' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(139, 92, 246, 0.3)'
-                        }}>🛰️ Satellite</span>}
-                        {p.technology_type === '5g-home' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #ec4899 0%, #db2777 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(236, 72, 153, 0.3)'
-                        }}>📶 5G Home</span>}
-                        {p.technology_type === 'fttp' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(16, 185, 129, 0.3)'
-                        }}>🚀 FTTP</span>}
-                        {p.technology_type === 'fttc' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(245, 158, 11, 0.3)'
-                        }}>🏢 FTTC</span>}
-                        {p.technology_type === 'fttn' && <span style={{ 
-                          fontSize: '0.75em', 
-                          background: 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)', 
-                          color: 'white', 
-                          padding: '4px 12px', 
-                          borderRadius: '8px', 
-                          fontWeight: '700',
-                          boxShadow: '0 2px 6px rgba(107, 114, 128, 0.3)'
-                        }}>🏠 FTTN</span>}
-                        </div>
-                      </td>
-                      <td style={{ padding: '20px 16px' }}>
-                        {exclude6MonthFilter && p.intro_price_cents && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185)) ? (
-                          // Show ongoing price when 6-month filter is active, with discount badge
-                          <div style={{ lineHeight: '1.6' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                              <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c', WebkitTextFillColor: darkMode ? '#e2e8f0' : '#1a202c', background: 'none' }}>
-                                ${(p.ongoing_price_cents!/100).toFixed(0)}
-                              </span>
-                              <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b' }}>/mo</span>
-                              {p.price_trend && (
-                                <span 
-                                  style={{ 
-                                    color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                    fontSize: '1em',
-                                    fontWeight: 'bold'
-                                  }} 
-                                  title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
-                                >
-                                  {p.price_trend === 'down' ? '↓' : '↑'}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ 
-                              fontSize: '0.75em', 
-                              color: '#10b981', 
-                              marginTop: '4px',
-                              background: 'rgba(16, 185, 129, 0.1)',
-                              padding: '2px 8px',
-                              borderRadius: '4px',
-                              display: 'inline-block',
-                              border: '1px solid rgba(16, 185, 129, 0.3)'
-                            }}>
-                              💰 First {Math.round(p.intro_duration_days!/30)}mo: ${(p.intro_price_cents/100).toFixed(0)}
-                            </div>
-                          </div>
-                        ) : p.intro_price_cents ? (
-                          <div style={{ lineHeight: '1.6' }}>
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                              <span style={{ fontWeight: '700', color: '#f59e0b', fontSize: '1.3em', WebkitTextFillColor: '#f59e0b', background: 'none' }}>
-                                ${(p.intro_price_cents/100).toFixed(0)}
-                              </span>
-                              <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b', fontWeight: '500' }}>
-                                {p.intro_duration_days ? `${Math.round(p.intro_duration_days/30)}mo` : 'intro'}
-                              </span>
-                              {p.price_trend && (
-                                <span 
-                                  style={{ 
-                                    color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                    fontSize: '1em',
-                                    fontWeight: 'bold'
-                                  }} 
-                                  title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
-                                >
-                                  {p.price_trend === 'down' ? '↓' : '↑'}
-                                </span>
-                              )}
-                            </div>
-                            <div style={{ fontSize: '0.8em', color: '#10b981', marginTop: '2px', WebkitTextFillColor: '#10b981', background: 'none' }}>
-                              then ${(p.ongoing_price_cents!/100).toFixed(0)}/mo
-                            </div>
-                          </div>
-                        ) : p.ongoing_price_cents ? (
-                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
-                            <span style={{ fontWeight: '700', fontSize: '1.3em', color: darkMode ? '#e2e8f0' : '#1a202c', WebkitTextFillColor: darkMode ? '#e2e8f0' : '#1a202c', background: 'none' }}>
-                              ${(p.ongoing_price_cents/100).toFixed(0)}
-                            </span>
-                            <span style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b' }}>/mo</span>
-                            {p.price_trend && (
-                              <span 
-                                style={{ 
-                                  color: p.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                  fontSize: '1em',
-                                  fontWeight: 'bold'
-                                }} 
-                                title={p.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
-                              >
-                                {p.price_trend === 'down' ? '↓' : '↑'}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span style={{ fontSize: '0.85em', color: darkMode ? '#94a3b8' : '#64748b' }}>Contact provider</span>
-                        )}
-                      </td>
-                      <td className="hide-mobile" style={{ padding: '20px 16px', minWidth: '140px' }}>
-                        <div style={{ 
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '8px',
-                          padding: '6px 12px',
-                          borderRadius: '8px',
-                          background: `${getSpeedTierColor(p.speed_tier)}15`,
-                          border: `1px solid ${getSpeedTierColor(p.speed_tier)}40`
-                        }}>
-                          <span style={{ 
-                            fontWeight: '700', 
-                            color: getSpeedTierColor(p.speed_tier), 
-                            fontSize: '1.1em' 
-                          }}>
-                            {p.speed_tier ?? '—'}
-                          </span>
-                          <span style={{ 
-                            fontSize: '0.75em', 
-                            color: darkMode ? '#94a3b8' : '#64748b',
-                            fontWeight: '500'
-                          }}>
-                            Mbps
-                          </span>
-                        </div>
-                        <div style={{ fontSize: '0.7em', color: getSpeedTierColor(p.speed_tier), marginTop: '4px', fontWeight: '500' }}>
-                          {getSpeedTierLabel(p.speed_tier)}
-                        </div>
-                        {p.upload_speed_mbps && (
-                          <div style={{ fontSize: '0.75em', color: darkMode ? '#94a3b8' : '#64748b', marginTop: '4px' }}>
-                            ↑ {p.upload_speed_mbps} Mbps upload
-                          </div>
-                        )}
-                      </td>
-                      <td style={{ padding: '20px 16px', borderRadius: '0 12px 12px 0' }}>
-                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
-                          <button
-                            onClick={() => toggleFavorite(p.id)}
-                            style={{
-                              background: favorites.includes(p.id) 
-                                ? 'linear-gradient(135deg, #E91E63 0%, #C2185B 100%)' 
-                                : (darkMode ? '#374151' : '#e5e7eb'),
-                              color: favorites.includes(p.id) ? 'white' : (darkMode ? '#9ca3af' : '#6b7280'),
-                              border: 'none',
-                              padding: '8px 14px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '0.9em',
-                              fontWeight: '600',
-                              boxShadow: favorites.includes(p.id) ? '0 2px 8px rgba(233, 30, 99, 0.3)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          >
-                            {favorites.includes(p.id) ? '⭐' : '☆'}
-                          </button>
-                          <button
-                            onClick={() => fetchPriceHistory(p)}
-                            style={{
-                              background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                              color: 'white',
-                              border: 'none',
-                              padding: '8px 14px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '0.9em',
-                              fontWeight: '600',
-                              boxShadow: '0 2px 8px rgba(16, 185, 129, 0.3)',
-                              transition: 'all 0.2s ease'
-                            }}
-                            title="View price history"
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          >
-                            📊
-                          </button>
-                          <button
-                            onClick={() => toggleCompare(p.id)}
-                            style={{
-                              background: compareList.includes(p.id) 
-                                ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
-                                : (darkMode ? '#374151' : '#f3f4f6'),
-                              color: compareList.includes(p.id) ? 'white' : (darkMode ? '#9ca3af' : '#6b7280'),
-                              border: 'none',
-                              padding: '8px 14px',
-                              borderRadius: '8px',
-                              cursor: 'pointer',
-                              fontSize: '0.9em',
-                              fontWeight: '600',
-                              boxShadow: compareList.includes(p.id) ? '0 2px 8px rgba(102, 126, 234, 0.3)' : 'none',
-                              transition: 'all 0.2s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'scale(1.05)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'scale(1)';
-                            }}
-                          >
-                            {compareList.includes(p.id) ? '✓ Compare' : 'Compare'}
-                          </button>
-                          {p.source_url ? (
-                            <a 
-                              href={p.source_url} 
-                              target="_blank" 
-                              rel="noopener noreferrer" 
-                              style={{
-                                color: '#667eea', 
-                                textDecoration: 'none', 
-                                fontWeight: 700, 
-                                fontSize: '0.9em',
-                                padding: '8px 16px',
-                                background: 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)',
-                                borderRadius: '8px',
-                                border: '2px solid #667eea',
-                                transition: 'all 0.2s ease',
-                                display: 'inline-block'
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)';
-                                e.currentTarget.style.color = 'white';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.background = 'linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)';
-                                e.currentTarget.style.color = '#667eea';
-                              }}
-                            >
-                              Details →
-                            </a>
-                          ) : (
-                            <span style={{color: '#999'}}>—</span>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                    <PlanTableRow
+                      key={p.id}
+                      plan={p}
+                      darkMode={darkMode}
+                      isFavorite={favorites.includes(p.id)}
+                      isBestValue={bestValuePlanIds.has(p.id)}
+                      showOngoingInsteadOfIntro={Boolean(exclude6MonthFilter && p.intro_price_cents && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185)))}
+                      renderLogo={(plan) => <ProviderLogo providerName={plan.provider_name} faviconUrl={plan.favicon_url} />}
+                      onToggleFavorite={toggleFavorite}
+                      onViewPriceHistory={fetchPriceHistory}
+                    />
                   ))}
               </tbody>
             </table>
 
             {/* Pagination Controls */}
             {!loading && plans.length > 0 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '12px',
-                marginTop: '24px',
-                padding: '16px',
-                background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.05)',
-                borderRadius: '8px',
-              }}>
-                <button
-                  onClick={() => setCurrentPage(Math.max(0, currentPage - 1))}
-                  disabled={currentPage === 0 || loading}
-                  style={{
-                    padding: '8px 16px',
-                    background: currentPage === 0 ? darkMode ? '#4a5568' : '#cbd5e1' : '#667eea',
-                    color: currentPage === 0 ? darkMode ? '#94a3b8' : '#64748b' : 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: currentPage === 0 ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease',
-                    opacity: currentPage === 0 ? 0.5 : 1,
-                  }}
-                  onHover={(e) => {
-                    if (currentPage > 0) {
-                      e.currentTarget.style.background = '#5568d3';
-                    }
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentPage > 0) {
-                      e.currentTarget.style.background = '#5568d3';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentPage > 0) {
-                      e.currentTarget.style.background = '#667eea';
-                    }
-                  }}
-                >
-                  ← Previous
-                </button>
-
-                <div style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  color: darkMode ? '#e2e8f0' : '#475569',
-                  fontSize: '14px',
-                  fontWeight: '500',
-                }}>
-                  <span>Page <strong>{currentPage + 1}</strong></span>
-                  {pagedData?.pagination && (
-                    <span>of <strong>{pagedData.pagination.totalPages || 1}</strong></span>
-                  )}
-                  {pagedData?.pagination?.total && (
-                    <span style={{ color: darkMode ? '#94a3b8' : '#64748b', marginLeft: '8px' }}>
-                      ({pagedData.pagination.total} total {pagedData.pagination.total === 1 ? 'plan' : 'plans'})
-                    </span>
-                  )}
-                </div>
-
-                <button
-                  onClick={() => setCurrentPage(currentPage + 1)}
-                  disabled={!pagedData?.pagination?.hasNextPage || loading}
-                  style={{
-                    padding: '8px 16px',
-                    background: !pagedData?.pagination?.hasNextPage ? darkMode ? '#4a5568' : '#cbd5e1' : '#667eea',
-                    color: !pagedData?.pagination?.hasNextPage ? darkMode ? '#94a3b8' : '#64748b' : 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: !pagedData?.pagination?.hasNextPage ? 'not-allowed' : 'pointer',
-                    fontSize: '14px',
-                    fontWeight: '600',
-                    transition: 'all 0.2s ease',
-                    opacity: !pagedData?.pagination?.hasNextPage ? 0.5 : 1,
-                  }}
-                  onHover={(e) => {
-                    if (pagedData?.pagination?.hasNextPage) {
-                      e.currentTarget.style.background = '#5568d3';
-                    }
-                  }}
-                  onMouseEnter={(e) => {
-                    if (pagedData?.pagination?.hasNextPage) {
-                      e.currentTarget.style.background = '#5568d3';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (pagedData?.pagination?.hasNextPage) {
-                      e.currentTarget.style.background = '#667eea';
-                    }
-                  }}
-                >
-                  Next →
-                </button>
-              </div>
+              <PaginationControls
+                currentPage={currentPage}
+                loading={loading}
+                totalPages={pagedData?.pagination?.totalPages}
+                totalCount={pagedData?.pagination?.total}
+                hasNextPage={pagedData?.pagination?.hasNextPage}
+                onPrevious={() => setCurrentPage(Math.max(0, currentPage - 1))}
+                onNext={() => setCurrentPage(currentPage + 1)}
+              />
             )}
           </div>
 
@@ -2724,233 +2106,6 @@ export default function Compare() {
           </>
         )}
       </section>
-
-      {/* Floating Compare Button */}
-      {compareList.length > 0 && (
-        <div style={{
-          position: 'fixed',
-          bottom: '20px',
-          right: '20px',
-          zIndex: 1000
-        }}>
-          <button
-            onClick={() => setShowCompareModal(true)}
-            style={{
-              background: '#667eea',
-              color: 'white',
-              border: 'none',
-              padding: '16px 24px',
-              borderRadius: '50px',
-              cursor: 'pointer',
-              fontSize: '1em',
-              fontWeight: '700',
-              boxShadow: '0 4px 12px rgba(102, 126, 234, 0.4)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px'
-            }}
-          >
-            Compare ({compareList.length})
-          </button>
-        </div>
-      )}
-
-      {/* Comparison Modal */}
-      {showCompareModal && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(0, 0, 0, 0.7)',
-          zIndex: 2000,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px'
-        }}
-        onClick={() => setShowCompareModal(false)}
-        >
-          <div style={{
-            background: darkMode ? '#1a1a1a' : 'white',
-            borderRadius: '12px',
-            padding: window.innerWidth > 768 ? '24px' : '16px',
-            maxWidth: '1200px',
-            width: '100%',
-            maxHeight: '90vh',
-            overflow: 'auto',
-            position: 'relative'
-          }}
-          onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-              <h2 style={{ margin: 0, color: darkMode ? 'white' : '#333' }}>Compare Plans</h2>
-              <button
-                onClick={() => setShowCompareModal(false)}
-                style={{
-                  background: '#ff4444',
-                  color: 'white',
-                  border: 'none',
-                  padding: '8px 16px',
-                  borderRadius: '6px',
-                  cursor: 'pointer',
-                  fontWeight: '600'
-                }}
-              >
-                Close
-              </button>
-            </div>
-
-            <div style={{ 
-              display: 'grid', 
-              gridTemplateColumns: window.innerWidth > 768 ? `repeat(${getComparePlans().length}, 1fr)` : '1fr',
-              gap: '20px' 
-            }}>
-              {getComparePlans().map(plan => (
-                <div key={plan.id} style={{
-                  border: `2px solid ${darkMode ? '#333' : '#e0e0e0'}`,
-                  borderRadius: '12px',
-                  padding: '20px',
-                  background: darkMode ? '#2a2a2a' : '#f9f9f9'
-                }}>
-                  <h3 style={{ margin: '0 0 10px 0', color: '#667eea', fontSize: '1.1em' }}>{plan.provider_name}</h3>
-                  <p style={{ margin: '0 0 20px 0', fontSize: '0.95em', color: darkMode ? '#ccc' : '#666' }}>{stripHtml(plan.plan_name)}</p>
-
-                  <div style={{ marginBottom: '16px' }}>
-                    <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666', marginBottom: '4px' }}>Price</div>
-                    {plan.intro_price_cents ? (
-                      <div>
-                        <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#E91E63' }}>
-                          ${(plan.intro_price_cents/100).toFixed(2)}/mo
-                          {plan.price_trend && (
-                            <span 
-                              style={{ 
-                                marginLeft: '6px',
-                                color: plan.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                                fontSize: '0.8em'
-                              }} 
-                              title={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
-                            >
-                              {plan.price_trend === 'down' ? '↓' : '↑'}
-                            </span>
-                          )}
-                        </div>
-                        <div style={{ fontSize: '0.8em', color: darkMode ? '#999' : '#666' }}>
-                          for {Math.round(plan.intro_duration_days!/30)} months
-                        </div>
-                        <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666', textDecoration: 'line-through' }}>
-                          then ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
-                        </div>
-                      </div>
-                    ) : (
-                      <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: darkMode ? 'white' : '#333' }}>
-                        ${(plan.ongoing_price_cents!/100).toFixed(2)}/mo
-                        {plan.price_trend && (
-                          <span 
-                            style={{ 
-                              marginLeft: '6px',
-                              color: plan.price_trend === 'down' ? '#16a34a' : '#dc2626',
-                              fontSize: '0.8em'
-                            }} 
-                            title={plan.price_trend === 'down' ? 'Price decreased' : 'Price increased'}
-                          >
-                            {plan.price_trend === 'down' ? '↓' : '↑'}
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ borderTop: `1px solid ${darkMode ? '#444' : '#e0e0e0'}`, paddingTop: '16px' }}>
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Speed</div>
-                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
-                        NBN {plan.speed_tier} Mbps
-                        {plan.upload_speed_mbps && ` / ${plan.upload_speed_mbps}↑`}
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Contract</div>
-                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
-                        {plan.contract_type || 'Month-to-month'}
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Data</div>
-                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
-                        {plan.data_allowance || 'Unlimited'}
-                      </div>
-                    </div>
-
-                    <div style={{ marginBottom: '12px' }}>
-                      <div style={{ fontSize: '0.85em', color: darkMode ? '#999' : '#666' }}>Modem</div>
-                      <div style={{ fontWeight: '600', color: darkMode ? 'white' : '#333' }}>
-                        {plan.modem_included === 1 ? 'Included' : 'BYO'}
-                      </div>
-                    </div>
-
-                    {plan.technology_type === 'fixed-wireless' && (
-                      <div style={{ marginBottom: '12px' }}>
-                        <div style={{
-                          background: '#2196F3',
-                          color: 'white',
-                          padding: '4px 8px',
-                          borderRadius: '4px',
-                          fontSize: '0.8em',
-                          display: 'inline-block'
-                        }}>
-                          📡 Fixed Wireless
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div style={{ marginTop: '20px' }}>
-                    {plan.source_url && (
-                      <a
-                        href={plan.source_url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{
-                          display: 'block',
-                          background: '#667eea',
-                          color: 'white',
-                          textAlign: 'center',
-                          padding: '12px',
-                          borderRadius: '8px',
-                          textDecoration: 'none',
-                          fontWeight: '600',
-                          marginBottom: '8px'
-                        }}
-                      >
-                        View Plan Details →
-                      </a>
-                    )}
-                    <button
-                      onClick={() => toggleCompare(plan.id)}
-                      style={{
-                        width: '100%',
-                        background: darkMode ? '#333' : '#f0f0f0',
-                        color: darkMode ? 'white' : '#666',
-                        border: 'none',
-                        padding: '10px',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        fontWeight: '600'
-                      }}
-                    >
-                      Remove from comparison
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
 
       {showPriceHistory && selectedPlanForHistory && (
         <Suspense fallback={<div style={{ padding: '12px' }}>Loading price history...</div>}>

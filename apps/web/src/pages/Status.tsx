@@ -74,7 +74,9 @@ export default function Status() {
     return 'Just now';
   };
 
-  const healthPercentage = Math.round((status.providers.upToDate / status.providers.total) * 100);
+  const healthPercentage = status.providers.total > 0
+    ? Math.round((status.providers.upToDate / status.providers.total) * 100)
+    : 0;
   const getHealthColor = (pct: number) => {
     if (pct >= 80) return '#10b981';
     if (pct >= 50) return '#f59e0b';
@@ -178,7 +180,7 @@ export default function Status() {
             ))}
           </div>
           <div style={{ marginTop: '20px', padding: '12px', background: '#eff6ff', borderRadius: '8px', fontSize: '0.9rem', color: '#1e40af' }}>
-            💡 These providers will be prioritized in the next automatic scrape (daily at 3 AM AEDT)
+            💡 These providers will be prioritized in the next automatic refresh
           </div>
         </div>
       )}

@@ -7,7 +7,7 @@
  * Docs: https://developers.cloudflare.com/browser-rendering/
  */
 
-interface BrowserBinding {
+export interface BrowserBinding {
   launch(): Promise<Browser>;
 }
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { useComparison, Plan } from '../context/ComparisonContext';
+import { MAX_COMPARISON_PLANS } from '../constants/comparison';
 
 interface ComparisonBarProps {
   onOpenModal: () => void;
@@ -105,10 +106,10 @@ export const ComparisonBar: React.FC<ComparisonBarProps> = ({ onOpenModal, darkM
   };
 
   return (
-    <div style={barStyle}>
+    <div className="comparison-bar" style={barStyle}>
       <div style={plansContainerStyle}>
         <strong style={{ fontSize: '15px', whiteSpace: 'nowrap' }}>
-          🔍 Comparing {comparedPlans.length}/4:
+          🔍 Comparing {comparedPlans.length}/{MAX_COMPARISON_PLANS}:
         </strong>
         {comparedPlans.map((plan: Plan) => (
           <div key={plan.id} style={planChipStyle}>

@@ -1,5 +1,6 @@
 import { jsonResponse } from '../lib/cors';
 import { isAdminTokenValid } from '../lib/admin-auth';
+import type { D1Database } from '@cloudflare/workers-types';
 
 interface Feedback {
   plan_id: number;
@@ -9,22 +10,8 @@ interface Feedback {
   created_at?: string;
 }
 
-interface D1Database {
-  exec: (sql: string) => Promise<{ results: unknown[] }>;
-  prepare: (sql: string) => {
-    bind: (...args: unknown[]) => { 
-      run(): Promise<{ success: boolean; meta?: { last_row_id?: number } }>;
-      all(): Promise<{ results: unknown[] }>;
-      first(): Promise<unknown>;
-    };
-    run(): Promise<{ success: boolean; meta?: { last_row_id?: number } }>;
-    all(): Promise<{ results: unknown[] }>;
-    first(): Promise<unknown>;
-  };
-}
-
 interface WorkerEnv {
-  DB: D1Database;
+  D1: D1Database;
   ADMIN_TOKEN?: string;
 }
 
@@ -70,7 +57,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
     feedback.created_at = new Date().toISOString();
 
     try {
-      const db = env.DB;
+      const db = env.D1;
 
       // Insert feedback (table created by migration 0024_add_fresh_new_tables.sql)
       const result = await db.prepare(
@@ -99,7 +86,7 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
     }
 
     try {
-      const db = env.DB;
+      const db = env.D1;
       const feedback = await db.prepare(
         `SELECT pf.*, p.plan_name, pr.name as provider_name 
          FROM plan_feedback pf
@@ -115,6 +102,34 @@ export async function handleFeedback(request: Request, env: WorkerEnv): Promise<
       console.error('Feedback fetch error:', err);
       return jsonResponse({ error: 'Failed to fetch feedback' }, 500);
     }
+  }
+
+  if (request.method === 'PATCH') {
+    const token = request.headers.get('x-admin-token');
+    if (!(await isAdminTokenValid(token, env.ADMIN_TOKEN))) {
+      return jsonResponse({ error: 'Unauthorized' }, 401);
+    }
+
+    const id = Number(new URL(request.url).pathname.split('/').pop());
+    if (!Number.isInteger(id) || id <= 0) {
+      return jsonResponse({ error: 'Invalid feedback id' }, 400);
+    }
+
+    let body: { resolved?: number };
+    try {
+      body = await request.json() as { resolved?: number };
+    } catch {
+      return jsonResponse({ error: 'Invalid JSON body' }, 400);
+    }
+
+    if (body.resolved !== 0 && body.resolved !== 1) {
+      return jsonResponse({ error: 'resolved must be 0 or 1' }, 400);
+    }
+
+    await env.D1.prepare('UPDATE plan_feedback SET resolved = ? WHERE id = ?')
+      .bind(body.resolved, id)
+      .run();
+    return jsonResponse({ ok: true });
   }
 
   return jsonResponse({ error: 'Method not allowed' }, 405);

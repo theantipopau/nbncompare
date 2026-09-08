@@ -1,7 +1,8 @@
 import { fetchProvidersToUpdate } from "./providers-fetcher";
 import { recordRunStartEnd } from "../lib/db";
+import type { BrowserBinding } from "../lib/browser-rendering";
 
-export async function handleCron(env?: { AI?: unknown }) {
+export async function handleCron(env?: { AI?: unknown; BROWSER?: BrowserBinding; SCRAPER_API_KEY?: string }) {
   const runId = await recordRunStartEnd({ started: true });
   try {
     // Scrape up to 30 providers per run (most active providers)

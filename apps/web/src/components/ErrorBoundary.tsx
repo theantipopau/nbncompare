@@ -45,7 +45,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             An error occurred while loading this page. Please try refreshing.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={() => this.setState({ hasError: false, error: undefined })}
             aria-label="Refresh page to recover from error"
             style={{
               padding: '12px 24px',
@@ -57,7 +57,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
               fontWeight: '600'
             }}
           >
-            Refresh Page
+            Try Again
           </button>
           {(import.meta as { env?: { DEV?: boolean } }).env?.DEV && this.state.hasError && (
             <details style={{ marginTop: '24px', textAlign: 'left' }}>

@@ -60,7 +60,7 @@ export async function handleDataPopulation(_env?: { SCRAPER_API_KEY?: string }) 
     const stmt = db.prepare(
       "SELECT * FROM providers WHERE active = 1 AND metadata_verification_status != 'Verified' ORDER BY id ASC LIMIT ?"
     );
-    const providersRes = await stmt.all();
+    const providersRes = await stmt.bind(batchSize).all();
     const providers = getResults<ProviderRow>(providersRes);
     
     result.batchNumber = Math.ceil((result.totalProviders - result.verifiedOverall) / batchSize);

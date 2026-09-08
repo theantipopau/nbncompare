@@ -141,7 +141,7 @@ function AppShell({
          <Compare />}
         </main>
       </ErrorBoundary>
-      <footer>
+      <footer className="site-footer">
         <div className="footer-content">
           <div className="footer-section">
             <h4>NBN Compare</h4>
@@ -173,7 +173,7 @@ function AppShell({
           
           <div className="footer-section">
             <h4>Connect</h4>
-            <p style={{ marginBottom: '12px' }}>Made with 💜 by <a href="https://matthurley.dev" target="_blank" rel="noopener noreferrer">Matt Hurley</a></p>
+            <p className="footer-note">Made with 💜 by <a href="https://matthurley.dev" target="_blank" rel="noopener noreferrer">Matt Hurley</a></p>
             <div className="footer-social">
               <a href="https://github.com/theantipopau/nbncompare" target="_blank" rel="noopener noreferrer" title="GitHub">💻 GitHub</a>
               <a href="mailto:matt@matthurley.dev" title="Email">📧 Email</a>

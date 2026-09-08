@@ -121,7 +121,7 @@ export async function parse(html: string, url: string): Promise<PlanExtract[]> {
       planName: planName.slice(0, 80),
       speedTier,
       uploadSpeedMbps: uploadSpeed,
-      introPriceCents: introPriceCents || ongoingPriceCents,
+      introPriceCents,
       introDurationDays: introDurationDays,
       ongoingPriceCents: ongoingPriceCents || introPriceCents,
       minTermDays: null,

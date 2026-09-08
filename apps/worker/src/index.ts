@@ -2,11 +2,12 @@ import { Router } from "itty-router";
 import type { D1Database, ExecutionContext, KVNamespace } from "@cloudflare/workers-types";
 import { createRateLimiter } from "./lib/rate-limit";
 import { isAdminTokenValid } from "./lib/admin-auth";
+import type { BrowserBinding } from "./lib/browser-rendering";
 
 console.log('Worker module evaluation: index.ts loaded');
 
 let initError: Error | null = null;
-let router: ReturnType<typeof Router> | null = null;
+let router = Router();
 const publicRouteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
 const addressRouteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 20 });
 
@@ -107,7 +108,7 @@ try {
 
   router.post("/api/savings/calculate", async (request: Request, env: Env) => {
     const { calculateSavings } = await import("./handlers/savings-calculator");
-    return calculateSavings(request, env);
+    return calculateSavings(request, { DB: env.D1 });
   });
 
   router.post("/api/feedback", async (request: Request, env: Env) => {
@@ -118,6 +119,16 @@ try {
   router.get("/api/feedback", async (request: Request, env: Env) => {
     const { handleFeedback } = await import("./handlers/feedback");
     return handleFeedback(request, env);
+  });
+
+  router.patch("/api/feedback/:id", async (request: Request, env: Env) => {
+    const { handleFeedback } = await import("./handlers/feedback");
+    return handleFeedback(request, env);
+  });
+
+  router.get("/api/admin/scraper-runs", async (request: Request) => {
+    const { getScraperRuns } = await import("./handlers/admin-scraper-runs");
+    return getScraperRuns(request);
   });
 
   router.post("/internal/update-favicons", async () => {
@@ -242,6 +253,8 @@ interface Env {
   ADMIN_TOKEN: string;
   CACHE?: KVNamespace;
   AI?: unknown;
+  BROWSER?: BrowserBinding;
+  SCRAPER_API_KEY?: string;
   ENVIRONMENT?: string;
   DEBUG?: string;
 }
@@ -294,7 +307,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
     const msg = initError.stack || initError.message || String(initError);
     console.error('Initialization error during fetch:', msg);
     try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-    return new Response(JSON.stringify({ ok: false, initError: String(msg) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify(errorJson(initError, env)), { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   }
 
   const pathname = new URL(request.url).pathname;
@@ -306,6 +319,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
 
   if (
     pathname === '/api/plans' ||
+    pathname === '/api/plans/paginated' ||
     pathname === '/api/providers' ||
     pathname === '/api/status' ||
     pathname === '/api/status/stale' ||
@@ -556,7 +570,7 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
     const msg = err instanceof Error ? err.stack || err.message : String(err);
     console.error('Fetch handler error:', msg);
     try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-    return new Response(JSON.stringify({ ok: false, error: String(msg) }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
   }
 }
 
