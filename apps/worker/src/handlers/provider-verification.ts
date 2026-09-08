@@ -22,6 +22,11 @@ export interface ProviderMetadata {
   has_modem_included: number;
   metadata_verified_date: string | null;
   metadata_verification_notes: string | null;
+  last_fetch_at: string | null;
+  last_error: string | null;
+  refresh_interval_minutes: number;
+  age_minutes: number | null;
+  stale: number;
 }
 
 /**
@@ -53,9 +58,23 @@ export async function getProviderVerification(req: Request) {
         SUM(CASE WHEN pl.contract_months IS NOT NULL THEN 1 ELSE 0 END) as has_contract_months,
         SUM(CASE WHEN pl.modem_included IS NOT NULL THEN 1 ELSE 0 END) as has_modem_included,
         p.metadata_verified_date,
-        p.metadata_verification_notes
+        p.metadata_verification_notes,
+        p.last_fetch_at,
+        p.last_error,
+        COALESCE(ps.refresh_interval_minutes, 360) as refresh_interval_minutes,
+        CASE
+          WHEN p.last_fetch_at IS NULL THEN NULL
+          ELSE CAST((julianday('now') - julianday(p.last_fetch_at)) * 24 * 60 AS INTEGER)
+        END as age_minutes,
+        CASE
+          WHEN p.last_fetch_at IS NULL THEN 1
+          WHEN p.last_error IS NOT NULL THEN 1
+          WHEN (julianday('now') - julianday(p.last_fetch_at)) * 24 * 60 > COALESCE(ps.refresh_interval_minutes, 360) * 2 THEN 1
+          ELSE 0
+        END as stale
       FROM providers p
       LEFT JOIN plans pl ON p.id = pl.provider_id AND pl.is_active = 1
+      LEFT JOIN provider_scrape_strategy ps ON ps.provider_slug = p.slug
       WHERE p.active = 1
       GROUP BY p.id
       ORDER BY p.slug ASC

@@ -51,6 +51,11 @@ interface ProviderMetadata {
   has_data_allowance: number;
   has_contract_months: number;
   has_modem_included: number;
+  last_fetch_at?: string | null;
+  last_error?: string | null;
+  refresh_interval_minutes?: number;
+  age_minutes?: number | null;
+  stale?: number;
 }
 
 interface ScrapeResult {
@@ -279,6 +284,20 @@ export default function Admin() {
           }}
         >
           ✅ Metadata Verification ({providerMetadata.length})
+        </button>
+        <button
+          onClick={() => setSelectedTab('health')}
+          style={{
+            padding: '10px 16px',
+            background: selectedTab === 'health' ? '#667eea' : 'transparent',
+            color: selectedTab === 'health' ? 'white' : '#666',
+            border: 'none',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontWeight: '600'
+          }}
+        >
+          🩺 Provider Health ({providerMetadata.filter((provider) => provider.stale === 1 || provider.last_error).length})
         </button>
       </div>
 
@@ -514,6 +533,37 @@ export default function Admin() {
                 })}
               </tbody>
             </table>
+          )}
+        </div>
+      )}
+
+      {selectedTab === 'health' && (
+        <div>
+          <h3>Provider Health Queue</h3>
+          {!token && <p>Enter admin token to load provider health.</p>}
+          {token && providerMetadata.length === 0 && <p>No provider health data available.</p>}
+          {providerMetadata.length > 0 && (
+            <div style={{ display: 'grid', gap: '12px' }}>
+              {[...providerMetadata]
+                .filter((provider) => provider.stale === 1 || provider.last_error)
+                .sort((a, b) => (Number(b.stale) - Number(a.stale)) || ((b.age_minutes ?? -1) - (a.age_minutes ?? -1)))
+                .map((provider) => (
+                  <article key={provider.id} style={{ padding: '16px', border: `1px solid ${provider.last_error ? '#fecaca' : '#fde68a'}`, borderRadius: '10px', background: provider.last_error ? '#fff7f7' : '#fffbeb' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
+                      <div>
+                        <strong>{provider.name}</strong> <small>({provider.slug})</small>
+                        <div style={{ marginTop: '6px', color: '#6b7280', fontSize: '0.9em' }}>
+                          {provider.age_minutes == null ? 'Never refreshed' : `${Math.floor(provider.age_minutes / 60)}h old`} · target every {provider.refresh_interval_minutes ?? 360}m
+                        </div>
+                      </div>
+                      <span style={{ color: provider.last_error ? '#b91c1c' : '#b45309', fontWeight: 700 }}>
+                        {provider.last_error ? 'Refresh failed' : 'Stale'}
+                      </span>
+                    </div>
+                    {provider.last_error && <pre style={{ margin: '12px 0 0', whiteSpace: 'pre-wrap', color: '#991b1b', fontSize: '0.82em' }}>{provider.last_error}</pre>}
+                  </article>
+                ))}
+            </div>
           )}
         </div>
       )}

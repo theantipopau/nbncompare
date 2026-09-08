@@ -3,7 +3,8 @@ node_modules
 dist
 .build
 .d1
-/.wrangler
+.wrangler/
+**/.wrangler/
 *.log
 .vscode
 .DS_Store
