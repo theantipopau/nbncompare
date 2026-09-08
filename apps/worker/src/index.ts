@@ -427,6 +427,16 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
     }
   }
 
+  if (pathname === '/api/status') {
+    try {
+      const { getStatus } = await import('./handlers/status');
+      return await getStatus(request, { CACHE: env.CACHE });
+    } catch (err: unknown) {
+      console.error('/api/status direct handler error:', err);
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    }
+  }
+
   if (pathname === '/api/ai/plan-summary') {
     try {
       const { getPlanSummary } = await import('./handlers/ai-summaries');
