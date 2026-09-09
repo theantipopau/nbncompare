@@ -10,6 +10,8 @@ Repository: [github.com/theantipopau/nbncompare](https://github.com/theantipopau
 
 Current production status: [docs/CURRENT_STATUS.md](docs/CURRENT_STATUS.md)
 
+Release history: [CHANGELOG.md](CHANGELOG.md)
+
 ## Features
 
 - Address search and NBN technology qualification

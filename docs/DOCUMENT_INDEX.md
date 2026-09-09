@@ -13,6 +13,9 @@
 ### **[CURRENT_STATUS.md](CURRENT_STATUS.md)** ← CURRENT PRODUCTION STATUS
 Live URLs, latest release, smoke checks, current refresh schedule, and known data-quality work.
 
+### **[../CHANGELOG.md](../CHANGELOG.md)** ← RELEASE HISTORY
+Consolidated fixes and enhancements from the recent development sessions.
+
 ### **[COMPREHENSIVE_SUMMARY.md](COMPREHENSIVE_SUMMARY.md)** ← START HERE
 Visual overview of everything created. Use this to understand the scope and next steps.
 

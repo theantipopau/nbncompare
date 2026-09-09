@@ -2,12 +2,12 @@
 
 **Updated:** 2026-09-09
 **Branch:** `main`
-**Latest application commit:** `2819289`
+**Latest application commit:** `46b5847`
 
 ## Live Services
 
 - Website: [https://nbncompare.info](https://nbncompare.info)
-- Latest Pages deployment preview: [https://a2d5116b.nbncompare-web.pages.dev](https://a2d5116b.nbncompare-web.pages.dev)
+- Latest Pages deployment preview: [https://d3f11d6f.nbncompare-web.pages.dev](https://d3f11d6f.nbncompare-web.pages.dev)
 - Worker: `nbncompare-worker.matt-hurley91.workers.dev`
 - Worker routes: `nbncompare.info/*`, `www.nbncompare.info/*`
 - Cron: every two hours (`0 */2 * * *`)
@@ -40,5 +40,7 @@ npx wrangler deploy --config apps/worker/wrangler.toml
 ```
 
 ## Documentation Note
+
+See the root [CHANGELOG.md](../CHANGELOG.md) for the consolidated release history and fixes.
 
 Files named `DEPLOYMENT_*`, `SESSION_*`, `PHASE_*`, and similar dated reports describe historical work and may contain earlier provider counts, schedules, and deployment IDs. Use this document and the root `README.md` for the current state.
