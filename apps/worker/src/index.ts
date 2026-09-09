@@ -565,7 +565,9 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   // Serve the Pages asset bundle for SPA routes such as /blog and /providers/.
   // Without this fallback, unknown non-API paths fall through to itty-router.
   if (env.ASSETS) {
-    return env.ASSETS.fetch(request);
+    const assetPath = pathname === '/' || !pathname.includes('.') ? '/index.html' : pathname;
+    const assetUrl = new URL(assetPath, request.url);
+    return env.ASSETS.fetch(new Request(assetUrl, request));
   }
 
   if (!router) {
