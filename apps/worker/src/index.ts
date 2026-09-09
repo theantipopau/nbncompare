@@ -5,7 +5,6 @@ import { isAdminTokenValid } from "./lib/admin-auth";
 import type { BrowserBinding } from "./lib/browser-rendering";
 
 console.log('Worker module evaluation: index.ts loaded');
-
 let initError: Error | null = null;
 let router = Router();
 const publicRouteLimiter = createRateLimiter({ windowMs: 60_000, maxRequests: 120 });
@@ -252,6 +251,7 @@ interface Env {
   D1: D1Database;
   ADMIN_TOKEN: string;
   CACHE?: KVNamespace;
+  ASSETS?: { fetch: (request: Request) => Promise<Response> };
   AI?: unknown;
   BROWSER?: BrowserBinding;
   SCRAPER_API_KEY?: string;
@@ -560,6 +560,12 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
       console.error('/api/admin/audit direct handler error:', err);
       return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { 'Content-Type': 'application/json' } });
     }
+  }
+
+  // Serve the Pages asset bundle for SPA routes such as /blog and /providers/.
+  // Without this fallback, unknown non-API paths fall through to itty-router.
+  if (env.ASSETS) {
+    return env.ASSETS.fetch(request);
   }
 
   if (!router) {
