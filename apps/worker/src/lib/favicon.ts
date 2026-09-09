@@ -21,7 +21,7 @@ export async function fetchProviderLogo(domain: string, _providerName: string): 
 
 export async function updateProviderFavicons() {
   const db = await getDb();
-  const providersRes = await db.prepare('SELECT id, name, slug FROM providers').all() as { results?: Array<{ id: number; name: string; slug: string }> };
+  const providersRes = await db.prepare('SELECT id, name, slug, canonical_url FROM providers').all() as { results?: Array<{ id: number; name: string; slug: string; canonical_url?: string | null }> };
   const providers = providersRes.results ?? [];
   
   const domainMap: Record<string, string> = {
@@ -66,7 +66,7 @@ export async function updateProviderFavicons() {
   
   let updated = 0;
   for (const provider of providers) {
-    const domain = domainMap[provider.slug];
+    const domain = getDomain(provider.canonical_url) || domainMap[provider.slug] || guessDomain(provider.name);
     if (domain) {
       const logoUrl = await fetchProviderLogo(domain, provider.name);
       await db.prepare('UPDATE providers SET favicon_url = ? WHERE id = ?')
@@ -77,4 +77,22 @@ export async function updateProviderFavicons() {
   }
   
   return { updated };
+}
+
+function getDomain(sourceUrl?: string | null): string | null {
+  if (!sourceUrl) return null;
+  try {
+    return new URL(sourceUrl).hostname.replace(/^www\./, '');
+  } catch {
+    return null;
+  }
+}
+
+function guessDomain(providerName: string): string | null {
+  const value = providerName
+    .toLowerCase()
+    .replace(/\b(telecom|communications|internet|broadband|mobile)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+  return value ? `${value}.com.au` : null;
 }

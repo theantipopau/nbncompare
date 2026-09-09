@@ -147,7 +147,7 @@ export async function getPagedPlans(req: Request, env?: PaginatedEnv) {
         p.technology_type, p.upload_speed_mbps, p.promo_code, p.promo_description,
         p.promo_expires_at, p.confidence_score, p.effective_monthly_cents,
         p.plan_type, p.service_type,
-        prov.id as provider_id, prov.name as provider_name, prov.favicon_url,
+        prov.id as provider_id, prov.name as provider_name, prov.slug as provider_slug, prov.canonical_url as provider_canonical_url, prov.favicon_url,
         prov.ipv6_support as provider_ipv6_support,
         prov.cgnat as provider_cgnat,
         prov.cgnat_opt_out as provider_cgnat_opt_out,

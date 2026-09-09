@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { getApiBaseUrl } from "../lib/api";
 import { usePageTitle } from "../lib/usePageTitle";
+import { getFaviconUrl } from "../lib/favicon";
 
 interface ProviderReview {
   overall_rating: number | null;
@@ -182,9 +183,9 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
         marginBottom: '24px'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '24px', flexWrap: 'wrap' }}>
-          {provider.favicon_url && (
+          {getFaviconUrl(provider.name, provider.favicon_url, provider.canonical_url) && (
             <img 
-              src={provider.favicon_url} 
+              src={getFaviconUrl(provider.name, provider.favicon_url, provider.canonical_url)}
               alt={`${provider.name} logo`}
               style={{ width: '80px', height: '80px', borderRadius: '12px', background: 'white', padding: '8px' }}
               onError={(e: React.SyntheticEvent<HTMLImageElement>) => { (e.target as HTMLImageElement).style.display = 'none'; }}

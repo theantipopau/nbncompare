@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { getApiBaseUrl } from '../lib/api';
+import { getFaviconUrl } from '../lib/favicon';
 
 interface Plan {
   id: number;
@@ -159,9 +160,9 @@ export default function ProviderDetails() {
         boxShadow: '0 10px 30px rgba(0,0,0,0.2)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-          {provider.logo_url && (
+          {getFaviconUrl(provider.name, provider.logo_url || provider.favicon_url, provider.canonical_url) && (
             <img 
-              src={provider.logo_url} 
+              src={getFaviconUrl(provider.name, provider.logo_url || provider.favicon_url, provider.canonical_url)}
               alt={`${provider.name} logo`}
               style={{ width: '80px', height: '80px', borderRadius: '12px', background: 'white', padding: '10px' }}
               onError={(e: React.SyntheticEvent<HTMLImageElement>) => { (e.target as HTMLImageElement).style.display = 'none'; }}

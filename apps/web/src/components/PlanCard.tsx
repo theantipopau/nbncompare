@@ -9,6 +9,7 @@ interface Plan {
   id: number;
   plan_name: string;
   provider_name: string;
+  provider_canonical_url?: string | null;
   intro_price_cents?: number | null;
   intro_duration_days?: number | null;
   ongoing_price_cents: number | null;
@@ -75,8 +76,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({
   // Get the best available favicon URL
   const faviconUrl = React.useMemo(() => {
     if (faviconError) return '';
-    return getFaviconUrl(plan.provider_name, plan.favicon_url);
-  }, [plan.provider_name, plan.favicon_url, faviconError]);
+    return getFaviconUrl(plan.provider_name, plan.favicon_url, plan.provider_canonical_url);
+  }, [plan.provider_name, plan.favicon_url, plan.provider_canonical_url, faviconError]);
 
   React.useEffect(() => {
     if (!isExpanded || aiSummary || aiSummaryLoading) return;

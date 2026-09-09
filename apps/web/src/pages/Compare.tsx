@@ -31,6 +31,8 @@ interface Plan {
   id: number;
   plan_name: string;
   provider_name: string;
+  provider_slug?: string;
+  provider_canonical_url?: string | null;
   intro_price_cents?: number | null;
   intro_duration_days?: number | null;
   ongoing_price_cents: number | null;
@@ -525,9 +527,9 @@ export default function Compare() {
     return initials || 'N/A';
   }
 
-  function ProviderLogo({ providerName, faviconUrl }: { providerName: string | null | undefined; faviconUrl: string | null | undefined }) {
+  function ProviderLogo({ providerName, faviconUrl, sourceUrl }: { providerName: string | null | undefined; faviconUrl: string | null | undefined; sourceUrl?: string | null }) {
     const [hasFallback, setHasFallback] = useState(false);
-    const resolvedFavicon = getFaviconUrl(providerName ?? '', faviconUrl);
+    const resolvedFavicon = getFaviconUrl(providerName ?? '', faviconUrl, sourceUrl);
 
     if (!resolvedFavicon || hasFallback) {
       return (
@@ -2052,7 +2054,7 @@ export default function Compare() {
                       isFavorite={favorites.includes(p.id)}
                       isBestValue={bestValuePlanIds.has(p.id)}
                       showOngoingInsteadOfIntro={Boolean(exclude6MonthFilter && p.intro_price_cents && (p.contract_type === '6-month' || (p.intro_duration_days && p.intro_duration_days >= 175 && p.intro_duration_days <= 185)))}
-                      renderLogo={(plan) => <ProviderLogo providerName={plan.provider_name} faviconUrl={plan.favicon_url} />}
+                      renderLogo={(plan) => <ProviderLogo providerName={plan.provider_name} faviconUrl={plan.favicon_url} sourceUrl={plan.provider_canonical_url} />}
                       onToggleFavorite={toggleFavorite}
                       onViewPriceHistory={fetchPriceHistory}
                     />

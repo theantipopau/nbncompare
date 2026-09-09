@@ -2,14 +2,14 @@
  * Favicon utility for generating and resolving provider logos
  */
 
-export function getFaviconUrl(providerName: string, storedUrl?: string | null): string {
+export function getFaviconUrl(providerName: string, storedUrl?: string | null, sourceUrl?: string | null): string {
   // If we have a stored URL and it's valid, use it
   if (storedUrl && isValidUrl(storedUrl)) {
     return storedUrl;
   }
 
   // Try to get from favicons.io API (free service)
-  const domain = getProviderDomain(providerName);
+  const domain = getProviderDomain(providerName, sourceUrl);
   if (domain) {
     return `https://www.google.com/s2/favicons?sz=64&domain=${domain}`;
   }
@@ -18,7 +18,14 @@ export function getFaviconUrl(providerName: string, storedUrl?: string | null): 
   return '';
 }
 
-function getProviderDomain(providerName: string): string | null {
+function getProviderDomain(providerName: string, sourceUrl?: string | null): string | null {
+  if (sourceUrl) {
+    try {
+      return new URL(sourceUrl).hostname.replace(/^www\./, '');
+    } catch {
+      // Fall through to the known-provider map.
+    }
+  }
   const providerDomains: Record<string, string> = {
     'Telstra': 'telstra.com.au',
     'Optus': 'optus.com.au',
@@ -52,7 +59,14 @@ function getProviderDomain(providerName: string): string | null {
     'Arctel': 'arctel.com.au',
   };
 
-  return providerDomains[providerName] || null;
+  if (providerDomains[providerName]) return providerDomains[providerName];
+
+  const guessedDomain = providerName
+    .toLowerCase()
+    .replace(/\b(telecom|communications|internet|broadband|mobile)\b/g, '')
+    .replace(/[^a-z0-9]+/g, '')
+    .trim();
+  return guessedDomain ? `${guessedDomain}.com.au` : null;
 }
 
 function isValidUrl(url: string): boolean {

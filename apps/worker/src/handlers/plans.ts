@@ -69,7 +69,7 @@ export async function getPlans(req: Request, env?: { CACHE?: KVNamespace }) {
 
     const db = (await getDb()) as D1DatabaseLike;
 
-    let q = `SELECT p.*, prov.name as provider_name, prov.favicon_url,
+    let q = `SELECT p.*, prov.name as provider_name, prov.slug as provider_slug, prov.canonical_url as provider_canonical_url, prov.favicon_url,
       prov.ipv6_support as provider_ipv6_support,
       prov.cgnat as provider_cgnat,
       prov.cgnat_opt_out as provider_cgnat_opt_out,

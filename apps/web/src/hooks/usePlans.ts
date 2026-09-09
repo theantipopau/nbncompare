@@ -5,6 +5,8 @@ export interface Plan {
   id: number;
   plan_name: string;
   provider_name: string;
+  provider_slug?: string;
+  provider_canonical_url?: string | null;
   intro_price_cents?: number | null;
   intro_duration_days?: number | null;
   ongoing_price_cents: number | null;
