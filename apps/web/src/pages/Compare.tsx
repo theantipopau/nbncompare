@@ -192,8 +192,8 @@ export default function Compare() {
   };
 
   const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '1000', '2000'];
-  const fixedWirelessSpeedOptions = ['100', '200', '400'];
-  const fiveGSpeedOptions = ['100', '250', '300'];
+  const fixedWirelessSpeedOptions = ['25', '50', '75', '100', '200', '400'];
+  const fiveGSpeedOptions = ['50', '100', '250', '300', '500'];
   const satelliteSpeedOptions = ['25', '50', '100', '150'];
   const allowAllSpeedChips = viewMode === 'standard' || viewMode === 'business' || viewMode === 'fixed-wireless' || viewMode === '5g-home' || viewMode === 'satellite';
   const currentModeSpeedOptions = viewMode === 'fixed-wireless'
@@ -344,7 +344,7 @@ export default function Compare() {
     contract: contractFilter || undefined,
     data: dataFilter || undefined,
     modem: modemFilter || undefined,
-    technology: technologyFilter || undefined,
+    technology: viewMode === 'fixed-wireless' ? 'fixed-wireless' : technologyFilter || undefined,
     uploadSpeed: uploadSpeedFilter || undefined,
     setupFee: setupFeeFilter || undefined,
     modemCost: modemCostFilter || undefined,
