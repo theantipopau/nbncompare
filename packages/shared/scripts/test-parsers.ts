@@ -10,6 +10,24 @@ const domParser = new JSDOM('').window.DOMParser;
 (globalThis as { DOMParser?: typeof domParser }).DOMParser = domParser;
 
 async function run() {
+  const equalPrice = normalizeExtract({
+    providerSlug: 'test', planName: 'NBN 50', speedTier: 50,
+    introPriceCents: 7000, introDurationDays: null, ongoingPriceCents: 7000,
+    minTermDays: null, setupFeeCents: null, modemCostCents: null,
+    conditionsText: null, typicalEveningSpeedMbps: null, sourceUrl: 'https://example.com'
+  });
+  if (equalPrice.introPriceCents !== null || equalPrice.introDurationDays !== null) {
+    throw new Error('Equal intro and ongoing prices must not be represented as a promotion');
+  }
+
+  const markupName = normalizeExtract({
+    providerSlug: 'test', planName: 'NBN 100<div class="price">', speedTier: 100,
+    introPriceCents: null, introDurationDays: null, ongoingPriceCents: 9000,
+    minTermDays: null, setupFeeCents: null, modemCostCents: null,
+    conditionsText: null, typicalEveningSpeedMbps: null, sourceUrl: 'https://example.com'
+  });
+  if (markupName.planName !== 'NBN 100') throw new Error('Markup must be removed from plan names');
+
   const sampleUrlMap: Record<string, string> = {
     telstra: 'https://www.telstra.com.au/internet/broadband/nbn',
     optus: 'https://www.optus.com.au/broadband/nbn',

@@ -180,6 +180,9 @@ export function validatePlan(p: PlanExtract) {
   if (planName.length > 50 && /(what is|about|want to|download|stream|in a world of|plan to rule them all)/i.test(planName)) {
     errors.push('plan name looks like marketing copy');
   }
+  if (/^(save|sign\s+up|general:|terms|conditions)\b/i.test(planName) && !/\b(?:nbn|\d{2,4}\s*mbps)\b/i.test(planName)) {
+    errors.push('plan name looks like offer or terms text');
+  }
 
   // Soft plausibility checks (warnings only)
   if (p.ongoingPriceCents !== null) {
@@ -211,8 +214,20 @@ export function normalizeExtract(ex: PlanExtract): PlanExtract {
   const normalizedOngoingPrice = typeof ex.ongoingPriceCents === 'number'
     ? ex.ongoingPriceCents
     : parsePriceToCents(String(ex.ongoingPriceCents)) ?? null;
-  const introDurationDays = normalizedIntroDuration ?? extractedIntro.introDurationDays;
-  const introPriceCents = normalizedIntroPrice ?? extractedIntro.introPriceCents;
+  const introDurationCandidate = normalizedIntroDuration ?? extractedIntro.introDurationDays;
+  const introPriceCandidate = normalizedIntroPrice ?? extractedIntro.introPriceCents;
+  const hasVerifiedIntro = introPriceCandidate !== null
+    && introDurationCandidate !== null
+    && introDurationCandidate > 0
+    && (normalizedOngoingPrice === null || introPriceCandidate < normalizedOngoingPrice);
+  const introDurationDays = hasVerifiedIntro ? introDurationCandidate : null;
+  const introPriceCents = hasVerifiedIntro ? introPriceCandidate : null;
+  const cleanedPlanName = (ex.planName || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/\s+/g, ' ')
+    .trim();
   const contractType = ex.contractType ?? (typeof ex.contractMonths === 'number'
     ? (ex.contractMonths === 0 ? 'month-to-month' : `${ex.contractMonths}-month`)
     : null);
@@ -223,6 +238,7 @@ export function normalizeExtract(ex: PlanExtract): PlanExtract {
       : 'nbn');
   return {
     ...ex,
+    planName: cleanedPlanName,
     introPriceCents,
     ongoingPriceCents: normalizedOngoingPrice,
     speedTier: normalizeSpeed(ex.speedTier),
