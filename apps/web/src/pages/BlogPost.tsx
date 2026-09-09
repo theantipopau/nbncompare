@@ -874,12 +874,109 @@ const blogContent: Record<string, BlogPostContent> = {
         </div>
       </>
     )
+  },
+  "wifi-7-and-nbn-home-network": {
+    slug: "wifi-7-and-nbn-home-network",
+    title: "Wi-Fi 7 and NBN: What Actually Improves at Home?",
+    date: "2026-09-05",
+    readTime: "6 min read",
+    category: "Technology",
+    content: (
+      <>
+        <p>Wi-Fi 7 is arriving in routers, laptops, phones, and mesh systems. It can make a busy home network feel more responsive, but it does not increase the speed delivered by your NBN plan.</p>
+        <h2>What Wi-Fi 7 Can Improve</h2>
+        <ul>
+          <li>More capacity when many devices are active at once</li>
+          <li>Lower wireless contention between compatible devices</li>
+          <li>Better performance from a modern mesh system in a busy home</li>
+          <li>More headroom for local network transfers and media servers</li>
+        </ul>
+        <h2>What It Cannot Fix</h2>
+        <p>A Wi-Fi 7 router cannot turn an NBN 50 service into NBN 100. It also cannot fix poor line quality, evening congestion outside your home, weak coverage, or a provider outage.</p>
+        <h2>Should You Upgrade?</h2>
+        <p>Upgrade when your current router is old, your home has many simultaneous users, or your devices already support Wi-Fi 6E or Wi-Fi 7. For a small household browsing and streaming on NBN 50 or NBN 100, a reliable Wi-Fi 6 router may be better value.</p>
+        <h2>Australian Buying Checklist</h2>
+        <ul>
+          <li>Check whether your NBN speed tier exceeds your current router's real throughput.</li>
+          <li>Prefer wired Ethernet backhaul for mesh satellites where possible.</li>
+          <li>Check modem compatibility with your provider before buying.</li>
+          <li>Keep firmware updates and WPA security enabled.</li>
+        </ul>
+        <p><strong>Bottom line:</strong> fix coverage and router placement first, then upgrade to Wi-Fi 7 when your devices and usage justify it.</p>
+      </>
+    )
+  },
+  "5g-home-internet-vs-nbn-australia": {
+    slug: "5g-home-internet-vs-nbn-australia",
+    title: "5G Home Internet vs NBN: Which Connection Fits Your Address?",
+    date: "2026-09-03",
+    readTime: "7 min read",
+    category: "Guides",
+    content: (
+      <>
+        <p>5G Home Internet can be a strong alternative to fixed-line NBN, but the right choice depends on coverage, congestion, upload needs, and whether you want a stable service at one address.</p>
+        <h2>Where 5G Home Can Win</h2>
+        <ul>
+          <li>Fast setup with no technician visit in many cases</li>
+          <li>Useful in rentals or locations with poor fixed-line options</li>
+          <li>Strong download speeds where local 5G capacity is good</li>
+          <li>Simple month-to-month options from some providers</li>
+        </ul>
+        <h2>Where NBN Is Usually Stronger</h2>
+        <ul>
+          <li>More predictable performance during busy evening periods</li>
+          <li>Better upload consistency for work, cloud backups, and streaming</li>
+          <li>More options for public IPs, IPv6, and technical networking</li>
+          <li>Less dependence on indoor signal strength and tower capacity</li>
+        </ul>
+        <h2>Questions to Ask Before Switching</h2>
+        <ol>
+          <li>Is the service available at your exact address, not just your suburb?</li>
+          <li>What happens during evening congestion?</li>
+          <li>Are there data limits, traffic management rules, or location locks?</li>
+          <li>Can you use your own router or place the supplied gateway near a window?</li>
+          <li>What upload speed and CGNAT policy apply?</li>
+        </ol>
+        <p>Test the connection during the hours you actually use it. A strong midday speed test does not guarantee a strong evening result.</p>
+      </>
+    )
+  },
+  "how-to-read-isp-promotion-terms": {
+    slug: "how-to-read-isp-promotion-terms",
+    title: "How to Read ISP Promotions Without Getting Caught by the Ongoing Price",
+    date: "2026-09-01",
+    readTime: "5 min read",
+    category: "Money Saving",
+    content: (
+      <>
+        <p>A plan advertised at a low introductory price can still be expensive over the year. Compare the complete cost before choosing a deal.</p>
+        <h2>Calculate the First-Year Cost</h2>
+        <p>Multiply the introductory price by its number of months, then multiply the ongoing price by the remaining months. Add setup, delivery, modem, and activation fees.</p>
+        <h2>Check the Promotion Conditions</h2>
+        <ul>
+          <li>Is the offer for new customers only?</li>
+          <li>Does it require a promo code or direct debit?</li>
+          <li>Does the discount end automatically or require cancellation?</li>
+          <li>Is the modem included, rented, or charged separately?</li>
+          <li>Are there minimum terms or early termination fees?</li>
+        </ul>
+        <h2>Compare Like with Like</h2>
+        <p>Match download tier, typical evening speed, upload speed, data allowance, CGNAT, modem terms, and support availability. A cheaper headline price is not necessarily better value if the plan has lower upload performance or expensive add-ons.</p>
+        <p><strong>Good habit:</strong> set a reminder for the month before the promotion ends and compare the market again.</p>
+      </>
+    )
   }
-};
+  };
 
 export default function BlogPost() {
   const slug = location.pathname.replace('/blog/', '');
   const post = slug ? blogContent[slug] : null;
+  const navigate = (path: string, event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.scrollTo(0, 0);
+  };
 
   usePageTitle(
     post ? `${post.title} - NBN Compare Blog` : 'Blog Post Not Found - NBN Compare',
@@ -891,7 +988,7 @@ export default function BlogPost() {
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
         <h1>Post Not Found</h1>
         <p>The blog post you're looking for doesn't exist.</p>
-        <a href="/blog" style={{ color: 'var(--primary-color)' }}>← Back to Blog</a>
+        <a href="/blog" onClick={(event) => navigate('/blog', event)} style={{ color: 'var(--primary-color)' }}>← Back to Blog</a>
       </div>
     );
   }
@@ -904,6 +1001,7 @@ export default function BlogPost() {
     }}>
       <a 
         href="/blog" 
+        onClick={(event) => navigate('/blog', event)}
         style={{ 
           color: 'var(--primary-color)', 
           textDecoration: 'none',
@@ -974,6 +1072,7 @@ export default function BlogPost() {
           <h3 style={{ marginBottom: '16px', color: '#1a1a1a' }}>Ready to find your perfect NBN plan?</h3>
           <a 
             href="/" 
+            onClick={(event) => navigate('/', event)}
             style={{
               display: 'inline-block',
               padding: '12px 32px',

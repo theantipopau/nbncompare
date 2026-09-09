@@ -65,10 +65,41 @@ const blogPosts: BlogPost[] = [
     date: "2026-01-02",
     readTime: "4 min read",
     category: "Money Saving"
+  },
+  {
+    slug: "wifi-7-and-nbn-home-network",
+    title: "Wi-Fi 7 and NBN: What Actually Improves at Home?",
+    excerpt: "Wi-Fi 7 can improve wireless capacity, but a faster router cannot fix a slow NBN plan. Learn what matters before upgrading your home network.",
+    date: "2026-09-05",
+    readTime: "6 min read",
+    category: "Technology"
+  },
+  {
+    slug: "5g-home-internet-vs-nbn-australia",
+    title: "5G Home Internet vs NBN: Which Connection Fits Your Address?",
+    excerpt: "Compare 5G Home and NBN plans across coverage, congestion, upload speeds, setup, contracts, and real-world reliability.",
+    date: "2026-09-03",
+    readTime: "7 min read",
+    category: "Guides"
+  },
+  {
+    slug: "how-to-read-isp-promotion-terms",
+    title: "How to Read ISP Promotions Without Getting Caught by the Ongoing Price",
+    excerpt: "Introductory pricing is only one part of the cost. Use this checklist to compare first-year cost, ongoing price, modem fees, and exit terms.",
+    date: "2026-09-01",
+    readTime: "5 min read",
+    category: "Money Saving"
   }
 ];
 
 export default function Blog() {
+  const navigate = (path: string, event: React.MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    window.history.pushState({}, '', path);
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    window.scrollTo(0, 0);
+  };
+
   return (
     <div className="blog-page" style={{ padding: '40px 20px', maxWidth: '1200px', margin: '0 auto' }}>
       <div style={{ marginBottom: '40px' }}>
@@ -105,6 +136,7 @@ export default function Blog() {
           >
             <a 
               href={`/blog/${post.slug}`} 
+              onClick={(event) => navigate(`/blog/${post.slug}`, event)}
               style={{ textDecoration: 'none', color: 'inherit' }}
             >
               <div style={{ 
@@ -171,6 +203,7 @@ export default function Blog() {
         </p>
         <a 
           href="/" 
+          onClick={(event) => navigate('/', event)}
           style={{
             display: 'inline-block',
             padding: '12px 32px',
