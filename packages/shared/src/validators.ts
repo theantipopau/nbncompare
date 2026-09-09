@@ -223,7 +223,7 @@ export function normalizeExtract(ex: PlanExtract): PlanExtract {
   const introDurationDays = hasVerifiedIntro ? introDurationCandidate : null;
   const introPriceCents = hasVerifiedIntro ? introPriceCandidate : null;
   const cleanedPlanName = (ex.planName || '')
-    .replace(/<[^>]*>/g, ' ')
+    .replace(/<[^>]*>?/g, ' ')
     .replace(/&nbsp;|&#160;/gi, ' ')
     .replace(/&amp;/gi, '&')
     .replace(/\s+/g, ' ')
