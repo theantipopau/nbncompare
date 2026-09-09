@@ -4,6 +4,14 @@ This file records shipped fixes and notable release work. It is intentionally co
 
 ## 2026-09-09
 
+### Trustworthy Decisions: price and plan integrity
+
+- `f01e846` Stopped representing equal introductory and ongoing prices as promotions unless a verified duration and price difference exist.
+- Added parser regression assertions for equal-price offers and HTML leakage in plan names.
+- Added migration `0044_clear_unverified_promotions.sql`; 40 legacy equal-price promotion rows were cleaned in production.
+- `ea1b901` Quarantined six active plans whose names were HTML-only parser fragments and tightened future incomplete-markup cleanup.
+- Production verification: 0 equal intro/ongoing promotions and 0 HTML-leaking active plan names; 18 active plans still lack source URLs and remain in the provenance backlog.
+
 ### Wireless coverage and service classification
 
 - `46b5847` Fixed server-side Fixed Wireless filtering so the UI no longer paginates the entire residential catalogue and filters only the current page.

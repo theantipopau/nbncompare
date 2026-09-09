@@ -2,7 +2,7 @@
 
 **Updated:** 2026-09-09
 **Branch:** `main`
-**Latest application commit:** `46b5847`
+**Latest application commit:** `ea1b901`
 
 ## Live Services
 
@@ -29,7 +29,7 @@
 
 The Worker refresh queue prioritizes providers using `provider_scrape_strategy`, runs every two hours, limits scrape concurrency, supports Browser Rendering, updates current plan fields, and deactivates plans no longer present in a successful provider scrape.
 
-The catalogue currently contains 56 active providers and 250 active plans according to the live status endpoint. Provider health and plan quality can change between refreshes. The same endpoint currently reports providers requiring attention and plans missing source, price, or speed data; these are tracked as ongoing data-quality work rather than hidden from operators.
+The catalogue currently contains 56 active providers and 225 active plans according to the live status endpoint. The latest trust-data audit found 0 equal intro/ongoing promotions and 0 active plan names containing HTML markup. Eighteen active plans still lack source URLs and remain provenance work. Provider health and plan quality can change between refreshes; failures and incomplete records remain visible to operators.
 
 ## Release Commands
 
