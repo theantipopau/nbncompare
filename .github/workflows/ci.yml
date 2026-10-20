@@ -72,7 +72,7 @@ jobs:
       run: pnpm --filter @clearnbn/web build
 
     - name: Deploy to Cloudflare Pages
-      run: pnpm exec wrangler pages deploy apps/web/dist --project-name=nbncompare-web
+      run: pnpm --filter @clearnbn/worker exec wrangler pages deploy ../web/dist --project-name=nbncompare-web
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
