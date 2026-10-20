@@ -1,0 +1,51 @@
+name: Free plan refresh (plain fetch, no browser)
+
+# Free replacement for the removed Cloudflare cron + Browser Rendering.
+# Runs on GitHub's free runners and triggers the Worker's manual scrape
+# endpoint, which is plain-fetch only (zero browser minutes, zero Workers AI).
+#
+# Required repo secrets:
+#   NBNCOMPARE_ADMIN_TOKEN — same value as the Worker's ADMIN_TOKEN secret
+# Optional:
+#   NBNCOMPARE_BASE_URL — default https://nbncompare.info
+
+on:
+  schedule:
+    # Twice a week is plenty for plan pricing and stays well within
+    # Cloudflare + D1 + KV free limits (10 providers per call, plain fetch).
+    - cron: "20 3 * * 2,6"
+  workflow_dispatch:
+
+concurrency:
+  group: nbncompare-scrape
+  cancel-in-progress: false
+
+jobs:
+  trigger-scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      BASE_URL: ${{ secrets.NBNCOMPARE_BASE_URL }}
+    steps:
+      - name: Trigger plain-fetch scrape (3 x 10-provider batches)
+        env:
+          ADMIN_TOKEN: ${{ secrets.NBNCOMPARE_ADMIN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${ADMIN_TOKEN:-}" ]; then
+            echo "::error::Missing secret NBNCOMPARE_ADMIN_TOKEN (must match Worker ADMIN_TOKEN)."
+            exit 1
+          fi
+          BASE="${BASE_URL:-https://nbncompare.info}"
+          echo "Scraping via $BASE/internal/cron/run (plain fetch only)"
+          for i in 1 2 3; do
+            echo "--- batch $i/3 ---"
+            curl --fail --show-error --max-time 110 \
+              -X GET "$BASE/internal/cron/run" \
+              -H "x-admin-token: $ADMIN_TOKEN" \
+              -H "Accept: application/json"
+            echo ""
+            # Small gap so provider sites see sequential, polite traffic
+            if [ "$i" -lt 3 ]; then sleep 20; fi
+          done
+          echo "Done. Check $BASE/api/status/stale for freshness."

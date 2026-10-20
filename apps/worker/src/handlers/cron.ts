@@ -1,22 +1,18 @@
 import { fetchProvidersToUpdate } from "./providers-fetcher";
 import { recordRunStartEnd } from "../lib/db";
-import type { BrowserBinding } from "../lib/browser-rendering";
 
-export async function handleCron(env?: { AI?: unknown; BROWSER?: BrowserBinding; SCRAPER_API_KEY?: string }) {
+// Free-only cron: plain fetch, no Browser Rendering, no Workers AI.
+// Triggered manually via POST /internal/cron/run (admin token) from
+// GitHub Actions on a schedule — NOT via Cloudflare [triggers] crons,
+// so there are zero background Worker runs unless explicitly called.
+export async function handleCron(_env?: { SCRAPER_API_KEY?: string }) {
   const runId = await recordRunStartEnd({ started: true });
   try {
-    // Scrape up to 30 providers per run (most active providers)
-    const result = await fetchProvidersToUpdate(env, 30);
-    // Best-effort AI summaries (plan/provider/best deals)
-    if (env?.AI) {
-      try {
-        const { refreshAiSummaries } = await import("./ai-summaries");
-        await refreshAiSummaries(env);
-      } catch (err) {
-        console.error("AI summary refresh failed:", err);
-      }
-    }
-    // record run results
+    // Small batch per run to stay well within free subrequest/CPU limits.
+    // GitHub Actions loops / re-calls to cover the full provider list.
+    const result = await fetchProvidersToUpdate(_env, 10);
+    // AI summaries disabled: Workers AI binding removed (cost control).
+    // Summaries already stored in DB remain readable via /api/ai/*.
     await recordRunStartEnd({ started: false, runId, notes: JSON.stringify(result) });
     return { ok: true, result };
   } catch (err: unknown) {

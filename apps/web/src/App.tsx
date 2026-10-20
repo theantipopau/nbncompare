@@ -1,19 +1,22 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, Suspense } from "react";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { ComparisonProvider } from "./context/ComparisonContext";
 import { ThemeProvider, useTheme } from "./context/ThemeContext";
 import { ComparisonBar } from "./components/ComparisonBar";
 import { ComparisonModal } from "./components/ComparisonModal";
+import { Loading } from "./components/Loading";
 import { createQueryClient } from "./lib/queryClient";
 import Compare from "./pages/Compare";
-import Admin from "./pages/Admin";
-import Provider from "./pages/Provider";
-import ProviderDetails from "./pages/ProviderDetails";
-import About from "./pages/About";
-import Status from "./pages/Status";
-import Blog from "./pages/Blog";
-import BlogPost from "./pages/BlogPost";
+// Route-level code splitting: only the homepage (Compare) ships in the
+// initial bundle. All other pages load on demand when navigated to.
+const Admin = React.lazy(() => import("./pages/Admin"));
+const Provider = React.lazy(() => import("./pages/Provider"));
+const ProviderDetails = React.lazy(() => import("./pages/ProviderDetails"));
+const About = React.lazy(() => import("./pages/About"));
+const Status = React.lazy(() => import("./pages/Status"));
+const Blog = React.lazy(() => import("./pages/Blog"));
+const BlogPost = React.lazy(() => import("./pages/BlogPost"));
 
 export default function App() {
   const [currentPath, setCurrentPath] = useState(location.pathname);
@@ -131,14 +134,16 @@ function AppShell({
         </header>
       <ErrorBoundary>
         <main id="main" className="main-content">
-          {currentPath === '/admin' ? <Admin /> : 
+          <Suspense fallback={<Loading message="Loading page…" /> }>
+          {currentPath === '/admin' ? <Admin /> :
          currentPath.startsWith('/blog/') ? <BlogPost /> :
          currentPath === '/blog' ? <Blog /> :
          currentPath.startsWith('/provider/') ? <ProviderDetails /> :
-         currentPath.startsWith('/providers/') ? (<Provider slug={(currentPath.replace('/providers/', '') || '').trim()} />) : 
-         currentPath === '/status' ? <Status /> : 
-         currentPath === '/about' ? <About /> : 
+         currentPath.startsWith('/providers/') ? (<Provider slug={(currentPath.replace('/providers/', '') || '').trim()} />) :
+         currentPath === '/status' ? <Status /> :
+         currentPath === '/about' ? <About /> :
          <Compare />}
+          </Suspense>
         </main>
       </ErrorBoundary>
       <footer className="site-footer">

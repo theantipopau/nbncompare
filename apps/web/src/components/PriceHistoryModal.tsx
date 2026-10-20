@@ -35,9 +35,38 @@ interface Props {
   darkMode: boolean;
 }
 
+const CHARTJS_SRC = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+
 export default function PriceHistoryModal({ plan, history, loading, onClose, darkMode }: Props) {
   const canvasRef = React.useRef<HTMLCanvasElement | null>(null);
   const chartRef = React.useRef<ChartInstance | null>(null);
+  // Chart.js is loaded on demand (not in index.html) so regular page views
+  // skip the ~200KB download. Tracks whether window.Chart is usable yet.
+  const [chartLibReady, setChartLibReady] = React.useState(
+    () => typeof window !== 'undefined' && !!window.Chart
+  );
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || window.Chart) {
+      setChartLibReady(!!(typeof window !== 'undefined' && window.Chart));
+      return;
+    }
+    let cancelled = false;
+    const markReady = () => { if (!cancelled) setChartLibReady(true); };
+    const existing = document.querySelector('script[data-chartjs]');
+    if (existing) {
+      if (window.Chart) { markReady(); return; }
+      existing.addEventListener('load', markReady);
+      return () => { cancelled = true; existing.removeEventListener('load', markReady); };
+    }
+    const s = document.createElement('script');
+    s.src = CHARTJS_SRC;
+    s.defer = true;
+    s.setAttribute('data-chartjs', '');
+    s.onload = markReady;
+    document.head.appendChild(s);
+    return () => { cancelled = true; };
+  }, []);
   const dialogRef = React.useRef<HTMLDivElement | null>(null);
   const closeButtonRef = React.useRef<HTMLButtonElement | null>(null);
   const previouslyFocusedRef = React.useRef<HTMLElement | null>(null);
@@ -89,7 +118,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
   }, [onClose]);
 
   useEffect(() => {
-    if (!canvasRef.current || loading || history.length === 0 || !window.Chart) {
+    if (!canvasRef.current || loading || history.length === 0 || !chartLibReady || !window.Chart) {
       return;
     }
 
@@ -186,7 +215,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
         chartRef.current.destroy();
       }
     };
-  }, [history, loading, plan, darkMode]);
+  }, [history, loading, plan, darkMode, chartLibReady]);
 
   const getPriceChange = () => {
     if (history.length < 2) return null;

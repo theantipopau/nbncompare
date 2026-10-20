@@ -2,7 +2,7 @@ import { Router } from "itty-router";
 import type { D1Database, ExecutionContext, KVNamespace } from "@cloudflare/workers-types";
 import { createRateLimiter } from "./lib/rate-limit";
 import { isAdminTokenValid } from "./lib/admin-auth";
-import type { BrowserBinding } from "./lib/browser-rendering";
+// NOTE: Browser Rendering (BROWSER) and Workers AI (AI) bindings removed — cost control.
 
 console.log('Worker module evaluation: index.ts loaded');
 let initError: Error | null = null;
@@ -173,15 +173,16 @@ try {
   initError = err instanceof Error ? err : new Error(String(err));
   console.error('Initialization error:', initError);
 }
-// Cron route triggered by worker scheduled handler
+// Manual scrape route — called by GitHub Actions (free) with admin token.
+// No Cloudflare cron triggers exist, so this never runs unless requested.
   router.get("/internal/cron/run", async (req: Request, env: Env) => {
   try {
     const { handleCron } = await import("./handlers/cron");
       const result = await handleCron(env);
-    return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   } catch (err: unknown) {
     console.error('Cron run failed:', err);
-    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json" } });
+    return new Response(JSON.stringify({ ok: false, error: String(err) }), { status: 500, headers: { "Content-Type": "application/json", "Cache-Control": "no-store" } });
   }
 });
 
@@ -252,8 +253,6 @@ interface Env {
   ADMIN_TOKEN: string;
   CACHE?: KVNamespace;
   ASSETS?: { fetch: (request: Request) => Promise<Response> };
-  AI?: unknown;
-  BROWSER?: BrowserBinding;
   SCRAPER_API_KEY?: string;
   ENVIRONMENT?: string;
   DEBUG?: string;
@@ -387,12 +386,12 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
         handleCron(env),
         new Promise((_res, rej) => setTimeout(() => rej(new Error('Scraping timeout - operation took longer than 2 minutes')), 120000))
       ]);
-      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify({ ok: true, result }), { status: 200, headers: { ...corsHeaders(), 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     } catch (err: unknown) {
       console.error('/internal/cron/run direct handler error:', err);
       const msg = err instanceof Error ? err.stack || err.message : String(err);
       try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json' } });
+      return new Response(JSON.stringify(errorJson(err, env)), { status: 500, headers: { ...corsHeaders(), 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
     }
   }
 
@@ -592,29 +591,9 @@ async function fetch(request: Request, env: Env, _ctx: ExecutionContext): Promis
   }
 }
 
-async function scheduled(_event: any, env: Env, ctx: any): Promise<void> {
-  // Store env.D1 in globalThis for db.ts to access
-  (globalThis as any).D1 = env.D1;
-  (globalThis as any).ADMIN_TOKEN = env.ADMIN_TOKEN;
-  
-  if (initError) {
-    const msg = initError.stack || initError.message || String(initError);
-    console.error('Scheduled handler aborted due to init error:', msg);
-    try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-    return;
-  }
+// No `scheduled` export: Cloudflare cron triggers removed from wrangler.toml.
+// Scraping runs only when POST /internal/cron/run is called (admin token),
+// orchestrated on a schedule by GitHub Actions (free) — see
+// .github/workflows/scrape.yml. This guarantees zero background billing.
 
-  try {
-    console.log('scheduled handler starting');
-    const { handleCron } = await import("./handlers/cron");
-    // Use ctx.waitUntil so the scheduled handler can return while work continues
-    ctx.waitUntil(handleCron(env));
-  } catch (err: unknown) {
-    const msg = err instanceof Error ? err.stack || err.message : String(err);
-    console.error('Scheduled handler error:', msg);
-    try { await recordRunError(String(msg)); } catch (dbErr) { console.error('Failed to write run error to DB', dbErr); }
-    throw err;
-  }
-}
-
-export default { fetch, scheduled };
+export default { fetch };

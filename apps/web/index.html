@@ -4,10 +4,10 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     
-    <!-- Primary Meta Tags -->
-    <title>NBN Compare - Compare 153 NBN Plans from 30+ Australian Providers</title>
-    <meta name="title" content="NBN Compare - Compare 153 NBN Plans from 30+ Australian Providers" />
-    <meta name="description" content="Compare NBN internet plans from Telstra, Optus, TPG, Aussie Broadband and 26 more providers. Find the best NBN plan with our free comparison tool featuring promotional offers, Fixed Wireless plans, and real-time pricing." />
+    <!-- Primary Meta Tags (counts kept evergreen — catalogue grows; see /api/status for live totals) -->
+    <title>NBN Compare - Compare NBN Plans from 50+ Australian Providers</title>
+    <meta name="title" content="NBN Compare - Compare NBN Plans from 50+ Australian Providers" />
+    <meta name="description" content="Compare NBN internet plans from Telstra, Optus, TPG, Aussie Broadband and 50+ more providers. Find the best NBN plan with our free comparison tool featuring promotional offers, Fixed Wireless plans, and real-time pricing." />
     <meta name="keywords" content="NBN compare, NBN plans, internet plans Australia, broadband comparison, NBN prices, Telstra NBN, Optus NBN, TPG, Aussie Broadband, Fixed Wireless NBN, cheap NBN plans, best NBN deals" />
     <meta name="author" content="NBN Compare" />
     <meta name="robots" content="index, follow" />
@@ -16,13 +16,13 @@
     <link rel="preconnect" href="https://www.google.com" />
     <link rel="dns-prefetch" href="https://www.google.com" />
     <meta name="theme-color" content="#3b82f6" />
-    <script defer src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <!-- NOTE: Chart.js is NOT loaded globally. PriceHistoryModal injects it on
+         demand so regular page views skip the ~200KB download. -->
     
     <!-- Open Graph / Facebook -->
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://nbncompare.info/" />
-    <meta property="og:title" content="NBN Compare - Compare 153 NBN Plans from 30+ Australian Providers" />
+    <meta property="og:title" content="NBN Compare - Compare NBN Plans from 50+ Australian Providers" />
     <meta property="og:description" content="Compare NBN internet plans from Australia's top providers. Find the best NBN plan with our free comparison tool featuring promotional offers and real-time pricing." />
     <meta property="og:image" content="https://nbncompare.info/og-image.png" />
     <meta property="og:site_name" content="NBN Compare" />
@@ -30,7 +30,7 @@
     <!-- Twitter -->
     <meta property="twitter:card" content="summary_large_image" />
     <meta property="twitter:url" content="https://nbncompare.info/" />
-    <meta property="twitter:title" content="NBN Compare - Compare 153 NBN Plans from 30+ Australian Providers" />
+    <meta property="twitter:title" content="NBN Compare - Compare NBN Plans from 50+ Australian Providers" />
     <meta property="twitter:description" content="Compare NBN internet plans from Australia's top providers. Find the best NBN plan with our free comparison tool." />
     <meta property="twitter:image" content="https://nbncompare.info/og-image.png" />
     
@@ -48,7 +48,7 @@
       "@type": "WebApplication",
       "name": "NBN Compare",
       "url": "https://nbncompare.info",
-      "description": "Free NBN plan comparison tool for Australia featuring 153 plans from 30+ providers including Telstra, Optus, TPG, and Aussie Broadband.",
+      "description": "Free NBN plan comparison tool for Australia featuring 200+ plans from 50+ providers including Telstra, Optus, TPG, and Aussie Broadband.",
       "applicationCategory": "Utility",
       "operatingSystem": "Web Browser",
       "offers": {
@@ -61,8 +61,8 @@
     
     <link rel="icon" type="image/png" href="/icon.PNG" />
     
-    <!-- Cloudflare Web Analytics -->
-    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "YOUR_CLOUDFLARE_TOKEN"}'></script>
+    <!-- Cloudflare Web Analytics: re-add with a real token to enable.
+    <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "YOUR_CLOUDFLARE_TOKEN"}'></script> -->
   </head>
   <body>
     <div id="root"></div>

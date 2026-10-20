@@ -10,14 +10,11 @@ routes = [
   { pattern = "www.nbncompare.info/*", zone_name = "nbncompare.info" }
 ]
 
-[triggers]
-crons = [ "0 */2 * * *" ]
-
-[ai]
-binding = "AI"
-
-[browser]
-binding = "BROWSER"
+# NOTE: No [triggers] crons — scraping is orchestrated from GitHub Actions
+# (see .github/workflows/scrape.yml) so there are zero background Worker runs.
+# NOTE: No [ai] binding (Workers AI removed to stay on free plan).
+# NOTE: No [browser] binding (Browser Rendering removed — it caused the
+# unexpected bill). All scraping is plain fetch with User-Agent rotation.
 
 [[d1_databases]]
 binding = "D1"

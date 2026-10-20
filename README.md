@@ -33,7 +33,7 @@ This is a pnpm workspace:
 - `packages/shared`: shared plan types, validation, normalization, generic parser, and provider parsers
 - `apps/worker/migrations`: numbered D1 migrations
 
-The provider refresh queue runs every two hours. It prioritizes providers using `provider_scrape_strategy`, limits scrape concurrency, supports Browser Rendering for JavaScript-heavy sites, updates current plan fields, and retires plans no longer present in a successful provider scrape.
+Scraping is free-only: there are no Cloudflare cron triggers, no Browser Rendering, and no Workers AI. A scheduled GitHub Actions workflow (`.github/workflows/scrape.yml`, twice weekly) calls the admin-protected `GET /internal/cron/run` endpoint, which plain-fetches up to 10 providers per call with User-Agent rotation, updates current plan fields, and retires plans no longer present in a successful provider scrape. JS-heavy providers that can't be plain-fetched are flagged `needs_review` for manual update instead of launching a headless browser.
 
 Data is sourced from provider websites and should be verified against the provider before ordering. Scraping success and coverage vary by provider because of redirects, JavaScript rendering, bot protection, and changing site layouts.
 
@@ -97,15 +97,15 @@ npx wrangler pages deploy apps/web/dist --project-name=nbncompare-web
 npx wrangler deploy --config apps/worker/wrangler.toml
 ```
 
-The Worker is configured for:
+The Worker is configured for (all free-plan only):
 
 - `nbncompare.info/*`
 - `www.nbncompare.info/*`
 - D1 database binding `D1`
-- KV binding `CACHE`
-- Browser Rendering binding `BROWSER`
-- AI binding `AI`
-- Cron schedule `0 */2 * * *`
+- KV binding `CACHE` (5-min `/api/status` cache)
+- No `[browser]` binding (removed — caused the billing spike)
+- No `[ai]` binding (removed — Workers AI disabled)
+- No `[triggers]` crons (removed — GitHub Actions calls `/internal/cron/run` instead)
 
 ## Public API
 
@@ -127,7 +127,7 @@ Administrative and internal routes require `x-admin-token`, including manual scr
 2. Add a specialized parser under `packages/shared/src/parsers/providers/` when the provider needs custom extraction.
 3. Register the parser in `packages/shared/src/parsers/index.ts`.
 4. Add or update parser fixtures and run `pnpm --filter @clearnbn/shared test:parsers`.
-5. Add provider scrape strategy settings when Browser Rendering, priority, timeout, or retry behavior needs tuning.
+5. Add provider scrape strategy settings when priority, timeout, or retry behavior needs tuning (no browser option — `use_browser` is ignored).
 6. Verify the provider URL, pricing, promotional duration, source URL, and extracted plan count before deployment.
 
 ## Contributing

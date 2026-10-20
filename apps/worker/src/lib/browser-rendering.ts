@@ -1,25 +1,23 @@
 /**
- * Cloudflare Browser Rendering
- * 
- * FREE: 2 million requests/month
- * Perfect for JavaScript-heavy sites that need full browser rendering
- * 
- * Docs: https://developers.cloudflare.com/browser-rendering/
+ * Free-only fetch helper (Browser Rendering removed).
+ *
+ * History: this module previously wrapped Cloudflare Browser Rendering
+ * (`env.BROWSER.launch()`). That binding caused a large unexpected bill
+ * (dozens of concurrent browsers, 100+ hours), so it has been fully removed.
+ *
+ * Current strategy — 100% free:
+ * 1. Plain fetch with User-Agent rotation + realistic headers (see scraper-api.ts)
+ * 2. Exponential backoff + per-host circuit breaker (see scraper-api.ts)
+ * 3. If a JS-heavy provider cannot be parsed, it is marked `needs_review`
+ *    instead of launching a headless browser. Operators can update those
+ *    few plans manually via the admin UI, or the GitHub Actions workflow
+ *    (which can run Playwright on GitHub's free runners) handles them.
  */
 
 export interface BrowserBinding {
-  launch(): Promise<Browser>;
-}
-
-interface Browser {
-  newPage(): Promise<Page>;
-  close(): Promise<void>;
-}
-
-interface Page {
-  goto(url: string, options?: { waitUntil?: string }): Promise<void>;
-  content(): Promise<string>;
-  close(): Promise<void>;
+  // Kept only so old env typings don't break external tooling.
+  // Never provided — any call that requires it throws.
+  launch?: never;
 }
 
 interface FetchSettings {
@@ -27,94 +25,31 @@ interface FetchSettings {
   maxRetries?: number;
 }
 
-const DEFAULT_BROWSER_TIMEOUT_MS = 20000;
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number, label: string): Promise<T> {
-  return Promise.race([
-    promise,
-    new Promise<T>((_, reject) => setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs)),
-  ]);
-}
-
 /**
- * Fetch HTML using Cloudflare Browser Rendering
- * Best for JavaScript-heavy sites
+ * Previously rendered via headless browser. Now always throws with a
+ * clear message so callers can't accidentally reintroduce paid usage.
  */
-export async function fetchViaBrowser(
-  url: string,
-  browserBinding: BrowserBinding,
-  settings: FetchSettings = {}
-): Promise<string> {
-  let browser: Browser | null = null;
-  let page: Page | null = null;
-  const timeoutMs = settings.timeoutMs ?? DEFAULT_BROWSER_TIMEOUT_MS;
-
-  try {
-    console.log(`Launching browser for ${url}...`);
-    browser = await withTimeout(browserBinding.launch(), timeoutMs, 'Browser launch');
-    page = await withTimeout(browser.newPage(), timeoutMs, 'Page creation');
-    
-    console.log(`Navigating to ${url}...`);
-    await withTimeout(page.goto(url, { waitUntil: 'networkidle' }), timeoutMs, 'Page navigation');
-    
-    console.log(`Extracting content from ${url}...`);
-    const html = await withTimeout(page.content(), timeoutMs, 'Page content extraction');
-    
-    return html;
-  } catch (error) {
-    console.error(`Browser rendering failed for ${url}:`, error);
-    throw error;
-  } finally {
-    // Clean up
-    if (page) {
-      try {
-        await page.close();
-      } catch (e) {
-        console.error('Failed to close page:', e);
-      }
-    }
-    if (browser) {
-      try {
-        await browser.close();
-      } catch (e) {
-        console.error('Failed to close browser:', e);
-      }
-    }
-  }
+export async function fetchViaBrowser(url: string): Promise<string> {
+  throw new Error(
+    `Browser rendering is disabled (removed to stay on Cloudflare free plan). ` +
+      `Plain fetch failed for ${url}; provider flagged for manual review / GitHub Actions Playwright run.`
+  );
 }
 
 /**
- * Smart fallback chain:
- * 1. User-Agent rotation (fast, free)
- * 2. Browser rendering (slower but handles JavaScript)
+ * Smart fallback chain (free only):
+ * User-Agent rotation, then give up with a clear error.
  */
 export async function fetchWithSmartFallback(
   url: string,
-  browserBinding?: BrowserBinding,
+  _browserBinding?: unknown,
   settings: FetchSettings = {}
 ): Promise<string> {
-  // Import user-agent rotation
   const { fetchWithFallback } = await import('./scraper-api');
   const maxRetries = settings.maxRetries ?? 3;
-  
-  try {
-    // First: Try user-agent rotation (fast)
-    console.log(`Attempting user-agent rotation for ${url}...`);
-    return await fetchWithFallback(url, undefined, 0, { timeoutMs: settings.timeoutMs, maxRetries });
-  } catch (error) {
-    console.log(`User-agent rotation failed for ${url}, trying browser rendering...`);
-    
-    // Second: Try browser rendering if available
-    if (browserBinding) {
-      try {
-        return await fetchViaBrowser(url, browserBinding, settings);
-      } catch (browserError) {
-        console.error(`Browser rendering also failed for ${url}:`, browserError);
-        throw new Error(`All fetch methods failed for ${url} (maxRetries=${maxRetries})`);
-      }
-    }
-    
-    // No browser available, re-throw original error
-    throw error;
-  }
+  console.log(`Attempting plain fetch (User-Agent rotation) for ${url}...`);
+  return await fetchWithFallback(url, undefined, 0, {
+    timeoutMs: settings.timeoutMs,
+    maxRetries,
+  });
 }

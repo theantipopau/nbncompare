@@ -1,7 +1,6 @@
 import { getDb } from "../lib/db";
 import { findParserForUrl, validatePlan, normalizeExtract, ProviderRow } from "@clearnbn/shared";
-import { fetchWithSmartFallback, fetchViaBrowser } from "../lib/browser-rendering";
-import type { BrowserBinding } from "../lib/browser-rendering";
+import { fetchWithSmartFallback } from "../lib/browser-rendering";
 
 type SimpleStmt = {
   bind: (...args: unknown[]) => SimpleStmt;
@@ -22,19 +21,13 @@ type ProviderWithStrategy = ProviderRow & {
   max_retries?: number;
 };
 
-const JS_RENDER_PROVIDERS = new Set([
-  'telstra',
-  'optus',
-  'vodafone',
-  'tpg',
-  'iinet',
-  'superloop',
-  'kogan'
-]);
+// NOTE: JS-heavy providers used to prefer Cloudflare Browser Rendering.
+// That binding is removed (cost). All providers now use free plain fetch.
+// Providers that need JS are flagged needs_review for manual/GitHub Actions handling.
 
-type FetchEnv = { SCRAPER_API_KEY?: string; BROWSER?: BrowserBinding };
+type FetchEnv = { SCRAPER_API_KEY?: string };
 
-export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: number = 5) {
+export async function fetchProvidersToUpdate(_env?: FetchEnv, maxProviders: number = 5) {
   const db = (await getDb()) as SimpleDB;
   console.log(`fetchProvidersToUpdate: starting (max ${maxProviders} providers, adaptive strategy scheduling enabled)`);
   const stmt = db.prepare(`
@@ -60,12 +53,13 @@ export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: numbe
   const providers = (providersRes?.results ?? []) as ProviderWithStrategy[];
   const result: { checked: number; changed: number; errors: number } = { checked: 0, changed: 0, errors: 0 };
   
-  // Keep browser sessions and outbound requests bounded to avoid exhausting
-  // Cloudflare subrequests while still refreshing the full provider queue.
+  // Keep outbound requests bounded to avoid exhausting Cloudflare
+  // subrequests while still refreshing the provider queue.
+  // Plain fetch only — no browser sessions.
   const concurrency = 3;
   for (let start = 0; start < providers.length; start += concurrency) {
     const batch = providers.slice(start, start + concurrency);
-    const results = await Promise.allSettled(batch.map((provider) => processProvider(db, provider, result, env)));
+    const results = await Promise.allSettled(batch.map((provider) => processProvider(db, provider, result)));
     results.forEach((res, index) => {
       if (res.status === 'rejected') {
         console.error(`Provider ${batch[index].slug} failed:`, res.reason);
@@ -77,29 +71,16 @@ export async function fetchProvidersToUpdate(env?: FetchEnv, maxProviders: numbe
   return result;
 }
 
-async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result: { checked: number; changed: number; errors: number }, env?: FetchEnv) {
+async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result: { checked: number; changed: number; errors: number }) {
   result.checked++;
   console.log(`Checking provider ${prov.slug} (${prov.canonical_url})`);
   try {
-    const preferBrowser = prov.use_browser === 1 || JS_RENDER_PROVIDERS.has(prov.slug);
     const timeoutMs = typeof prov.timeout_ms === 'number' && prov.timeout_ms >= 5000 ? prov.timeout_ms : 20000;
     const maxRetries = typeof prov.max_retries === 'number' && prov.max_retries >= 1 ? prov.max_retries : 3;
-    let usedBrowser = false;
-    let html: string;
-
-    if (preferBrowser && env?.BROWSER) {
-      try {
-        html = await fetchViaBrowser(prov.canonical_url, env.BROWSER, { timeoutMs });
-        usedBrowser = true;
-      } catch (err) {
-        console.warn(`Browser render failed for ${prov.slug}, falling back to smart fetch`, err);
-        html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER, { timeoutMs, maxRetries });
-      }
-    } else {
-      html = await fetchWithSmartFallback(prov.canonical_url, env?.BROWSER, { timeoutMs, maxRetries });
-    }
+    // Free-only path: plain fetch with User-Agent rotation. No browser.
+    const html = await fetchWithSmartFallback(prov.canonical_url, undefined, { timeoutMs, maxRetries });
     const hash = await computeHash(html);
-    if (!preferBrowser && hash === prov.last_hash) {
+    if (hash === prov.last_hash) {
       // update last_fetch_at and clear errors
       await db.prepare("UPDATE providers SET last_fetch_at = ?, last_error = NULL, needs_review = 0 WHERE id = ?").bind(new Date().toISOString(), prov.id).run();
       console.log(`Provider ${prov.slug} unchanged (hash match)`);
@@ -123,25 +104,18 @@ async function processProvider(db: SimpleDB, prov: ProviderWithStrategy, result:
       result.errors++;
       return;
     }
-    // Fallback to browser render if parse failed or missing prices
-    if (!usedBrowser && env?.BROWSER) {
-      const missingPrices = extracts.filter((e) => !e.ongoingPriceCents && !e.introPriceCents).length;
-      if (extracts.length === 0 || missingPrices / Math.max(extracts.length, 1) > 0.6) {
-        try {
-          const browserHtml = await fetchViaBrowser(prov.canonical_url, env.BROWSER, { timeoutMs });
-          const parsed = await parser.parse(browserHtml, prov.canonical_url);
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            extracts = parsed;
-            usedBrowser = true;
-          }
-        } catch (err) {
-          console.warn(`Browser fallback parse failed for ${prov.slug}`, err);
-        }
-      }
-    }
-
+    // No browser fallback: if the parse looks like a JS shell (no prices),
+    // flag the provider for manual review / GitHub Actions Playwright run.
     if (extracts.length === 0) {
-      throw new Error(`No plans extracted for provider ${prov.slug}`);
+      await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ?, needs_review = 1 WHERE id = ?").bind(`No plans extracted (likely JS-rendered, browser rendering disabled)`, new Date().toISOString(), prov.id).run();
+      result.errors++;
+      return;
+    }
+    const missingPrices = extracts.filter((e) => !e.ongoingPriceCents && !e.introPriceCents).length;
+    if (missingPrices / Math.max(extracts.length, 1) > 0.6) {
+      await db.prepare("UPDATE providers SET last_error = ?, last_fetch_at = ?, needs_review = 1 WHERE id = ?").bind(`Parsed ${extracts.length} plans but ${missingPrices} lack prices (likely JS-rendered, browser rendering disabled)`, new Date().toISOString(), prov.id).run();
+      result.errors++;
+      return;
     }
 
     // Validate and upsert plans. A successful non-empty scrape is also the

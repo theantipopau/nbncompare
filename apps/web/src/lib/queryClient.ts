@@ -14,9 +14,11 @@ export function createQueryClient(): QueryClient {
         gcTime: 10 * 60 * 1000,
         // Don't retry failed requests automatically (let components decide)
         retry: 1,
-        // Refetch stale data when window regains focus
-        refetchOnWindowFocus: true,
-        refetchOnReconnect: true,
+        // Disabled: every tab-focus/reconnect refired all plan queries,
+        // burning Worker requests + D1 reads for data with a 5-min staleTime.
+        // Data still refreshes on mount and when staleTime expires.
+        refetchOnWindowFocus: false,
+        refetchOnReconnect: false,
         refetchOnMount: true,
       },
       mutations: {
