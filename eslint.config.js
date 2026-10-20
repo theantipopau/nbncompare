@@ -39,6 +39,10 @@ export default [
         HTMLSelectElement: 'readonly',
         HTMLAnchorElement: 'readonly',
         KeyboardEvent: 'readonly',
+        PopStateEvent: 'readonly',
+        Event: 'readonly',
+        CustomEvent: 'readonly',
+        History: 'readonly',
         NodeListOf: 'readonly',
         process: 'readonly',
         reportError: 'readonly',
@@ -80,6 +84,8 @@ export default [
         setTimeout: 'readonly',
         crypto: 'readonly',
         TextEncoder: 'readonly',
+        AbortSignal: 'readonly',
+        AbortController: 'readonly',
         D1Database: 'readonly',
         KVNamespace: 'readonly',
         ScheduledEvent: 'readonly',
@@ -112,6 +118,8 @@ export default [
         URL: 'readonly',
         DOMParser: 'readonly',
         Document: 'readonly',
+        Element: 'readonly',
+        Node: 'readonly',
         require: 'readonly',
       },
     },
@@ -163,6 +171,8 @@ export default [
   },
   {
     ignores: [
+      // UTF-16 scratch file: not valid lint input (see apps/web/_test_react.ts)
+      'apps/web/_test_react.ts',
       'dist/**',
       'node_modules/**',
       '**/*.d.ts',
