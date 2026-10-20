@@ -134,7 +134,7 @@ export default function ProviderDetails() {
       <div style={{ padding: '40px 20px', textAlign: 'center' }}>
         <h2>Provider Not Found</h2>
         <p>Sorry, we couldn't find information for this provider.</p>
-        <a href="/compare" style={{ color: '#667eea', textDecoration: 'underline' }}>
+        <a href="/compare" style={{ color: '#0f766e', textDecoration: 'underline' }}>
           ← Back to Compare
         </a>
       </div>
@@ -145,14 +145,14 @@ export default function ProviderDetails() {
     <div style={{ padding: '20px', maxWidth: '1200px', margin: '0 auto' }}>
       {/* Breadcrumb */}
       <div style={{ marginBottom: '20px', fontSize: '14px', color: '#666' }}>
-        <a href="/compare" style={{ color: '#667eea', textDecoration: 'none' }}>Compare</a>
+        <a href="/compare" style={{ color: '#0f766e', textDecoration: 'none' }}>Compare</a>
         {' > '}
         <span>{provider.name}</span>
       </div>
 
       {/* Provider Header */}
       <div style={{
-        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+        background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
         color: 'white',
         padding: '40px',
         borderRadius: '16px',
@@ -180,7 +180,7 @@ export default function ProviderDetails() {
             rel="noopener noreferrer"
             style={{
               background: 'white',
-              color: '#667eea',
+              color: '#0f766e',
               padding: '12px 24px',
               borderRadius: '8px',
               textDecoration: 'none',
@@ -247,8 +247,8 @@ export default function ProviderDetails() {
                 style={{
                   padding: '8px 16px',
                   borderRadius: '8px',
-                  border: selectedSpeed === '' ? '2px solid #667eea' : '1px solid #ddd',
-                  background: selectedSpeed === '' ? '#667eea' : 'white',
+                  border: selectedSpeed === '' ? '2px solid #0f766e' : '1px solid #ddd',
+                  background: selectedSpeed === '' ? '#0f766e' : 'white',
                   color: selectedSpeed === '' ? 'white' : '#333',
                   cursor: 'pointer',
                   fontSize: '14px',
@@ -264,8 +264,8 @@ export default function ProviderDetails() {
                   style={{
                     padding: '8px 16px',
                     borderRadius: '8px',
-                    border: selectedSpeed === String(tier) ? '2px solid #667eea' : '1px solid #ddd',
-                    background: selectedSpeed === String(tier) ? '#667eea' : 'white',
+                    border: selectedSpeed === String(tier) ? '2px solid #0f766e' : '1px solid #ddd',
+                    background: selectedSpeed === String(tier) ? '#0f766e' : 'white',
                     color: selectedSpeed === String(tier) ? 'white' : '#333',
                     cursor: 'pointer',
                     fontSize: '14px',
@@ -356,8 +356,8 @@ function PlanCard({ plan }: { plan: Plan }) {
       cursor: 'pointer'
     }}
     onMouseEnter={(e: React.MouseEvent<HTMLDivElement>) => {
-      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(102, 126, 234, 0.3)';
-      (e.currentTarget as HTMLDivElement).style.borderColor = '#667eea';
+      (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 24px rgba(15, 118, 110, 0.3)';
+      (e.currentTarget as HTMLDivElement).style.borderColor = '#0f766e';
     }}
     onMouseLeave={(e: React.MouseEvent<HTMLDivElement>) => {
       (e.currentTarget as HTMLDivElement).style.boxShadow = '0 2px 8px rgba(0,0,0,0.05)';
@@ -370,7 +370,7 @@ function PlanCard({ plan }: { plan: Plan }) {
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '12px' }}>
             {plan.speed_tier && (
               <span style={{ 
-                background: '#667eea', 
+                background: '#0f766e', 
                 color: 'white', 
                 padding: '4px 12px', 
                 borderRadius: '6px', 
@@ -442,7 +442,7 @@ function PlanCard({ plan }: { plan: Plan }) {
         </div>
 
         <div style={{ textAlign: 'right', minWidth: '150px' }}>
-          <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#667eea', marginBottom: '8px' }}>
+          <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#0f766e', marginBottom: '8px' }}>
             {priceDisplay}
           </div>
           {plan.intro_price_cents && plan.ongoing_price_cents && plan.intro_price_cents !== plan.ongoing_price_cents && (
@@ -456,7 +456,7 @@ function PlanCard({ plan }: { plan: Plan }) {
             rel="noopener noreferrer"
             style={{
               display: 'inline-block',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
               color: 'white',
               padding: '12px 24px',
               borderRadius: '8px',
@@ -477,7 +477,7 @@ function PlanCard({ plan }: { plan: Plan }) {
             <button
               onClick={loadSummary}
               style={{
-                background: '#667eea',
+                background: '#0f766e',
                 color: 'white',
                 border: 'none',
                 padding: '6px 12px',

@@ -84,7 +84,7 @@ export default function About() {
           alignItems: 'center',
           gap: '10px',
           padding: '12px 20px', 
-          background: '#667eea', 
+          background: '#0f766e', 
           color: 'white', 
           borderRadius: '8px', 
           textDecoration: 'none', 

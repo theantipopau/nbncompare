@@ -287,7 +287,7 @@ export default function SpeedCalculator({ onSpeedRecommended, darkMode }: Props)
             width: '100%',
             padding: '14px',
             marginTop: '24px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
             color: 'white',
             border: 'none',
             borderRadius: '10px',
@@ -304,14 +304,14 @@ export default function SpeedCalculator({ onSpeedRecommended, darkMode }: Props)
           <div style={{
             marginTop: '24px',
             padding: '20px',
-            background: darkMode ? 'rgba(102, 126, 234, 0.2)' : 'rgba(102, 126, 234, 0.1)',
+            background: darkMode ? 'rgba(15, 118, 110, 0.2)' : 'rgba(15, 118, 110, 0.1)',
             borderRadius: '12px',
-            border: '2px solid #667eea'
+            border: '2px solid #0f766e'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
               <span style={{ fontSize: '2em' }}>⚡</span>
               <div>
-                <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#667eea' }}>
+                <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#0f766e' }}>
                   NBN {recommendedSpeed}
                 </div>
                 <div style={{ color: darkMode ? '#a0aec0' : '#666', fontSize: '0.9em' }}>

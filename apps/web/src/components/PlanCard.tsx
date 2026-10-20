@@ -113,7 +113,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
     borderRadius: '16px',
     boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
     marginBottom: '16px',
-    border: isFavorite ? `2px solid ${darkMode ? '#667eea' : '#667eea'}` : 'none',
+    border: isFavorite ? `2px solid ${darkMode ? '#0f766e' : '#0f766e'}` : 'none',
     transition: 'all 0.3s ease',
   };
 
@@ -232,9 +232,9 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       <div style={{
         padding: '12px',
         borderRadius: '12px',
-        background: darkMode ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.05)',
+        background: darkMode ? 'rgba(15, 118, 110, 0.1)' : 'rgba(15, 118, 110, 0.05)',
         marginBottom: '16px',
-        border: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.2)' : 'rgba(102, 126, 234, 0.15)'}`
+        border: `1px solid ${darkMode ? 'rgba(15, 118, 110, 0.2)' : 'rgba(15, 118, 110, 0.15)'}`
       }}>
         {plan.intro_price_cents ? (
           <div>
@@ -317,7 +317,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           padding: '8px 12px',
           marginBottom: '12px',
           background: 'transparent',
-          border: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.3)' : 'rgba(102, 126, 234, 0.2)'}`,
+          border: `1px solid ${darkMode ? 'rgba(15, 118, 110, 0.3)' : 'rgba(15, 118, 110, 0.2)'}`,
           borderRadius: '8px',
           color: darkMode ? '#a0aec0' : '#666',
           cursor: 'pointer',
@@ -332,7 +332,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
       {isExpanded && (
         <div style={{
           padding: '12px',
-          borderTop: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.2)' : 'rgba(102, 126, 234, 0.15)'}`,
+          borderTop: `1px solid ${darkMode ? 'rgba(15, 118, 110, 0.2)' : 'rgba(15, 118, 110, 0.15)'}`,
           marginBottom: '12px',
           fontSize: '0.85em'
         }}>
@@ -358,7 +358,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           )}
           
           {/* Provider Features */}
-          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.15)' : 'rgba(102, 126, 234, 0.1)'}` }}>
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${darkMode ? 'rgba(15, 118, 110, 0.15)' : 'rgba(15, 118, 110, 0.1)'}` }}>
             <div style={{ marginBottom: '8px', fontWeight: '600' }}>Provider Features:</div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {plan.provider_ipv6_support && plan.provider_ipv6_support >= 1 && (
@@ -376,7 +376,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
             </div>
           </div>
 
-          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${darkMode ? 'rgba(102, 126, 234, 0.15)' : 'rgba(102, 126, 234, 0.1)'}` }}>
+          <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: `1px solid ${darkMode ? 'rgba(15, 118, 110, 0.15)' : 'rgba(15, 118, 110, 0.1)'}` }}>
             <div style={{ marginBottom: '8px', fontWeight: '600' }}>AI Summary:</div>
             {aiSummaryLoading ? (
               <div style={{ color: darkMode ? '#a0aec0' : '#666' }}>Generating summary...</div>
@@ -401,8 +401,8 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           style={{
             flex: 1,
             padding: '10px 12px',
-            background: isFavorite ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (darkMode ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.05)'),
-            color: isFavorite ? 'white' : (darkMode ? '#a0aec0' : '#667eea'),
+            background: isFavorite ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : (darkMode ? 'rgba(15, 118, 110, 0.1)' : 'rgba(15, 118, 110, 0.05)'),
+            color: isFavorite ? 'white' : (darkMode ? '#a0aec0' : '#0f766e'),
             border: 'none',
             borderRadius: '8px',
             cursor: 'pointer',
@@ -447,9 +447,9 @@ export const PlanCard: React.FC<PlanCardProps> = ({
           style={{
             flex: 1,
             padding: '10px 12px',
-            background: darkMode ? 'rgba(102, 126, 234, 0.1)' : 'rgba(102, 126, 234, 0.05)',
-            color: darkMode ? '#a0aec0' : '#667eea',
-            border: '1px solid rgba(102, 126, 234, 0.3)',
+            background: darkMode ? 'rgba(15, 118, 110, 0.1)' : 'rgba(15, 118, 110, 0.05)',
+            color: darkMode ? '#a0aec0' : '#0f766e',
+            border: '1px solid rgba(15, 118, 110, 0.3)',
             borderRadius: '8px',
             cursor: 'pointer',
             fontWeight: '600',
@@ -465,7 +465,7 @@ export const PlanCard: React.FC<PlanCardProps> = ({
             style={{
               flex: 1,
               padding: '10px 12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

@@ -504,7 +504,7 @@ export default function Compare() {
   }
 
   function getProviderColor(providerName: string | null | undefined): string {
-    if (!providerName) return '#667eea';
+    if (!providerName) return '#0f766e';
     const colors: Record<string, string> = {
       'Telstra': '#0088CC',
       'Optus': '#006D5B',
@@ -516,7 +516,7 @@ export default function Compare() {
       'MyRepublic': '#FF4655',
       'Tangerine': '#FF6F00',
     };
-    return colors[providerName] || '#667eea';
+    return colors[providerName] || '#0f766e';
   }
 
   function getProviderInitials(providerName: string | null | undefined): string {
@@ -1170,8 +1170,8 @@ export default function Compare() {
 
       <section style={{
         marginTop: '16px',
-        background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.06)',
-        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(102, 126, 234, 0.15)'}`,
+        background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15, 118, 110, 0.06)',
+        border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(15, 118, 110, 0.15)'}`,
         borderRadius: '12px',
         padding: '20px'
       }}>
@@ -1213,7 +1213,7 @@ export default function Compare() {
             onClick={() => setViewMode('standard')}
             style={{
               padding: '10px 20px',
-              background: viewMode === 'standard' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === 'standard' ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : 'transparent',
               color: viewMode === 'standard' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
@@ -1229,7 +1229,7 @@ export default function Compare() {
             onClick={() => setViewMode('fixed-wireless')}
             style={{
               padding: '10px 20px',
-              background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === 'fixed-wireless' ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : 'transparent',
               color: viewMode === 'fixed-wireless' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
@@ -1245,7 +1245,7 @@ export default function Compare() {
             onClick={() => setViewMode('5g-home')}
             style={{
               padding: '10px 20px',
-              background: viewMode === '5g-home' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === '5g-home' ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : 'transparent',
               color: viewMode === '5g-home' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
@@ -1261,7 +1261,7 @@ export default function Compare() {
             onClick={() => setViewMode('satellite')}
             style={{
               padding: '10px 20px',
-              background: viewMode === 'satellite' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === 'satellite' ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : 'transparent',
               color: viewMode === 'satellite' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
@@ -1277,7 +1277,7 @@ export default function Compare() {
             onClick={() => setViewMode('business')}
             style={{
               padding: '10px 20px',
-              background: viewMode === 'business' ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'transparent',
+              background: viewMode === 'business' ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : 'transparent',
               color: viewMode === 'business' ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
               border: 'none',
               borderRadius: '8px',
@@ -1317,7 +1317,7 @@ export default function Compare() {
                 onClick={() => setProviderFilter('')}
                 style={{
                   padding: '6px 14px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1337,7 +1337,7 @@ export default function Compare() {
                   onClick={() => setProviderFilter(providerFilter === name ? '' : name)}
                   style={{
                     padding: '6px 14px',
-                    background: providerFilter === name ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : (darkMode ? '#1a202c' : 'white'),
+                    background: providerFilter === name ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)' : (darkMode ? '#1a202c' : 'white'),
                     color: providerFilter === name ? 'white' : (darkMode ? '#e2e8f0' : '#333'),
                     border: providerFilter === name ? 'none' : (darkMode ? '2px solid #4a5568' : '2px solid #e0e0e0'),
                     borderRadius: '8px',
@@ -1348,8 +1348,8 @@ export default function Compare() {
                   }}
                   onMouseEnter={(e: MouseEvent<HTMLButtonElement>) => {
                     if (providerFilter !== name) {
-                      (e.target as HTMLButtonElement).style.borderColor = '#667eea';
-                      (e.target as HTMLButtonElement).style.color = '#667eea';
+                      (e.target as HTMLButtonElement).style.borderColor = '#0f766e';
+                      (e.target as HTMLButtonElement).style.color = '#0f766e';
                     }
                   }}
                   onMouseLeave={(e: MouseEvent<HTMLButtonElement>) => {
@@ -1382,7 +1382,7 @@ export default function Compare() {
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <strong style={{ color: darkMode ? '#f7fafc' : '#2d3748' }}>
                 Compare Only Selected Providers
-                {selectedProviders.length > 0 && <span style={{ marginLeft: '8px', color: '#667eea', fontSize: '0.9em' }}>({selectedProviders.length} selected)</span>}
+                {selectedProviders.length > 0 && <span style={{ marginLeft: '8px', color: '#0f766e', fontSize: '0.9em' }}>({selectedProviders.length} selected)</span>}
               </strong>
               <button
                 onClick={() => setShowProviderList(!showProviderList)}
@@ -1405,7 +1405,7 @@ export default function Compare() {
                 onClick={() => setSelectedProviders([])}
                 style={{
                   padding: '6px 14px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1429,7 +1429,7 @@ export default function Compare() {
                     gap: '8px', 
                     padding: '10px 14px',
                     background: selectedProviders.includes(name) 
-                      ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                      ? 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)'
                       : (darkMode ? '#1a202c' : '#f8f9fa'),
                     borderRadius: '8px',
                     cursor: 'pointer',
@@ -1688,7 +1688,7 @@ export default function Compare() {
                 onClick={saveFilterPreset}
                 style={{
                   padding: '10px 16px',
-                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
                   color: 'white',
                   border: 'none',
                   borderRadius: '8px',
@@ -1715,7 +1715,7 @@ export default function Compare() {
                         padding: '6px 12px',
                         background: darkMode ? '#1a202c' : '#f5f5f5',
                         color: darkMode ? '#e2e8f0' : '#333',
-                        border: `2px solid #667eea`,
+                        border: `2px solid #0f766e`,
                         borderRadius: '6px',
                         cursor: 'pointer',
                         fontWeight: '600',
@@ -1853,9 +1853,9 @@ export default function Compare() {
               justifyContent: 'space-between',
               marginBottom: '16px',
               padding: '12px 16px',
-              background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.05)',
+              background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15, 118, 110, 0.05)',
               borderRadius: '8px',
-              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(102, 126, 234, 0.15)'}`,
+              border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(15, 118, 110, 0.15)'}`,
             }}>
               <div style={{
                 display: 'flex',
@@ -1864,7 +1864,7 @@ export default function Compare() {
                 fontSize: '0.95em',
                 color: darkMode ? '#e2e8f0' : '#475569',
               }}>
-                <span style={{ fontWeight: '600', color: '#667eea', fontSize: '1.1em' }}>
+                <span style={{ fontWeight: '600', color: '#0f766e', fontSize: '1.1em' }}>
                   {[...plans].filter(p => {
                     // Apply same filters
                     if (viewMode === 'business') {

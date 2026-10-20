@@ -49,7 +49,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
             aria-label="Refresh page to recover from error"
             style={{
               padding: '12px 24px',
-              background: 'var(--gradient-primary, #667eea)',
+              background: 'var(--gradient-primary, #0f766e)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

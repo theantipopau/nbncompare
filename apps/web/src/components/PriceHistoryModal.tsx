@@ -160,14 +160,14 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
         datasets: [{
           label: 'Price ($/month)',
           data,
-          borderColor: '#667eea',
-          backgroundColor: 'rgba(102, 126, 234, 0.1)',
+          borderColor: '#0f766e',
+          backgroundColor: 'rgba(15, 118, 110, 0.1)',
           borderWidth: 3,
           tension: 0.1,
           fill: true,
           pointRadius: 5,
           pointHoverRadius: 7,
-          pointBackgroundColor: '#667eea',
+          pointBackgroundColor: '#0f766e',
           pointBorderColor: '#fff',
           pointBorderWidth: 2
         }]
@@ -271,7 +271,7 @@ export default function PriceHistoryModal({ plan, history, loading, onClose, dar
             <h2 style={{ margin: '0 0 8px 0', color: darkMode ? 'white' : '#333' }}>
               Price History
             </h2>
-            <div style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#667eea' }}>
+            <div style={{ fontSize: '1.1em', fontWeight: 'bold', color: '#0f766e' }}>
               {plan.provider_name} - {plan.plan_name}
             </div>
           </div>

@@ -179,7 +179,7 @@ export default function Admin() {
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '20px' }}>
       <h2>🔐 Admin Dashboard</h2>
-      <div style={{ marginBottom: '24px', padding: '20px', background: 'rgba(102, 126, 234, 0.1)', borderRadius: '12px' }}>
+      <div style={{ marginBottom: '24px', padding: '20px', background: 'rgba(15, 118, 110, 0.1)', borderRadius: '12px' }}>
         <label style={{ display: 'block', marginBottom: '12px' }}>
           <strong>Admin Token:</strong>{' '}
           <input 
@@ -198,7 +198,7 @@ export default function Admin() {
             fontWeight: '600',
             borderRadius: '8px',
             border: 'none',
-            background: scraping ? '#999' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            background: scraping ? '#999' : 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
             color: 'white',
             cursor: scraping ? 'not-allowed' : 'pointer',
             marginTop: '8px',
@@ -233,7 +233,7 @@ export default function Admin() {
           onClick={() => setSelectedTab('issues')}
           style={{
             padding: '10px 16px',
-            background: selectedTab === 'issues' ? '#667eea' : 'transparent',
+            background: selectedTab === 'issues' ? '#0f766e' : 'transparent',
             color: selectedTab === 'issues' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
@@ -247,7 +247,7 @@ export default function Admin() {
           onClick={() => setSelectedTab('feedback')}
           style={{
             padding: '10px 16px',
-            background: selectedTab === 'feedback' ? '#667eea' : 'transparent',
+            background: selectedTab === 'feedback' ? '#0f766e' : 'transparent',
             color: selectedTab === 'feedback' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
@@ -261,7 +261,7 @@ export default function Admin() {
           onClick={() => setSelectedTab('scrapers')}
           style={{
             padding: '10px 16px',
-            background: selectedTab === 'scrapers' ? '#667eea' : 'transparent',
+            background: selectedTab === 'scrapers' ? '#0f766e' : 'transparent',
             color: selectedTab === 'scrapers' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
@@ -275,7 +275,7 @@ export default function Admin() {
           onClick={() => setSelectedTab('metadata')}
           style={{
             padding: '10px 16px',
-            background: selectedTab === 'metadata' ? '#667eea' : 'transparent',
+            background: selectedTab === 'metadata' ? '#0f766e' : 'transparent',
             color: selectedTab === 'metadata' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
@@ -289,7 +289,7 @@ export default function Admin() {
           onClick={() => setSelectedTab('health')}
           style={{
             padding: '10px 16px',
-            background: selectedTab === 'health' ? '#667eea' : 'transparent',
+            background: selectedTab === 'health' ? '#0f766e' : 'transparent',
             color: selectedTab === 'health' ? 'white' : '#666',
             border: 'none',
             borderRadius: '6px',
@@ -316,7 +316,7 @@ export default function Admin() {
                   style={{
                     marginLeft: '12px',
                     padding: '6px 12px',
-                    background: '#667eea',
+                    background: '#0f766e',
                     color: 'white',
                     border: 'none',
                     borderRadius: '4px',
@@ -356,7 +356,7 @@ export default function Admin() {
                     <div>
                       <span style={{
                         display: 'inline-block',
-                        background: item.issue_type === 'wrong_price' ? '#ff6b6b' : '#667eea',
+                        background: item.issue_type === 'wrong_price' ? '#ff6b6b' : '#0f766e',
                         color: 'white',
                         padding: '4px 8px',
                         borderRadius: '4px',
@@ -374,7 +374,7 @@ export default function Admin() {
                       onClick={() => markFeedbackResolved(item.id, !item.resolved)}
                       style={{
                         padding: '6px 12px',
-                        background: item.resolved ? '#10b981' : '#667eea',
+                        background: item.resolved ? '#10b981' : '#0f766e',
                         color: 'white',
                         border: 'none',
                         borderRadius: '4px',

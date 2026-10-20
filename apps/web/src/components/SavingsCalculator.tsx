@@ -164,7 +164,7 @@ export function SavingsCalculator({ currentPlan, allPlans }: SavingsCalculatorPr
               style={{
                 width: '100%',
                 padding: '12px',
-                backgroundColor: '#667eea',
+                backgroundColor: '#0f766e',
                 color: 'white',
                 border: 'none',
                 borderRadius: '6px',
@@ -256,7 +256,7 @@ export function SavingsCalculator({ currentPlan, allPlans }: SavingsCalculatorPr
                 style={{
                   flex: 1,
                   padding: '10px',
-                  backgroundColor: '#667eea',
+                  backgroundColor: '#0f766e',
                   color: 'white',
                   border: 'none',
                   borderRadius: '6px',

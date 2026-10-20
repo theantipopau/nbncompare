@@ -120,7 +120,7 @@ export function ProviderTooltip({ provider, darkMode }: Props) {
       >
         {/* Header */}
         <div style={{
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
           padding: '20px 24px',
           color: 'white',
           display: 'flex',
@@ -216,7 +216,7 @@ export function ProviderTooltip({ provider, darkMode }: Props) {
             style={{
               width: '100%',
               padding: '12px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
               color: 'white',
               border: 'none',
               borderRadius: '8px',
@@ -244,10 +244,10 @@ export function ProviderTooltip({ provider, darkMode }: Props) {
           width: '12px',
           height: '12px',
           fontSize: '8px',
-          color: '#667eea',
+          color: '#0f766e',
           fontWeight: 'bold',
           background: 'transparent',
-          border: '1px solid #667eea',
+          border: '1px solid #0f766e',
           borderRadius: '50%',
           cursor: 'pointer',
           transition: 'all 0.2s',
@@ -255,12 +255,12 @@ export function ProviderTooltip({ provider, darkMode }: Props) {
           lineHeight: 1
         }}
         onMouseEnter={(e) => {
-          (e.target as HTMLElement).style.background = '#667eea';
+          (e.target as HTMLElement).style.background = '#0f766e';
           (e.target as HTMLElement).style.color = 'white';
         }}
         onMouseLeave={(e) => {
           (e.target as HTMLElement).style.background = 'transparent';
-          (e.target as HTMLElement).style.color = '#667eea';
+          (e.target as HTMLElement).style.color = '#0f766e';
         }}
         aria-label={`View details about ${provider.name}`}
       >

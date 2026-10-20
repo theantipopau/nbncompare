@@ -75,8 +75,8 @@ export default function AIRecommendations({ darkMode, onRecommendation }: Props)
 
   return (
     <div style={{
-      background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(102, 126, 234, 0.05)',
-      border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(102, 126, 234, 0.15)'}`,
+      background: darkMode ? 'rgba(255,255,255,0.05)' : 'rgba(15, 118, 110, 0.05)',
+      border: `1px solid ${darkMode ? 'rgba(255,255,255,0.1)' : 'rgba(15, 118, 110, 0.15)'}`,
       borderRadius: '12px',
       padding: '20px',
       marginBottom: '20px'
@@ -116,7 +116,7 @@ export default function AIRecommendations({ darkMode, onRecommendation }: Props)
             aria-label={isLoading ? 'Getting AI recommendation, please wait' : 'Get AI recommendation'}
             style={{
               padding: '12px 20px',
-              background: isLoading ? '#6b7280' : '#667eea',
+              background: isLoading ? '#6b7280' : '#0f766e',
               color: 'white',
               border: 'none',
               borderRadius: '8px',

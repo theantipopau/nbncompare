@@ -97,7 +97,7 @@ export function ProviderComparisonMatrix() {
             }}
             style={{
               padding: '6px 10px',
-              backgroundColor: selectedProviders.includes(provider.slug) ? '#667eea' : '#e5e7eb',
+              backgroundColor: selectedProviders.includes(provider.slug) ? '#0f766e' : '#e5e7eb',
               color: selectedProviders.includes(provider.slug) ? 'white' : '#374151',
               border: 'none',
               borderRadius: '6px',

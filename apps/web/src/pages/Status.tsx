@@ -95,7 +95,7 @@ export default function Status() {
 
   return (
     <div style={{ maxWidth: '1200px', margin: '0 auto', padding: '40px 20px' }}>
-      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+      <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
         🔄 System Status
       </h1>
       <p style={{ fontSize: '1.1rem', color: '#666', marginBottom: '40px' }}>
@@ -112,7 +112,7 @@ export default function Status() {
 
         <div style={{ background: 'white', borderRadius: '12px', padding: '24px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)' }}>
           <div style={{ fontSize: '0.85rem', color: '#666', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '1px' }}>Total Plans</div>
-          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#667eea' }}>{status.plans.total}</div>
+          <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#0f766e' }}>{status.plans.total}</div>
           <div style={{ fontSize: '0.9rem', color: '#888', marginTop: '4px' }}>Active NBN plans tracked</div>
         </div>
 
@@ -134,8 +134,8 @@ export default function Status() {
         <h2 style={{ fontSize: '1.5rem', marginBottom: '24px', color: '#333' }}>📊 Plans by Speed Tier</h2>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '16px' }}>
           {status.plans.byTier.map((tier) => (
-            <div key={tier.speed_tier} style={{ padding: '16px', borderRadius: '8px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)', border: '1px solid #667eea30' }}>
-              <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#667eea', marginBottom: '4px' }}>
+            <div key={tier.speed_tier} style={{ padding: '16px', borderRadius: '8px', background: 'linear-gradient(135deg, #0f766e15 0%, #155e7515 100%)', border: '1px solid #0f766e30' }}>
+              <div style={{ fontSize: '1.1rem', fontWeight: '600', color: '#0f766e', marginBottom: '4px' }}>
                 {speedTierNames[tier.speed_tier] || `${tier.speed_tier} Mbps`}
               </div>
               <div style={{ fontSize: '2rem', fontWeight: '700', color: '#333' }}>{tier.count}</div>

@@ -28,7 +28,7 @@ function StarRating({ rating, label }: { rating: number | null, label: string })
         {hasHalf && <span>⭐</span>}
         {[...Array(emptyStars)].map((_, i) => <span key={`e${i}`} style={{ opacity: 0.3 }}>⭐</span>)}
       </div>
-      <span style={{ color: '#667eea', fontWeight: 'bold' }}>{rating.toFixed(1)}</span>
+      <span style={{ color: '#0f766e', fontWeight: 'bold' }}>{rating.toFixed(1)}</span>
     </div>
   );
 }
@@ -176,7 +176,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
       <section style={{
         background: darkMode 
           ? 'linear-gradient(135deg, rgba(45, 55, 72, 0.95), rgba(26, 32, 44, 0.98))'
-          : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          : 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
         padding: '40px',
         borderRadius: '16px',
         color: 'white',
@@ -267,7 +267,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
                   </div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#667eea' }}>
+                  <div style={{ fontSize: '1.5em', fontWeight: 'bold', color: '#0f766e' }}>
                     ${p.ongoing_price_cents ? (p.ongoing_price_cents / 100).toFixed(0) : '?'}/mo
                   </div>
                   {p.intro_price_cents && p.ongoing_price_cents !== null && p.intro_price_cents < p.ongoing_price_cents && (
@@ -283,7 +283,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
                       display: 'inline-block',
                       marginTop: '8px',
                       padding: '8px 16px',
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                      background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
                       color: 'white',
                       borderRadius: '6px',
                       textDecoration: 'none',
@@ -324,7 +324,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
               }}>
                 <span style={{ fontSize: '3em' }}>⭐</span>
                 <div>
-                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#667eea' }}>
+                  <div style={{ fontSize: '2em', fontWeight: 'bold', color: '#0f766e' }}>
                     {review.overall_rating?.toFixed(1)}
                   </div>
                   <div style={{ color: darkMode ? '#a0aec0' : '#666', fontSize: '0.9em' }}>
@@ -442,7 +442,7 @@ export default function Provider({ slug }: { slug: string | null | undefined }) 
                 display: 'block',
                 marginTop: '20px',
                 padding: '12px',
-                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
                 color: 'white',
                 borderRadius: '8px',
                 textDecoration: 'none',

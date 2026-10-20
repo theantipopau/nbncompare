@@ -1048,7 +1048,7 @@ export default function BlogPost() {
         <div style={{ 
           display: 'inline-block',
           padding: '6px 16px',
-          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+          background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
           color: 'white',
           borderRadius: '6px',
           fontSize: '0.9em',
@@ -1090,9 +1090,9 @@ export default function BlogPost() {
         <div style={{ 
           marginTop: '60px',
           padding: '32px',
-          background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+          background: 'linear-gradient(135deg, #0f766e15 0%, #155e7515 100%)',
           borderRadius: '12px',
-          border: '1px solid #667eea30',
+          border: '1px solid #0f766e30',
           textAlign: 'center'
         }}>
           <h3 style={{ marginBottom: '16px', color: '#1a1a1a' }}>Ready to find your perfect NBN plan?</h3>
@@ -1102,7 +1102,7 @@ export default function BlogPost() {
             style={{
               display: 'inline-block',
               padding: '12px 32px',
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              background: 'linear-gradient(135deg, #0f766e 0%, #155e75 100%)',
               color: 'white',
               borderRadius: '8px',
               textDecoration: 'none',
