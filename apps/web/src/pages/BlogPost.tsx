@@ -642,13 +642,24 @@ const blogContent: Record<string, BlogPostContent> = {
   },
   "nbn-speed-tiers-explained": {
     slug: "nbn-speed-tiers-explained",
-    title: "NBN Speed Tiers Explained: 25, 50, 100, 250, or 1000 Mbps?",
-    date: "2026-01-02",
-    readTime: "7 min read",
+    title: "NBN Speed Tiers Explained: 25 to 2000 Mbps (2025 Upgrade Guide)",
+    date: "2026-01-20",
+    readTime: "9 min read",
     category: "Education",
     content: (
       <>
         <p>Understanding NBN speed tiers is crucial for choosing the right plan. Let's break down what each tier offers and who they're best suited for.</p>
+
+        <div style={{
+          padding: '20px 24px',
+          background: 'var(--highlight-bg)',
+          borderRadius: '8px',
+          borderLeft: '4px solid var(--primary-color)',
+          marginBottom: '24px'
+        }}>
+          <h3 style={{ marginTop: 0 }}>September 2025 speed upgrade</h3>
+          <p style={{ marginBottom: 0 }}>NBN Co accelerated wholesale speeds on FTTP and HFC: eligible 100 Mbps services moved to <strong>500/50</strong>, 250 Mbps to <strong>750/50</strong>, 1000 Mbps uploads doubled to <strong>100 Mbps</strong>, and a new <strong>2000 Mbps</strong> tier launched. Upload speeds on 25/50/100/250/500 plans did <em>not</em> change. Tiers below reflect the current wholesale profiles.</p>
+        </div>
         
         <h2>NBN 25 (Basic Evening Speed)</h2>
         <p><strong>Download:</strong> 25 Mbps | <strong>Upload:</strong> 5-10 Mbps | <strong>Price:</strong> $50-$70/month</p>
@@ -661,19 +672,34 @@ const blogContent: Record<string, BlogPostContent> = {
         <p><strong>Sweet spot:</strong> Most popular tier offering good balance of speed and value.</p>
 
         <h2>NBN 100 (Fast Evening Speed)</h2>
-        <p><strong>Download:</strong> 100 Mbps | <strong>Upload:</strong> 20-40 Mbps | <strong>Price:</strong> $70-$100/month</p>
+        <p><strong>Download:</strong> 100 Mbps | <strong>Upload:</strong> 20 Mbps | <strong>Price:</strong> $70-$100/month</p>
         <p><strong>Best for:</strong> Medium families (4-6 people). Multiple 4K streams, online gaming, large downloads.</p>
-        <p><strong>Note:</strong> Requires FTTP, FTTB, or HFC connection. Not available on FTTN in many areas.</p>
+        <p><strong>Note:</strong> On FTTP/HFC, most providers now sell this as a 500/50 plan after the 2025 upgrade; 100 Mbps remains the top tier on FTTN/FTTC. Not available at full speed on FTTN in many areas.</p>
 
         <h2>NBN 250 (Superfast Evening Speed)</h2>
-        <p><strong>Download:</strong> 250 Mbps | <strong>Upload:</strong> 25-50 Mbps | <strong>Price:</strong> $90-$120/month</p>
+        <p><strong>Download:</strong> 250 Mbps | <strong>Upload:</strong> 25 Mbps | <strong>Price:</strong> $90-$120/month</p>
         <p><strong>Best for:</strong> Large households or power users. Professional work from home, content creators.</p>
-        <p><strong>Requirements:</strong> Only available on FTTP, HFC, and some FTTB connections.</p>
+        <p><strong>Requirements:</strong> Only available on FTTP, HFC, and some FTTB connections. Many FTTP/HFC customers were uplifted to 750 Mbps in 2025.</p>
+
+        <h2>NBN 500 (Ultrafast Evening Speed)</h2>
+        <p><strong>Download:</strong> 500 Mbps | <strong>Upload:</strong> 50 Mbps | <strong>Price:</strong> $90-$120/month</p>
+        <p><strong>Best for:</strong> Large households that want headroom without paying gigabit prices — often the new default FTTP/HFC tier.</p>
+        <p><strong>Requirements:</strong> FTTP or HFC connection.</p>
+
+        <h2>NBN 750 (Superfast Plus Evening Speed)</h2>
+        <p><strong>Download:</strong> 750 Mbps | <strong>Upload:</strong> 50 Mbps | <strong>Price:</strong> $100-$130/month</p>
+        <p><strong>Best for:</strong> Power users and creators who want near-gigabit downloads. New tier from the September 2025 upgrade (accelerated ex-250 services).</p>
+        <p><strong>Requirements:</strong> FTTP or HFC connection.</p>
 
         <h2>NBN 1000 (Ultrafast Evening Speed)</h2>
-        <p><strong>Download:</strong> 1000 Mbps | <strong>Upload:</strong> 50-400 Mbps | <strong>Price:</strong> $100-$150/month</p>
+        <p><strong>Download:</strong> 1000 Mbps | <strong>Upload:</strong> 100 Mbps | <strong>Price:</strong> $100-$150/month</p>
         <p><strong>Best for:</strong> Tech enthusiasts, businesses, or ultra-heavy users.</p>
-        <p><strong>Availability:</strong> Limited to FTTP connections only. Check if your address qualifies.</p>
+        <p><strong>Availability:</strong> Limited to FTTP connections only. Uploads doubled from 50 to 100 Mbps in 2025. Check if your address qualifies.</p>
+
+        <h2>NBN 2000 (Hyperfast Evening Speed)</h2>
+        <p><strong>Download:</strong> 2000 Mbps | <strong>Upload:</strong> 200 Mbps (FTTP) / 100 Mbps (HFC) | <strong>Price:</strong> $150-$200/month</p>
+        <p><strong>Best for:</strong> Early adopters and businesses with extreme needs. New tier launched September 2025.</p>
+        <p><strong>Availability:</strong> FTTP (and HFC at reduced upload). Check if your address qualifies.</p>
 
         <h2>Upload Speeds Matter Too</h2>
         <p>Don't forget about upload speeds if you:</p>
@@ -697,8 +723,8 @@ const blogContent: Record<string, BlogPostContent> = {
           <h3 style={{ marginTop: 0 }}>Quick Recommendation</h3>
           <ul style={{ marginBottom: 0 }}>
             <li><strong>Budget conscious:</strong> NBN 50</li>
-            <li><strong>Balanced household:</strong> NBN 100</li>
-            <li><strong>Power users:</strong> NBN 250 or 1000</li>
+            <li><strong>Balanced household:</strong> NBN 100 (or 500 on FTTP/HFC)</li>
+            <li><strong>Power users:</strong> NBN 500, 750 or 1000</li>
           </ul>
         </div>
       </>
@@ -716,7 +742,7 @@ const blogContent: Record<string, BlogPostContent> = {
         
         <h2>FTTP (Fibre to the Premises)</h2>
         <p><strong>How it works:</strong> Fibre optic cable runs directly to your home.</p>
-        <p><strong>Speeds available:</strong> All tiers (25 Mbps to 1000 Mbps)</p>
+        <p><strong>Speeds available:</strong> All tiers (25 Mbps to 2000 Mbps)</p>
         <p><strong>Pros:</strong></p>
         <ul>
           <li>Fastest and most reliable connection type</li>
@@ -747,7 +773,7 @@ const blogContent: Record<string, BlogPostContent> = {
 
         <h2>HFC (Hybrid Fibre Coaxial)</h2>
         <p><strong>How it works:</strong> Uses existing pay TV cable infrastructure.</p>
-        <p><strong>Speeds available:</strong> Up to 1000 Mbps</p>
+        <p><strong>Speeds available:</strong> Up to 2000 Mbps (1000 Mbps typical max retail; 2000 on eligible lines)</p>
         <p><strong>Pros:</strong></p>
         <ul>
           <li>High speeds available</li>

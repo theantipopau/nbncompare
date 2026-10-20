@@ -19,14 +19,16 @@
  * - Separate "Upload speed:" field
  * - Technical specifications section
  * 
- * Fallback Logic:
+ * Fallback Logic (Sept 2025 NBN wholesale profiles):
  * - If not found, use standard ratios:
- *   25 Mbps down → 1 Mbps up
- *   50 Mbps down → 2 Mbps up
- *   100 Mbps down → 10 Mbps up
- *   250 Mbps down → 20 Mbps up
- *   500 Mbps down → 40 Mbps up
- *   1000 Mbps down → 50 Mbps up
+ *   25 Mbps down → 5 Mbps up
+ *   50 Mbps down → 20 Mbps up
+ *   100 Mbps down → 20 Mbps up
+ *   250 Mbps down → 25 Mbps up
+ *   500 Mbps down → 50 Mbps up
+ *   750 Mbps down → 50 Mbps up
+ *   1000 Mbps down → 100 Mbps up
+ *   2000 Mbps down → 200 Mbps up (FTTP; HFC is 100)
  * 
  * Example extraction:
  */
@@ -41,13 +43,15 @@ function _extractUploadSpeed(planElement: globalThis.Element | null, downloadSpe
   
   // Fallback to standard ratios
   const uploadRatios: { [key: number]: number } = {
-    25: 1,
-    50: 2,
-    100: 10,
-    250: 20,
-    500: 40,
-    1000: 50,
-    2000: 100,
+    12: 1,
+    25: 5,
+    50: 20,
+    100: 20,
+    250: 25,
+    500: 50,
+    750: 50,
+    1000: 100,
+    2000: 200,
   };
   
   return uploadRatios[downloadSpeed] || null;

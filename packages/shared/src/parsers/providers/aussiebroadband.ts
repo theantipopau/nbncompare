@@ -21,15 +21,16 @@ function extractUploadSpeed(planElement: globalThis.Element, downloadSpeed: numb
   // Standard NBN upload speed ratios
   const uploadRatios: { [key: number]: number } = {
     12: 1,
-    25: 1,
-    50: 2,
-    100: 10,
+    25: 5,
+    50: 20,
+    100: 20,
     200: 20,
-    250: 20,
+    250: 25,
     400: 40,
-    500: 40,
-    1000: 50,
-    2000: 100,
+    500: 50,
+    750: 50,
+    1000: 100,
+    2000: 200,
   };
 
   return uploadRatios[downloadSpeed] || null;

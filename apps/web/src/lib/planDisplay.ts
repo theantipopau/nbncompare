@@ -24,6 +24,7 @@ export function getSpeedTierColor(tier: number | null | undefined): string {
   if (tier <= 100) return '#8b5cf6'; // Purple for fast
   if (tier <= 250) return '#f59e0b'; // Amber for superfast
   if (tier <= 500) return '#ef4444'; // Red for ultrafast
+  if (tier <= 750) return '#f97316'; // Orange for superfast-plus (Sept 2025 tier)
   if (tier <= 1000) return '#ec4899'; // Pink for home ultrafast
   return '#06b6d4'; // Cyan for 2 gigabit
 }
@@ -36,6 +37,7 @@ export function getSpeedTierLabel(tier: number | null | undefined): string {
   if (tier <= 100) return 'Fast';
   if (tier <= 250) return 'Superfast';
   if (tier <= 500) return 'Ultrafast';
+  if (tier <= 750) return 'Superfast Plus';
   if (tier <= 1000) return 'Home Ultrafast';
   return '2 Gigabit';
 }

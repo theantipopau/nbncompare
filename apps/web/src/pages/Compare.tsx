@@ -191,7 +191,7 @@ export default function Compare() {
     }
   };
 
-  const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '1000', '2000'];
+  const standardSpeedOptions = ['12', '25', '50', '100', '250', '500', '750', '1000', '2000'];
   const fixedWirelessSpeedOptions = ['25', '50', '75', '100', '200', '400'];
   const fiveGSpeedOptions = ['50', '100', '250', '300', '500'];
   const satelliteSpeedOptions = ['25', '50', '100', '150'];

@@ -44,10 +44,10 @@ const blogPosts: BlogPost[] = [
   },
   {
     slug: "nbn-speed-tiers-explained",
-    title: "NBN Speed Tiers Explained: 25, 50, 100, 250, or 1000 Mbps?",
-    excerpt: "Understand the difference between NBN speed tiers and find out which one is right for your household.",
-    date: "2026-01-02",
-    readTime: "7 min read",
+    title: "NBN Speed Tiers Explained: 25 to 2000 Mbps (2025 Upgrade Guide)",
+    excerpt: "Understand the difference between NBN speed tiers — including the new 500, 750 and 2000 Mbps tiers from the September 2025 upgrade — and find out which one is right for your household.",
+    date: "2026-01-20",
+    readTime: "9 min read",
     category: "Education"
   },
   {
