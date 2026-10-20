@@ -31,3 +31,13 @@ routes = [
   { pattern = "nbncompare.info/*", zone_name = "nbncompare.info" },
   { pattern = "www.nbncompare.info/*", zone_name = "nbncompare.info" }
 ]
+# Named environments do NOT inherit top-level bindings — redeclare here.
+# (A deploy without these serves the site with no database: HTTP 500.)
+[[env.production.d1_databases]]
+binding = "D1"
+database_name = "nbncompare"
+database_id = "0bc16814-a9a6-4bde-be9c-311c90724eec"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "718bd42c891f4bf4a15e1e6dd0bf4add"
