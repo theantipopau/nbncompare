@@ -4,10 +4,12 @@ name: Free plan refresh (plain fetch, no browser)
 # Runs on GitHub's free runners and triggers the Worker's manual scrape
 # endpoint, which is plain-fetch only (zero browser minutes, zero Workers AI).
 #
-# Required repo secrets:
+# Required repo secret:
 #   NBNCOMPARE_ADMIN_TOKEN — same value as the Worker's ADMIN_TOKEN secret
-# Optional:
+#     gh secret set NBNCOMPARE_ADMIN_TOKEN
+# Optional repo variable (non-secret):
 #   NBNCOMPARE_BASE_URL — default https://nbncompare.info
+#     gh variable set NBNCOMPARE_BASE_URL --body https://nbncompare.info
 
 on:
   schedule:
@@ -25,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     env:
-      BASE_URL: ${{ secrets.NBNCOMPARE_BASE_URL }}
+      BASE_URL: ${{ vars.NBNCOMPARE_BASE_URL }}
     steps:
       - name: Trigger plain-fetch scrape (3 x 10-provider batches)
         env:
@@ -33,7 +35,13 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${ADMIN_TOKEN:-}" ]; then
-            echo "::error::Missing secret NBNCOMPARE_ADMIN_TOKEN (must match Worker ADMIN_TOKEN)."
+            echo "::error::Missing repository secret NBNCOMPARE_ADMIN_TOKEN."
+            echo "It must be identical to the Worker secret ADMIN_TOKEN:"
+            echo "  gh secret set NBNCOMPARE_ADMIN_TOKEN"
+            echo "  cd apps/worker && npx wrangler secret put ADMIN_TOKEN --env production"
+            echo "Wrangler only lists the Worker secret's name, not its value:"
+            echo "  cd apps/worker && npx wrangler secret list --env production"
+            echo "If ADMIN_TOKEN was never set, set a fresh value in both places."
             exit 1
           fi
           BASE="${BASE_URL:-https://nbncompare.info}"

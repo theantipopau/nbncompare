@@ -48,6 +48,10 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    # One deploy at a time: a second push must not race the first onto the Worker.
+    concurrency:
+      group: deploy-main
+      cancel-in-progress: false
 
     steps:
     - uses: actions/checkout@v4
@@ -65,20 +69,56 @@ jobs:
     - name: Install dependencies
       run: pnpm install --no-frozen-lockfile
 
+    # Deploying needs CLOUDFLARE_API_TOKEN. Without it wrangler fails with an
+    # opaque "non-interactive environment" error, so detect the missing secret
+    # up front: warn loudly, skip the deploy steps, and let the run stay green.
+    - name: Check deploy credentials
+      id: creds
+      env:
+        CF_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        CF_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      run: |
+        set -euo pipefail
+        if [ -z "${CF_API_TOKEN:-}" ]; then
+          echo "::warning title=Deploy skipped::Repository secret CLOUDFLARE_API_TOKEN is not set, so nothing was deployed. Add it under Settings -> Secrets and variables -> Actions (or: gh secret set CLOUDFLARE_API_TOKEN) to turn automatic deploys on. Token scopes: Account Settings:Read, Workers Scripts:Edit, Workers KV Storage:Edit, D1:Edit, Zone:Workers Routes:Edit on nbncompare.info."
+          echo "Deploy skipped: CLOUDFLARE_API_TOKEN is not configured."
+          echo "has_creds=false" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+        if [ -z "${CF_ACCOUNT_ID:-}" ]; then
+          echo "::warning::CLOUDFLARE_ACCOUNT_ID is unset; wrangler will use account_id from apps/worker/wrangler.toml instead."
+        fi
+        echo "has_creds=true" >> "$GITHUB_OUTPUT"
+
     - name: Build shared package
+      if: steps.creds.outputs.has_creds == 'true'
       run: pnpm --filter @clearnbn/shared build
 
     - name: Build web app
+      if: steps.creds.outputs.has_creds == 'true'
       run: pnpm --filter @clearnbn/web build
 
-    - name: Deploy to Cloudflare Pages
-      run: pnpm --filter @clearnbn/worker exec wrangler pages deploy ../web/dist --project-name=nbncompare-web
-      env:
-        CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
+    # The Worker is the only deploy target: it serves the API and the built
+    # frontend from ../web/dist through the ASSETS binding on nbncompare.info
+    # and www.nbncompare.info. The legacy Cloudflare Pages project
+    # (nbncompare-web) published the same static build to the same hostname
+    # and gated this step when it failed, so it is no longer deployed here.
     - name: Deploy Worker
+      if: steps.creds.outputs.has_creds == 'true'
       run: pnpm --filter @clearnbn/worker exec wrangler deploy --env production
       env:
         CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+    - name: Smoke test production
+      if: steps.creds.outputs.has_creds == 'true'
+      run: |
+        set -euo pipefail
+        for path in / /api/status; do
+          code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 20 "https://nbncompare.info${path}")
+          echo "${path} -> ${code}"
+          if [ "$code" != "200" ]; then
+            echo "::error::nbncompare.info${path} returned ${code}"
+            exit 1
+          fi
+        done
