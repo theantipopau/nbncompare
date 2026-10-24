@@ -35,14 +35,27 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${ADMIN_TOKEN:-}" ]; then
-            echo "::error::Missing repository secret NBNCOMPARE_ADMIN_TOKEN."
-            echo "It must be identical to the Worker secret ADMIN_TOKEN:"
-            echo "  gh secret set NBNCOMPARE_ADMIN_TOKEN"
-            echo "  cd apps/worker && npx wrangler secret put ADMIN_TOKEN --env production"
-            echo "Wrangler only lists the Worker secret's name, not its value:"
-            echo "  cd apps/worker && npx wrangler secret list --env production"
-            echo "If ADMIN_TOKEN was never set, set a fresh value in both places."
-            exit 1
+            # Nothing can be refreshed without the admin token. Warn loudly
+            # instead of failing the run, so the schedule is not permanently
+            # red; the step summary records that no data was updated.
+            echo "::warning title=Scrape skipped::Repository secret NBNCOMPARE_ADMIN_TOKEN is not set, so no provider data was refreshed. Add it (same value as the Worker's ADMIN_TOKEN secret) with: gh secret set NBNCOMPARE_ADMIN_TOKEN"
+            echo "Scrape skipped: NBNCOMPARE_ADMIN_TOKEN is not configured."
+            {
+              echo "## Scrape skipped"
+              echo ""
+              echo "No provider data was refreshed. \`NBNCOMPARE_ADMIN_TOKEN\` is not set on this repository."
+              echo ""
+              echo "It must be identical to the Worker secret \`ADMIN_TOKEN\`:"
+              echo ""
+              echo "\`\`\`"
+              echo "gh secret set NBNCOMPARE_ADMIN_TOKEN"
+              echo "cd apps/worker && npx wrangler secret list --env production   # names only"
+              echo "cd apps/worker && npx wrangler secret put ADMIN_TOKEN --env production"
+              echo "\`\`\`"
+              echo ""
+              echo "Wrangler never reveals an existing secret value; if ADMIN_TOKEN was never set, set a fresh value in both places."
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 0
           fi
           BASE="${BASE_URL:-https://nbncompare.info}"
           echo "Scraping via $BASE/internal/cron/run (plain fetch only)"
